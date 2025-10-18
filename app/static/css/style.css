@@ -41,6 +41,7 @@ body {
     position: relative;
     overflow-x: hidden;
     transition: all 0.3s ease;
+    padding-top: 90px; /* 为固定导航栏预留空间 */
 }
 
 body::before {
@@ -66,7 +67,12 @@ body::before {
     padding: 1.25rem 0;
     box-shadow: 0 8px 32px var(--shadow-color);
     transition: all 0.3s ease;
-    position: relative;
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1030;
+    width: 100%;
 }
 
 .navbar::before {
