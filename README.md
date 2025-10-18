@@ -292,8 +292,43 @@ docker-compose up -d
 
 ## License
 
-MIT License
+本项目采用 MIT License 开源协议。
+
+这意味着您可以：
+- ✅ 自由使用本软件用于商业或非商业目的
+- ✅ 修改源代码以满足您的需求
+- ✅ 将本软件集成到您的项目中
+- ✅ 重新分发本软件的原始版本或修改版本
+
+唯一的要求是：
+- 📋 保留原始的版权声明和许可声明
+
+详细信息请查看 [LICENSE](LICENSE) 文件。
+
+## 贡献
+
+欢迎提交 Issue 和 Pull Request！
+
+贡献指南：
+1. Fork 本项目
+2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 开启 Pull Request
+
+## 作者
+
+- **NUDTTAN91**
+  - GitHub: [@NUDTTAN91](https://github.com/NUDTTAN91)
+  - 博客: [CSDN](https://blog.csdn.net/ZXW_NUDT)
+
+## 致谢
+
+感谢所有为本项目做出贡献的开发者和使用者！
 
 ## 支持
 
-如有问题，请提交 Issue 或联系系统管理员。
+如有问题，请：
+- 提交 [GitHub Issue](https://github.com/NUDTTAN91/TG-EDU/issues)
+- 联系系统管理员
+- 查看 [性能优化文档](PERFORMANCE.md)
