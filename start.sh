@@ -74,4 +74,19 @@ with app.app_context():
 "
 
 echo "启动Web服务器..."
-exec gunicorn --bind 0.0.0.0:5000 --workers 4 --timeout 600 app:app
+# 优化配置：
+# - workers: 根据CPU核心数设置 (2 * CPU核心数 + 1)
+# - worker-class: 使用gevent异步worker提高并发能力
+# - timeout: 降低超时时间，避免长时间占用worker
+# - max-requests: 定期重启worker，防止内存泄漏
+# - max-requests-jitter: 添加随机抖动，避免所有worker同时重启
+exec gunicorn --bind 0.0.0.0:5000 \
+    --workers 8 \
+    --worker-class gevent \
+    --worker-connections 1000 \
+    --timeout 120 \
+    --max-requests 1000 \
+    --max-requests-jitter 100 \
+    --access-logfile - \
+    --error-logfile - \
+    app:app

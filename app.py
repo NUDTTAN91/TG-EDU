@@ -21,6 +21,18 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'storage/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024 * 1024  # 10GB - 支持教师设置的最大文件大小
 
+# SQLite并发优化配置
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_size': 20,          # 连接池大小
+    'pool_recycle': 3600,     # 连接回收时间(秒)
+    'pool_pre_ping': True,    # 连接前检查
+    'max_overflow': 10,       # 超过pool_size时最多创建的连接数
+    'connect_args': {
+        'timeout': 30,        # 数据库锁等待超时时间(秒)
+        'check_same_thread': False  # 允许多线程访问
+    }
+}
+
 # 确保上传目录和附件目录存在
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs('/app/storage/data', exist_ok=True)
@@ -33,6 +45,11 @@ db = SQLAlchemy(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
+
+# 请求结束后自动关闭数据库会话，避免连接泄漏
+@app.teardown_appcontext
+def shutdown_session(exception=None):
+    db.session.remove()
 
 # 北京时区（UTC+8）
 BEIJING_TZ = timezone(timedelta(hours=8))
@@ -396,7 +413,8 @@ def delete_assignment_attachment(file_path):
 # 路由
 @app.route('/')
 def index():
-    assignments = Assignment.query.order_by(Assignment.created_at.desc()).all()
+    # 优化：只查询活跃的作业，并限制数量，减少数据库负载
+    assignments = Assignment.query.filter_by(is_active=True).order_by(Assignment.created_at.desc()).limit(50).all()
     return render_template('index.html', assignments=assignments)
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -652,34 +670,29 @@ def teacher_dashboard():
 @login_required
 @require_role(UserRole.STUDENT)
 def student_dashboard():
+    # 优化：使用更高效的查询，减少数据库访问
     # 获取学生所在班级的作业
     student_classes = current_user.classes
     if student_classes:
         class_ids = [c.id for c in student_classes]
-        # 获取学生所在班级的活跃作业
+        # 使用单次查询获取所有相关作业（包括班级作业和公共作业）
+        from sqlalchemy import or_
         assignments = Assignment.query.filter(
-            Assignment.class_id.in_(class_ids),
-            Assignment.is_active == True
-        ).order_by(Assignment.created_at.desc()).all()
-        
-        # 也包含未指定班级的公共作业（兼容性）
-        public_assignments = Assignment.query.filter(
-            Assignment.class_id.is_(None),
-            Assignment.is_active == True
-        ).order_by(Assignment.created_at.desc()).all()
-        
-        assignments.extend(public_assignments)
-        # 按创建时间重新排序
-        assignments.sort(key=lambda x: x.created_at, reverse=True)
+            Assignment.is_active == True,
+            or_(
+                Assignment.class_id.in_(class_ids),
+                Assignment.class_id.is_(None)
+            )
+        ).order_by(Assignment.created_at.desc()).limit(100).all()
     else:
         # 如果学生没有分配到任何班级，只显示公共作业
         assignments = Assignment.query.filter(
             Assignment.class_id.is_(None),
             Assignment.is_active == True
-        ).order_by(Assignment.created_at.desc()).all()
+        ).order_by(Assignment.created_at.desc()).limit(100).all()
     
-    # 获取用户的提交记录
-    my_submissions = Submission.query.filter_by(student_id=current_user.id).order_by(Submission.submitted_at.desc()).all()
+    # 获取用户的提交记录（限制最近50条）
+    my_submissions = Submission.query.filter_by(student_id=current_user.id).order_by(Submission.submitted_at.desc()).limit(50).all()
     
     return render_template('student_dashboard.html', 
                          assignments=assignments,
