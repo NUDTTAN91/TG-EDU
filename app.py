@@ -10,7 +10,7 @@ import uuid
 import zipfile
 from io import BytesIO
 from collections import defaultdict
-from sqlalchemy import func
+from sqlalchemy import func, or_
 
 app = Flask(__name__, template_folder='app/templates', static_folder='app/static')
 
@@ -714,23 +714,122 @@ def admin():
 @login_required
 @require_teacher_or_admin
 def manage_users():
+    # 获取分页参数
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)  # 默认改为10
+    
+    # 获取筛选参数
+    role_filter = request.args.get('role', '')
+    class_filter = request.args.get('class', '', type=str)
+    
+    # 限制每页数量范围
+    if per_page not in [10, 20, 50, 100]:
+        per_page = 10
+    
     # 根据用户角色显示不同的用户列表
     if current_user.is_super_admin:
-        users = User.query.order_by(User.created_at.desc()).all()
+        # 超级管理员可以查看所有用户，使用分页
+        query = User.query
+        
+        # 角色筛选
+        if role_filter:
+            query = query.filter_by(role=role_filter)
+        
+        # 班级筛选
+        if class_filter:
+            try:
+                class_id = int(class_filter)
+                # 根据角色筛选班级成员
+                if role_filter == UserRole.TEACHER:
+                    # 只筛选教师：通过teaching_classes关联
+                    query = query.join(User.teaching_classes).filter(Class.id == class_id)
+                elif role_filter == UserRole.STUDENT:
+                    # 只筛选学生：通过classes关联
+                    query = query.join(User.classes).filter(Class.id == class_id)
+                else:
+                    # 未指定角色或全部：查询该班级的所有成员（教师和学生）
+                    # 使用 UNION 查询：班级的教师 + 班级的学生
+                    teachers_in_class = User.query.join(User.teaching_classes).filter(Class.id == class_id)
+                    students_in_class = User.query.join(User.classes).filter(Class.id == class_id)
+                    query = teachers_in_class.union(students_in_class)
+            except ValueError:
+                pass
+        
+        # 按创建时间从早到晚排序
+        pagination = query.order_by(User.created_at.asc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        users = pagination.items
     else:
         # 教师可以看到：1.自己创建的学生  2.自己负责班级中的所有学生
-        created_students = User.query.filter_by(created_by=current_user.id, role=UserRole.STUDENT).all()
+        # 获取教师负责的班级ID列表
+        teacher_class_ids = [c.id for c in current_user.teaching_classes]
         
-        # 获取教师负责班级中的所有学生
-        class_students = []
-        for class_obj in current_user.teaching_classes:
-            class_students.extend(class_obj.students)
+        # 构建查询：只查询学生
+        query = User.query.filter_by(role=UserRole.STUDENT)
         
-        # 合并并去重
-        all_students = list({user.id: user for user in (created_students + class_students)}.values())
+        if teacher_class_ids:
+            # 筛选：自己创建的学生 或 自己班级中的学生
+            query = query.filter(
+                or_(
+                    User.created_by == current_user.id,
+                    User.classes.any(Class.id.in_(teacher_class_ids))
+                )
+            )
+        else:
+            # 如果教师没有负责任何班级，只显示自己创建的学生
+            query = query.filter_by(created_by=current_user.id)
         
-        # 按创建时间排序
-        users = sorted(all_students, key=lambda x: x.created_at, reverse=True)
+        # 班级筛选（教师只能筛选自己负责的班级）
+        if class_filter and teacher_class_ids:
+            try:
+                class_id = int(class_filter)
+                if class_id in teacher_class_ids:
+                    query = query.filter(User.classes.any(Class.id == class_id))
+            except ValueError:
+                pass
+        
+        # 按创建时间从早到晚排序并去重
+        query = query.order_by(User.created_at.asc()).distinct()
+        
+        # 手动分页（因为distinct后无法直接使用paginate）
+        all_students = query.all()
+        total = len(all_students)
+        start = (page - 1) * per_page
+        end = start + per_page
+        users = all_students[start:end]
+        
+        # 创建一个类似SQLAlchemy分页对象的简单对象
+        class SimplePagination:
+            def __init__(self, items, page, per_page, total):
+                self.items = items
+                self.page = page
+                self.per_page = per_page
+                self.total = total
+                self.pages = (total + per_page - 1) // per_page if per_page > 0 else 0
+                self.has_prev = page > 1
+                self.has_next = page < self.pages
+                self.prev_num = page - 1 if self.has_prev else None
+                self.next_num = page + 1 if self.has_next else None
+            
+            def iter_pages(self, left_edge=2, left_current=2, right_current=3, right_edge=2):
+                last = 0
+                for num in range(1, self.pages + 1):
+                    if num <= left_edge or \
+                       (num > self.page - left_current - 1 and num < self.page + right_current) or \
+                       num > self.pages - right_edge:
+                        if last + 1 != num:
+                            yield None
+                        yield num
+                        last = num
+        
+        pagination = SimplePagination(users, page, per_page, total)
+    
+    # 获取所有班级用于筛选（根据用户角色）
+    if current_user.is_super_admin:
+        all_classes = Class.query.filter_by(is_active=True).order_by(Class.name.asc()).all()
+    else:
+        all_classes = current_user.teaching_classes
     
     # 创建一个辅助函数来检查教师是否有权限管理学生
     def can_teacher_manage_student(teacher, student):
@@ -751,7 +850,11 @@ def manage_users():
         
         return False
     
-    return render_template('manage_users.html', users=users, can_teacher_manage_student=can_teacher_manage_student)
+    return render_template('manage_users.html', 
+                         users=users, 
+                         pagination=pagination,
+                         all_classes=all_classes,
+                         can_teacher_manage_student=can_teacher_manage_student)
 
 @app.route('/admin/users/add', methods=['GET', 'POST'])
 @login_required

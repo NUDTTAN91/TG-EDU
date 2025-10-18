@@ -99,20 +99,80 @@
 <!-- 用户列表 -->
 <div class="card">
     <div class="card-header bg-gradient">
-        <div class="row align-items-center">
-            <div class="col">
+        <div class="row align-items-center mb-3">
+            <div class="col-md-4">
                 <h5 class="mb-0">
                     <i class="fas fa-list me-2"></i>
                     用户列表
                 </h5>
             </div>
-            <div class="col-auto">
+            <div class="col-md-4">
                 <div class="input-group">
                     <input type="text" class="form-control" id="searchInput" placeholder="搜索用户...">
                     <button class="btn btn-outline-secondary" type="button">
                         <i class="fas fa-search"></i>
                     </button>
                 </div>
+            </div>
+            <div class="col-md-4 text-end">
+                <div class="d-flex align-items-center justify-content-end">
+                    <label class="me-2 mb-0 text-white">
+                        <i class="fas fa-list-ol me-1"></i>
+                        每页显示：
+                    </label>
+                    <select class="form-select form-select-sm" id="perPageSelect" style="width: auto;">
+                        <option value="10" {% if request.args.get('per_page', '10') == '10' %}selected{% endif %}>10</option>
+                        <option value="20" {% if request.args.get('per_page', '10') == '20' %}selected{% endif %}>20</option>
+                        <option value="50" {% if request.args.get('per_page', '10') == '50' %}selected{% endif %}>50</option>
+                        <option value="100" {% if request.args.get('per_page', '10') == '100' %}selected{% endif %}>100</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 筛选条件 -->
+        <div class="row align-items-center">
+            {% if current_user.is_super_admin %}
+                <div class="col-md-4">
+                    <div class="d-flex align-items-center">
+                        <label class="me-2 mb-0 text-white text-nowrap">
+                            <i class="fas fa-filter me-1"></i>
+                            用户类型：
+                        </label>
+                        <select class="form-select form-select-sm" id="roleFilter">
+                            <option value="" {% if not request.args.get('role') %}selected{% endif %}>全部</option>
+                            <option value="super_admin" {% if request.args.get('role') == 'super_admin' %}selected{% endif %}>超级管理员</option>
+                            <option value="teacher" {% if request.args.get('role') == 'teacher' %}selected{% endif %}>教师</option>
+                            <option value="student" {% if request.args.get('role') == 'student' %}selected{% endif %}>学生</option>
+                        </select>
+                    </div>
+                </div>
+            {% endif %}
+            
+            {% if all_classes %}
+                <div class="col-md-4">
+                    <div class="d-flex align-items-center">
+                        <label class="me-2 mb-0 text-white text-nowrap">
+                            <i class="fas fa-school me-1"></i>
+                            班级：
+                        </label>
+                        <select class="form-select form-select-sm" id="classFilter">
+                            <option value="" {% if not request.args.get('class') %}selected{% endif %}>全部</option>
+                            {% for class_obj in all_classes %}
+                                <option value="{{ class_obj.id }}" {% if request.args.get('class') == class_obj.id|string %}selected{% endif %}>
+                                    {{ class_obj.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            {% endif %}
+            
+            <div class="col-md-4 text-end">
+                <button class="btn btn-sm btn-outline-light" id="resetFilters">
+                    <i class="fas fa-redo me-1"></i>
+                    重置筛选
+                </button>
             </div>
         </div>
     </div>
@@ -263,6 +323,79 @@
             </div>
         {% endif %}
     </div>
+    
+    <!-- 分页控件 -->
+    {% if pagination and pagination.pages > 1 %}
+    <div class="card-footer bg-light">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <p class="mb-0 text-muted">
+                    <i class="fas fa-info-circle me-1"></i>
+                    显示第 <strong>{{ ((pagination.page - 1) * pagination.per_page + 1) }}</strong> 
+                    到 <strong>{{ [pagination.page * pagination.per_page, pagination.total]|min }}</strong> 项，
+                    共 <strong>{{ pagination.total }}</strong> 项
+                </p>
+            </div>
+            <div class="col-md-6">
+                <nav aria-label="用户列表分页">
+                    <ul class="pagination justify-content-end mb-0">
+                        <!-- 首页 -->
+                        <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                            <a class="page-link" href="{{ url_for('manage_users', page=1, per_page=request.args.get('per_page', 10), role=request.args.get('role', ''), class=request.args.get('class', '')) }}" aria-label="首页">
+                                <i class="fas fa-angle-double-left"></i>
+                            </a>
+                        </li>
+                        
+                        <!-- 上一页 -->
+                        <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                            <a class="page-link" href="{{ url_for('manage_users', page=pagination.prev_num, per_page=request.args.get('per_page', 10), role=request.args.get('role', ''), class=request.args.get('class', '')) }}" aria-label="上一页">
+                                <i class="fas fa-angle-left"></i>
+                            </a>
+                        </li>
+                        
+                        <!-- 页码 -->
+                        {% for page_num in pagination.iter_pages(left_edge=1, left_current=1, right_current=2, right_edge=1) %}
+                            {% if page_num %}
+                                {% if page_num == pagination.page %}
+                                    <li class="page-item active">
+                                        <span class="page-link">
+                                            {{ page_num }}
+                                            <span class="visually-hidden">(当前)</span>
+                                        </span>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('manage_users', page=page_num, per_page=request.args.get('per_page', 10), role=request.args.get('role', ''), class=request.args.get('class', '')) }}">
+                                            {{ page_num }}
+                                        </a>
+                                    </li>
+                                {% endif %}
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        <!-- 下一页 -->
+                        <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                            <a class="page-link" href="{{ url_for('manage_users', page=pagination.next_num, per_page=request.args.get('per_page', 10), role=request.args.get('role', ''), class=request.args.get('class', '')) }}" aria-label="下一页">
+                                <i class="fas fa-angle-right"></i>
+                            </a>
+                        </li>
+                        
+                        <!-- 末页 -->
+                        <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                            <a class="page-link" href="{{ url_for('manage_users', page=pagination.pages, per_page=request.args.get('per_page', 10), role=request.args.get('role', ''), class=request.args.get('class', '')) }}" aria-label="末页">
+                                <i class="fas fa-angle-double-right"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
 
 <!-- 删除确认模态框 -->
@@ -330,6 +463,95 @@
 
 {% block scripts %}
 <script>
+// 页面切换加载提示
+function showLoadingIndicator(element) {
+    // 添加加载状态
+    element.style.opacity = '0.6';
+    element.style.pointerEvents = 'none';
+    
+    // 显示加载提示
+    const loadingDiv = document.createElement('div');
+    loadingDiv.id = 'filterLoadingIndicator';
+    loadingDiv.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 20px 40px;
+        border-radius: 10px;
+        z-index: 10000;
+        font-size: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    `;
+    loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>正在筛选...';
+    document.body.appendChild(loadingDiv);
+}
+
+// 每页数量选择功能
+document.getElementById('perPageSelect').addEventListener('change', function() {
+    const perPage = this.value;
+    const url = new URL(window.location.href);
+    url.searchParams.set('per_page', perPage);
+    url.searchParams.set('page', '1');
+    
+    showLoadingIndicator(this);
+    window.location.href = url.toString();
+});
+
+// 角色筛选功能
+const roleFilter = document.getElementById('roleFilter');
+if (roleFilter) {
+    roleFilter.addEventListener('change', function() {
+        const role = this.value;
+        const url = new URL(window.location.href);
+        
+        if (role) {
+            url.searchParams.set('role', role);
+        } else {
+            url.searchParams.delete('role');
+        }
+        url.searchParams.set('page', '1');
+        
+        showLoadingIndicator(this);
+        window.location.href = url.toString();
+    });
+}
+
+// 班级筛选功能
+const classFilter = document.getElementById('classFilter');
+if (classFilter) {
+    classFilter.addEventListener('change', function() {
+        const classId = this.value;
+        const url = new URL(window.location.href);
+        
+        if (classId) {
+            url.searchParams.set('class', classId);
+        } else {
+            url.searchParams.delete('class');
+        }
+        url.searchParams.set('page', '1');
+        
+        showLoadingIndicator(this);
+        window.location.href = url.toString();
+    });
+}
+
+// 重置筛选功能
+const resetFilters = document.getElementById('resetFilters');
+if (resetFilters) {
+    resetFilters.addEventListener('click', function() {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('role');
+        url.searchParams.delete('class');
+        url.searchParams.set('page', '1');
+        
+        showLoadingIndicator(this);
+        window.location.href = url.toString();
+    });
+}
+
 // 搜索功能
 document.getElementById('searchInput').addEventListener('input', function() {
     const searchTerm = this.value.toLowerCase();
@@ -592,6 +814,74 @@ document.addEventListener('DOMContentLoaded', function() {
     padding: 0.25rem 0.5rem;
 }
 
+/* 分页样式 */
+.card-footer {
+    background: var(--bg-glass) !important;
+    border-top: 1px solid var(--border-color);
+    border-radius: 0 0 15px 15px;
+    padding: 1rem 1.5rem;
+}
+
+.pagination {
+    margin: 0;
+}
+
+.page-link {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 0.5rem 0.75rem;
+    transition: all 0.3s ease;
+}
+
+.page-link:hover {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.page-item.active .page-link {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+    color: white;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.page-item.disabled .page-link {
+    background: var(--bg-card);
+    border-color: var(--border-color);
+    color: var(--text-secondary);
+    opacity: 0.5;
+}
+
+.page-link i {
+    font-size: 0.9rem;
+}
+
+/* 每页数量选择器样式 */
+#perPageSelect {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 80px;
+}
+
+#perPageSelect:focus {
+    background: var(--bg-card);
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    color: var(--text-primary);
+}
+
+#perPageSelect:hover {
+    border-color: var(--accent-color);
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
     .stat-card {
@@ -607,6 +897,19 @@ document.addEventListener('DOMContentLoaded', function() {
     .stat-number {
         font-size: 2rem;
     }
+    
+    .card-footer .row {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .card-footer .col-md-6 {
+        text-align: center !important;
+    }
+    
+    .pagination {
+        justify-content: center !important;
+    }
 }
 
 @media (max-width: 480px) {
@@ -618,6 +921,11 @@ document.addEventListener('DOMContentLoaded', function() {
         width: 50px;
         height: 50px;
         font-size: 1.5rem;
+    }
+    
+    .page-link {
+        padding: 0.4rem 0.6rem;
+        font-size: 0.85rem;
     }
 }
 </style>
