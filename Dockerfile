@@ -40,12 +40,13 @@ COPY start.sh .
 COPY app/ ./app/
 
 # 创建必要的目录
-RUN mkdir -p uploads data
+RUN mkdir -p storage/uploads storage/data storage/appendix
 
 # 设置权限
 RUN chmod 755 /app && \
-    chmod 777 /app/uploads && \
-    chmod 777 /app/data && \
+    chmod 777 /app/storage/uploads && \
+    chmod 777 /app/storage/data && \
+    chmod 777 /app/storage/appendix && \
     chmod +x /app/start.sh
 
 # 暴露端口

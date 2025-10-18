@@ -5,7 +5,7 @@ services:
     build: .
     container_name: tg-edu-system
     ports:
-      - "20001:5000"
+      - "80:5000"
     environment:
       # 管理员账户配置（可以修改这些值）
       - ADMIN_USERNAME=root
@@ -14,11 +14,7 @@ services:
       - SECRET_KEY=root
     restart: unless-stopped
     volumes:
-      # 持久化数据库文件到本地目录
-      - ./data:/app/data
-      # 持久化上传文件到本地目录
-      - ./uploads:/app/uploads
-      # 持久化附件文件到本地目录
-      - ./appendix:/app/appendix
+      # 持久化存储目录（包含数据库、上传文件和附件）
+      - ./storage:/app/storage
 
 # 注意：使用本地目录挂载，不需要 Docker volumes

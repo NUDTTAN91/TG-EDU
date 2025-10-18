@@ -16,17 +16,17 @@ app = Flask(__name__, template_folder='app/templates', static_folder='app/static
 
 # 配置
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////app/data/homework.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////app/storage/data/homework.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['UPLOAD_FOLDER'] = 'uploads'
+app.config['UPLOAD_FOLDER'] = 'storage/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024 * 1024  # 10GB - 支持教师设置的最大文件大小
 
 # 确保上传目录和附件目录存在
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-os.makedirs('/app/data', exist_ok=True)
-os.makedirs('/app/appendix', exist_ok=True)  # 创建附件目录，使用绝对路径
+os.makedirs('/app/storage/data', exist_ok=True)
+os.makedirs('/app/storage/appendix', exist_ok=True)  # 创建附件目录，使用绝对路径
 
-os.makedirs('appendix', exist_ok=True)  # 创建附件目录
+os.makedirs('storage/appendix', exist_ok=True)  # 创建附件目录
 
 # 初始化扩展
 db = SQLAlchemy(app)
@@ -361,7 +361,7 @@ def save_assignment_attachment(attachment_file):
     
     # 生成唯一的文件路径（使用绝对路径）
     unique_filename = f"{uuid.uuid4()}_{filename}"
-    file_path = os.path.join('/app/appendix', unique_filename)
+    file_path = os.path.join('/app/storage/appendix', unique_filename)
     print(f"DEBUG: File path: {file_path}")
     
     try:

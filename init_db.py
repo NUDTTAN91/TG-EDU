@@ -38,7 +38,7 @@ def init_database():
 def check_and_update_schema():
     """检查并更新数据库表结构"""
     import sqlite3
-    conn = sqlite3.connect('/app/data/homework.db')
+    conn = sqlite3.connect('/app/storage/data/homework.db')
     cursor = conn.cursor()
     
     # 检查assignment表的列

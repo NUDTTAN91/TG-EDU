@@ -118,8 +118,10 @@ TG-EDU/
 │       ├── create_assignment.html  # 创建作业
 │       ├── submit.html     # 提交作业
 │       └── submissions.html # 作业提交列表
-├── uploads/                # 上传文件存储目录
-└── data/                   # 数据库文件存储目录
+└── storage/                # 统一存储目录（数据持久化）
+    ├── data/               # SQLite 数据库文件
+    ├── uploads/            # 学生提交的作业文件
+    └── appendix/           # 教师上传的作业附件
 ```
 
 ## 使用说明
@@ -177,38 +179,41 @@ TG-EDU/
 
 系统使用本地目录挂载方式实现数据持久化，确保即使容器重启或更新，数据也不会丢失：
 
-- `./data/` - SQLite 数据库文件目录
-- `./uploads/` - 学生提交的作业文件目录
+- `./storage/` - 统一存储目录，包含所有运行时数据
+  - `./storage/data/` - SQLite 数据库文件
+  - `./storage/uploads/` - 学生提交的作业文件
+  - `./storage/appendix/` - 教师上传的作业附件
 
 ### 数据存储位置
 
 ```bash
 # 直接在项目目录中查看数据
-ls -la ./data/           # 数据库文件
-ls -la ./uploads/        # 上传文件
+ls -la ./storage/data/      # 数据库文件
+ls -la ./storage/uploads/   # 上传文件
+ls -la ./storage/appendix/  # 附件文件
 ```
 
 ### 数据备份和恢复
 
 ```bash
 # 备份数据（建议定期备份）
-tar czf homework-backup-$(date +%Y%m%d).tar.gz data/ uploads/
+tar czf homework-backup-$(date +%Y%m%d).tar.gz storage/
 
 # 恢复数据
 tar xzf homework-backup-YYYYMMDD.tar.gz
 
 # 只备份数据库
-cp data/homework.db data/homework.db.backup
+cp storage/data/homework.db storage/data/homework.db.backup
 
 # 恢复数据库
-cp data/homework.db.backup data/homework.db
+cp storage/data/homework.db.backup storage/data/homework.db
 ```
 
 ### 数据管理优势
 
 - ✅ **直接访问**：数据文件直接存储在项目目录中，便于查看和管理
 - ✅ **简单备份**：可以直接复制目录进行备份
-- ✅ **易于迁移**：只需要复制 `data/` 和 `uploads/` 目录即可迁移数据
+- ✅ **易于迁移**：只需要复制 `storage/` 目录即可迁移数据
 - ✅ **容器重启后数据不丢失**：数据存储在宿主机上
 - ✅ **系统更新后数据保持完整**：重新构建镜像后数据保留
 
@@ -253,7 +258,7 @@ docker-compose logs -f tg-edu-system
 docker-compose down
 
 # 删除数据（注意：这会删除所有作业和提交）
-rm -rf uploads/* data/*
+rm -rf storage/uploads/* storage/data/* storage/appendix/*
 
 # 重新启动
 docker-compose up -d
