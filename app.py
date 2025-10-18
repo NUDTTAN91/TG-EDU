@@ -51,6 +51,14 @@ login_manager.login_view = 'login'
 def shutdown_session(exception=None):
     db.session.remove()
 
+# 上下文处理器 - 为所有模板提供未读通知数量
+@app.context_processor
+def inject_unread_notifications():
+    if current_user.is_authenticated:
+        unread_count = get_unread_notification_count(current_user.id)
+        return dict(unread_notification_count=unread_count)
+    return dict(unread_notification_count=0)
+
 # 北京时区（UTC+8）
 BEIJING_TZ = timezone(timedelta(hours=8))
 
@@ -287,6 +295,29 @@ class AssignmentGrade(db.Model):
     # 复合唯一约束：同一教师对同一学生的同一作业只能有一个评分
     __table_args__ = (db.UniqueConstraint('assignment_id', 'student_id', 'teacher_id', name='unique_assignment_student_teacher_grade'),)
 
+# 通知模型
+class Notification(db.Model):
+    """系统通知模型"""
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)  # 通知标题
+    content = db.Column(db.Text, nullable=False)  # 通知内容
+    notification_type = db.Column(db.String(50), nullable=False)  # 通知类型：system/assignment/grade
+    sender_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # 发送者
+    receiver_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # 接收者
+    is_read = db.Column(db.Boolean, default=False)  # 是否已读
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)  # 创建时间
+    related_assignment_id = db.Column(db.Integer, db.ForeignKey('assignment.id'))  # 关联作业ID（可选）
+    related_submission_id = db.Column(db.Integer, db.ForeignKey('submission.id'))  # 关联提交ID（可选）
+    
+    # 关系
+    sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_notifications')
+    receiver = db.relationship('User', foreign_keys=[receiver_id], backref='received_notifications')
+    related_assignment = db.relationship('Assignment', foreign_keys=[related_assignment_id])
+    related_submission = db.relationship('Submission', foreign_keys=[related_submission_id])
+    
+    def __repr__(self):
+        return f'<Notification {self.title}>'
+
 # 提交模型 - 扩展版本
 class Submission(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -409,6 +440,41 @@ def delete_assignment_attachment(file_path):
             print(f"删除附件失败: {e}")
             return False
     return True
+
+# 通知管理函数
+def create_notification(sender_id, receiver_id, title, content, notification_type='system', 
+                       related_assignment_id=None, related_submission_id=None):
+    """创建通知"""
+    notification = Notification(
+        title=title,
+        content=content,
+        notification_type=notification_type,
+        sender_id=sender_id,
+        receiver_id=receiver_id,
+        related_assignment_id=related_assignment_id,
+        related_submission_id=related_submission_id
+    )
+    db.session.add(notification)
+    db.session.commit()
+    return notification
+
+def get_unread_notification_count(user_id):
+    """获取用户未读通知数量"""
+    return Notification.query.filter_by(receiver_id=user_id, is_read=False).count()
+
+def mark_notification_as_read(notification_id):
+    """标记通知为已读"""
+    notification = Notification.query.get(notification_id)
+    if notification:
+        notification.is_read = True
+        db.session.commit()
+        return True
+    return False
+
+def mark_all_notifications_as_read(user_id):
+    """标记用户所有通知为已读"""
+    Notification.query.filter_by(receiver_id=user_id, is_read=False).update({'is_read': True})
+    db.session.commit()
 
 # 路由
 @app.route('/')
@@ -2196,6 +2262,25 @@ def grade_assignment_overall(assignment_id, student_id):
             db.session.add(existing_grade)
         
         db.session.commit()
+        
+        # 创建通知 - 通知学生作业已被评分
+        if student.id:
+            notification_title = f'作业「{assignment.title}」已被评分'
+            notification_content = f'教师 {current_user.real_name} 已对您的作业进行了整体评分'
+            if grade_float is not None:
+                notification_content += f'，得分：{grade_float}分'
+            if feedback:
+                notification_content += f'\n\n评语：{feedback[:100]}...' if len(feedback) > 100 else f'\n\n评语：{feedback}'
+            
+            create_notification(
+                sender_id=current_user.id,
+                receiver_id=student.id,
+                title=notification_title,
+                content=notification_content,
+                notification_type='grade',
+                related_assignment_id=assignment_id
+            )
+        
         flash(f'已成功给 {student.real_name} 的作业评分')
         
         return redirect(url_for('view_submissions', assignment_id=assignment_id))
@@ -2268,6 +2353,26 @@ def grade_student_submissions(assignment_id, student_id):
         submission.graded_at = datetime.utcnow()
         
         db.session.commit()
+        
+        # 创建通知 - 通知学生作业已被批改
+        if student.id:  # 确保学生ID存在
+            notification_title = f'作业「{assignment.title}」已被批改'
+            notification_content = f'教师 {current_user.real_name} 已对您的作业进行了评分'
+            if grade:
+                notification_content += f'，得分：{grade_float}分'
+            if feedback:
+                notification_content += f'\n\n评语：{feedback[:100]}...' if len(feedback) > 100 else f'\n\n评语：{feedback}'
+            
+            create_notification(
+                sender_id=current_user.id,
+                receiver_id=student.id,
+                title=notification_title,
+                content=notification_content,
+                notification_type='grade',
+                related_assignment_id=assignment_id,
+                related_submission_id=submission.id
+            )
+        
         flash(f'已成功评分 {student.real_name} 的作业')
         
         return redirect(url_for('view_submissions', assignment_id=assignment_id))
@@ -3513,6 +3618,165 @@ def batch_download_assignments():
         }
         flash(f'批量下载失败: {str(e)}')
         return redirect(url_for('batch_download_assignments'))
+
+# ==================== 通知管理路由 ====================
+
+@app.route('/notifications')
+@login_required
+def notifications():
+    """通知列表页面"""
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    
+    # 获取用户的所有通知，按时间降序
+    pagination = Notification.query.filter_by(receiver_id=current_user.id).order_by(
+        Notification.created_at.desc()
+    ).paginate(page=page, per_page=per_page, error_out=False)
+    
+    notifications_list = pagination.items
+    
+    return render_template('notifications.html', 
+                         notifications=notifications_list,
+                         pagination=pagination)
+
+@app.route('/notifications/unread')
+@login_required
+def unread_notifications():
+    """未读通知列表"""
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    
+    pagination = Notification.query.filter_by(
+        receiver_id=current_user.id,
+        is_read=False
+    ).order_by(Notification.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    notifications_list = pagination.items
+    
+    return render_template('notifications.html', 
+                         notifications=notifications_list,
+                         pagination=pagination,
+                         show_unread_only=True)
+
+@app.route('/notifications/<int:notification_id>/read', methods=['POST'])
+@login_required
+def mark_notification_read(notification_id):
+    """标记通知为已读"""
+    notification = Notification.query.get_or_404(notification_id)
+    
+    # 权限检查
+    if notification.receiver_id != current_user.id:
+        return jsonify({'success': False, 'message': '无权操作'}), 403
+    
+    notification.is_read = True
+    db.session.commit()
+    
+    return jsonify({'success': True, 'unread_count': get_unread_notification_count(current_user.id)})
+
+@app.route('/notifications/mark-all-read', methods=['POST'])
+@login_required
+def mark_all_read():
+    """标记所有通知为已读"""
+    mark_all_notifications_as_read(current_user.id)
+    flash('所有通知已标记为已读')
+    return redirect(url_for('notifications'))
+
+@app.route('/notifications/<int:notification_id>/delete', methods=['POST'])
+@login_required
+def delete_notification(notification_id):
+    """删除通知"""
+    notification = Notification.query.get_or_404(notification_id)
+    
+    # 权限检查
+    if notification.receiver_id != current_user.id:
+        flash('无权删除此通知')
+        return redirect(url_for('notifications'))
+    
+    db.session.delete(notification)
+    db.session.commit()
+    
+    flash('通知已删除')
+    return redirect(url_for('notifications'))
+
+@app.route('/notifications/create', methods=['GET', 'POST'])
+@login_required
+@require_teacher_or_admin
+def create_notification_page():
+    """创建通知页面"""
+    if request.method == 'POST':
+        title = request.form['title']
+        content = request.form['content']
+        notification_type = request.form.get('notification_type', 'system')
+        target_type = request.form.get('target_type')  # all/role/class/individual
+        
+        receivers = []
+        
+        if current_user.is_super_admin:
+            # 超级管理员可以选择不同的目标
+            if target_type == 'all':
+                # 通知所有用户
+                receivers = User.query.filter_by(is_active=True).all()
+            elif target_type == 'role':
+                # 通知指定角色
+                role = request.form.get('target_role')
+                receivers = User.query.filter_by(role=role, is_active=True).all()
+            elif target_type == 'individual':
+                # 通知指定个人
+                user_id = request.form.get('target_user_id')
+                user = User.query.get(user_id)
+                if user and user.is_active:
+                    receivers = [user]
+        else:
+            # 教师只能通知自己管理的班级
+            if target_type == 'class':
+                class_id = request.form.get('target_class_id')
+                class_obj = Class.query.get(class_id)
+                
+                # 权限检查
+                if class_obj and current_user in class_obj.teachers:
+                    receivers = class_obj.students
+                else:
+                    flash('您没有权限向此班级发送通知')
+                    return redirect(url_for('create_notification_page'))
+        
+        # 创建通知
+        if receivers:
+            for receiver in receivers:
+                create_notification(
+                    sender_id=current_user.id,
+                    receiver_id=receiver.id,
+                    title=title,
+                    content=content,
+                    notification_type=notification_type
+                )
+            
+            flash(f'通知已发送给 {len(receivers)} 个用户')
+            return redirect(url_for('notifications'))
+        else:
+            flash('没有找到目标用户')
+    
+    # GET请求：显示创建表单
+    available_classes = []
+    all_users = []
+    
+    if current_user.is_super_admin:
+        all_users = User.query.filter_by(is_active=True).order_by(User.real_name).all()
+    else:
+        # 教师只能看到自己的班级
+        available_classes = current_user.teaching_classes
+    
+    return render_template('create_notification.html', 
+                         available_classes=available_classes,
+                         all_users=all_users)
+
+@app.route('/api/notifications/count')
+@login_required
+def get_notification_count():
+    """获取未读通知数量（API）"""
+    unread_count = get_unread_notification_count(current_user.id)
+    return jsonify({'unread_count': unread_count})
 
 def init_db():
     """初始化数据库和默认用户"""

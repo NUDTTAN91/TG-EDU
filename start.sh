@@ -13,12 +13,12 @@ export SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
 cd /app
 python3 -c "
 import os
-from app import app, db, User, UserRole
+from app import app, db, User, UserRole, Notification
 
 with app.app_context():
     try:
         db.create_all()
-        print('数据库表创建完成')
+        print('数据库表创建完成（包括通知表）')
         
         # 检查并添加缺失的列
         try:

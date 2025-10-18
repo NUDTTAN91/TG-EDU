@@ -35,6 +35,74 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <div class="navbar-nav ms-auto d-flex align-items-center">
                     {% if current_user.is_authenticated %}
+                        <!-- 通知铃铛图标 -->
+                        <div class="nav-item dropdown me-3">
+                            <a class="nav-link position-relative" href="#" id="notificationDropdown" 
+                               role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-bell fs-5"></i>
+                                {% if unread_notification_count > 0 %}
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                    {{ unread_notification_count }}
+                                    <span class="visually-hidden">未读通知</span>
+                                </span>
+                                {% endif %}
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end notification-dropdown" 
+                                aria-labelledby="notificationDropdown" style="min-width: 320px; max-height: 400px; overflow-y: auto;">
+                                <li class="dropdown-header d-flex justify-content-between align-items-center">
+                                    <span><i class="fas fa-bell me-2"></i>通知中心</span>
+                                    {% if unread_notification_count > 0 %}
+                                    <span class="badge bg-danger">{{ unread_notification_count }}</span>
+                                    {% endif %}
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                
+                                <!-- 显示最近3条未读通知 -->
+                                {% if current_user.is_authenticated %}
+                                    {% set all_unread = current_user.received_notifications|selectattr('is_read', 'equalto', False)|list|sort(attribute='created_at', reverse=True) %}
+                                    {% if all_unread %}
+                                        {% for notification in all_unread[:3] %}
+                                        <li>
+                                            <a class="dropdown-item notification-item" href="{{ url_for('notifications') }}">
+                                                <div class="d-flex">
+                                                    <div class="flex-shrink-0">
+                                                        {% if notification.notification_type == 'grade' %}
+                                                        <i class="fas fa-star text-warning"></i>
+                                                        {% elif notification.notification_type == 'assignment' %}
+                                                        <i class="fas fa-tasks text-info"></i>
+                                                        {% else %}
+                                                        <i class="fas fa-info-circle text-primary"></i>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="flex-grow-1 ms-2">
+                                                        <h6 class="mb-1 small">{{ notification.title }}</h6>
+                                                        <p class="mb-1 text-muted small" style="font-size: 0.85rem;">
+                                                            {{ notification.content[:50] }}{% if notification.content|length > 50 %}...{% endif %}
+                                                        </p>
+                                                        <small class="text-muted" style="font-size: 0.75rem;">
+                                                            {{ notification.created_at|beijing_short }}
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </a>
+                                        </li>
+                                        {% endfor %}
+                                    {% else %}
+                                        <li class="dropdown-item text-center text-muted">
+                                            <i class="fas fa-inbox"></i> 暂无未读通知
+                                        </li>
+                                    {% endif %}
+                                {% endif %}
+                                
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <a class="dropdown-item text-center text-primary" href="{{ url_for('notifications') }}">
+                                        <i class="fas fa-list me-1"></i>查看所有通知
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                        
                         <!-- 显示当前用户信息 -->
                         <span class="nav-text text-light mx-2">
                             <i class="fas fa-user me-1"></i>{{ current_user.real_name }}
@@ -219,6 +287,36 @@
                 </div>
             </div>
             {% endif %}
+            
+            <!-- 通知中心 -->
+            <div class="sidebar-section">
+                <h6 class="section-title">
+                    <i class="fas fa-bell me-2"></i>
+                    通知中心
+                </h6>
+                <div class="menu-list">
+                    <a href="{{ url_for('notifications') }}" class="menu-item info">
+                        <div class="menu-icon">
+                            <i class="fas fa-bell"></i>
+                        </div>
+                        <span class="menu-title">
+                            我的通知
+                            {% if unread_notification_count > 0 %}
+                            <span class="badge bg-danger ms-2">{{ unread_notification_count }}</span>
+                            {% endif %}
+                        </span>
+                    </a>
+                    
+                    {% if current_user.is_teacher or current_user.is_super_admin %}
+                    <a href="{{ url_for('create_notification_page') }}" class="menu-item success">
+                        <div class="menu-icon">
+                            <i class="fas fa-paper-plane"></i>
+                        </div>
+                        <span class="menu-title">发送通知</span>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
         </div>
     </div>
     {% endif %}
