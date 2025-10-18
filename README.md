@@ -37,8 +37,8 @@
 
 1. **克隆项目**
    ```bash
-   git clone <repository-url>
-   cd homework_submission_2
+   git clone https://github.com/NUDTTAN91/TG-EDU.git
+   cd TG-EDU
    ```
 
 2. **配置环境变量**
@@ -99,7 +99,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///data/homework.db'
 ## 目录结构
 
 ```
-homework_submission_2/
+TG-EDU/
 ├── app.py                    # Flask 应用主文件
 ├── requirements.txt          # Python 依赖
 ├── Dockerfile               # Docker 镜像构建文件
@@ -240,10 +240,10 @@ cp data/homework.db.backup data/homework.db
 
 ```bash
 # 查看容器日志
-docker-compose logs homework-system
+docker-compose logs tg-edu-system
 
 # 实时查看日志
-docker-compose logs -f homework-system
+docker-compose logs -f tg-edu-system
 ```
 
 ### 重置系统

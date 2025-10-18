@@ -1,9 +1,9 @@
 version: '3.3'
 
 services:
-  homework-system:
+  tg-edu-system:
     build: .
-    container_name: homework-submission-system
+    container_name: tg-edu-system
     ports:
       - "20001:5000"
     environment:
