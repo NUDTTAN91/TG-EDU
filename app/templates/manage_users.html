@@ -1,0 +1,624 @@
+{% extends "base.html" %}
+
+{% block title %}用户管理 - TG作业系统{% endblock %}
+
+{% block content %}
+<!-- 用户管理页面 -->
+<div class="hero-section mb-4">
+    <div class="row align-items-center">
+        <div class="col-md-8">
+            <h1 class="display-6 fw-bold mb-2 fade-in-up">
+                <i class="fas fa-users-cog me-3" style="color: var(--accent-color);"></i>
+                用户管理
+            </h1>
+            <p class="lead mb-0 fade-in-up" style="animation-delay: 0.2s;">
+                {% if current_user.is_super_admin %}
+                    管理所有用户账户，包括教师和学生
+                {% else %}
+                    管理您的学生账户
+                {% endif %}
+            </p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{{ url_for('add_user') }}" class="btn btn-primary btn-lg">
+                <i class="fas fa-user-plus me-2"></i>
+                添加用户
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- 用户统计卡片 -->
+<div class="row mb-4">
+    {% if current_user.is_super_admin %}
+        <div class="col-md-3 mb-3">
+            <div class="card stat-card text-center">
+                <div class="card-body">
+                    <div class="shortcut-icon-wrapper mb-3">
+                        <div class="shortcut-icon danger-icon">
+                            <i class="fas fa-user-shield"></i>
+                        </div>
+                        <div class="shortcut-glow danger-glow"></div>
+                    </div>
+                    <h4 class="stat-number danger-text">
+                        {{ users|selectattr('role', 'equalto', 'super_admin')|list|length }}
+                    </h4>
+                    <p class="stat-label mb-0">超级管理员</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card stat-card text-center">
+                <div class="card-body">
+                    <div class="shortcut-icon-wrapper mb-3">
+                        <div class="shortcut-icon warning-icon">
+                            <i class="fas fa-chalkboard-teacher"></i>
+                        </div>
+                        <div class="shortcut-glow warning-glow"></div>
+                    </div>
+                    <h4 class="stat-number warning-text">
+                        {{ users|selectattr('role', 'equalto', 'teacher')|list|length }}
+                    </h4>
+                    <p class="stat-label mb-0">教师</p>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card text-center">
+            <div class="card-body">
+                <div class="shortcut-icon-wrapper mb-3">
+                    <div class="shortcut-icon success-icon">
+                        <i class="fas fa-user-graduate"></i>
+                    </div>
+                    <div class="shortcut-glow success-glow"></div>
+                </div>
+                <h4 class="stat-number success-text">
+                    {{ users|selectattr('role', 'equalto', 'student')|list|length }}
+                </h4>
+                <p class="stat-label mb-0">学生</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card text-center">
+            <div class="card-body">
+                <div class="shortcut-icon-wrapper mb-3">
+                    <div class="shortcut-icon info-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="shortcut-glow info-glow"></div>
+                </div>
+                <h4 class="stat-number info-text">{{ users|length }}</h4>
+                <p class="stat-label mb-0">总用户数</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 用户列表 -->
+<div class="card">
+    <div class="card-header bg-gradient">
+        <div class="row align-items-center">
+            <div class="col">
+                <h5 class="mb-0">
+                    <i class="fas fa-list me-2"></i>
+                    用户列表
+                </h5>
+            </div>
+            <div class="col-auto">
+                <div class="input-group">
+                    <input type="text" class="form-control" id="searchInput" placeholder="搜索用户...">
+                    <button class="btn btn-outline-secondary" type="button">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        {% if users %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="usersTable">
+                    <thead class="table-dark">
+                        <tr>
+                            <th scope="col">
+                                <i class="fas fa-user me-1"></i>
+                                用户信息
+                            </th>
+                            <th scope="col">
+                                <i class="fas fa-id-badge me-1"></i>
+                                角色
+                            </th>
+                            <th scope="col">
+                                <i class="fas fa-calendar me-1"></i>
+                                创建时间
+                            </th>
+                            <th scope="col">
+                                <i class="fas fa-toggle-on me-1"></i>
+                                状态
+                            </th>
+                            <th scope="col" class="text-center">
+                                <i class="fas fa-cogs me-1"></i>
+                                操作
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                            <tr class="user-row" data-username="{{ user.username }}" data-realname="{{ user.real_name }}" data-role="{{ user.role }}">
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar-circle me-3">
+                                            {% if user.role == 'super_admin' %}
+                                                <i class="fas fa-crown text-warning"></i>
+                                            {% elif user.role == 'teacher' %}
+                                                <i class="fas fa-chalkboard-teacher text-info"></i>
+                                            {% else %}
+                                                <i class="fas fa-user-graduate text-success"></i>
+                                            {% endif %}
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-1">{{ user.real_name }}</h6>
+                                            <small class="text-muted">
+                                                @{{ user.username }}
+                                                {% if user.student_id %}
+                                                    · {{ user.student_id }}
+                                                {% endif %}
+                                            </small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if user.role == 'super_admin' %}
+                                        <span class="badge bg-danger">
+                                            <i class="fas fa-crown me-1"></i>
+                                            超级管理员
+                                        </span>
+                                    {% elif user.role == 'teacher' %}
+                                        <span class="badge bg-warning">
+                                            <i class="fas fa-chalkboard-teacher me-1"></i>
+                                            教师
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-user-graduate me-1"></i>
+                                            学生
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small class="text-muted">
+                                        {{ user.created_at|beijing_time }}
+                                    </small>
+                                </td>
+                                <td>
+                                    {% if user.is_active %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check-circle me-1"></i>
+                                            正常
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">
+                                            <i class="fas fa-ban me-1"></i>
+                                            禁用
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        {% if current_user.is_super_admin %}
+                                            <a href="{{ url_for('edit_user', user_id=user.id) }}" 
+                                               class="btn btn-outline-primary" 
+                                               title="编辑用户">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            {% if user.id != current_user.id %}
+                                                <button type="button" 
+                                                        class="btn btn-outline-warning" 
+                                                        onclick="resetPassword({{ user.id }}, '{{ user.real_name }}')"
+                                                        title="重置密码">
+                                                    <i class="fas fa-key"></i>
+                                                </button>
+                                                <button type="button" 
+                                                        class="btn btn-outline-danger" 
+                                                        onclick="deleteUser({{ user.id }}, '{{ user.real_name }}')"
+                                                        title="删除用户">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            {% endif %}
+                                        {% elif can_teacher_manage_student is defined and can_teacher_manage_student(current_user, user) %}
+                                            {% if user.id != current_user.id %}
+                                                <button type="button" 
+                                                        class="btn btn-outline-warning" 
+                                                        onclick="resetPassword({{ user.id }}, '{{ user.real_name }}')"
+                                                        title="重置密码">
+                                                    <i class="fas fa-key"></i>
+                                                </button>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">
+                                                <i class="fas fa-lock"></i>
+                                                无权限
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <div class="empty-state">
+                    <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">暂无用户</h5>
+                    <p class="text-muted">点击上方"添加用户"按钮创建第一个用户</p>
+                    <a href="{{ url_for('add_user') }}" class="btn btn-primary">
+                        <i class="fas fa-user-plus me-2"></i>
+                        添加用户
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 删除确认模态框 -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle text-danger me-2"></i>
+                    确认删除
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>您确定要删除用户 <strong id="deleteUserName"></strong> 吗？</p>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    此操作不可撤销，用户的所有数据将被永久删除。
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <form id="deleteForm" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-2"></i>
+                        确认删除
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 重置密码确认模态框 -->
+<div class="modal fade" id="resetPasswordModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-key text-warning me-2"></i>
+                    重置密码
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>您确定要重置用户 <strong id="resetPasswordUserName"></strong> 的密码吗？</p>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    密码将被重置为默认密码：<strong>123456</strong>，用户下次登录时必须修改密码。
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <form id="resetPasswordForm" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-key me-2"></i>
+                        确认重置
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 搜索功能
+document.getElementById('searchInput').addEventListener('input', function() {
+    const searchTerm = this.value.toLowerCase();
+    const rows = document.querySelectorAll('.user-row');
+    
+    rows.forEach(row => {
+        const username = row.dataset.username.toLowerCase();
+        const realname = row.dataset.realname.toLowerCase();
+        const role = row.dataset.role.toLowerCase();
+        
+        if (username.includes(searchTerm) || realname.includes(searchTerm) || role.includes(searchTerm)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+});
+
+// 删除用户功能
+function deleteUser(userId, userName) {
+    document.getElementById('deleteUserName').textContent = userName;
+    document.getElementById('deleteForm').action = `/admin/users/${userId}/delete`;
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+
+// 重置密码功能
+function resetPassword(userId, userName) {
+    document.getElementById('resetPasswordUserName').textContent = userName;
+    document.getElementById('resetPasswordForm').action = `/admin/users/${userId}/reset-password`;
+    new bootstrap.Modal(document.getElementById('resetPasswordModal')).show();
+}
+
+// 页面加载动画
+document.addEventListener('DOMContentLoaded', function() {
+    const cards = document.querySelectorAll('.stat-card');
+    cards.forEach((card, index) => {
+        setTimeout(() => {
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+            card.classList.add('fade-in-up');
+        }, index * 100);
+        
+        // 添加悬停效果
+        card.addEventListener('mouseenter', function() {
+            const glow = this.querySelector('.shortcut-glow');
+            if (glow) {
+                glow.style.opacity = '0.3';
+            }
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            const glow = this.querySelector('.shortcut-glow');
+            if (glow) {
+                glow.style.opacity = '0';
+            }
+        });
+    });
+    
+    // 统计数字动画
+    const numbers = document.querySelectorAll('.stat-number');
+    numbers.forEach(number => {
+        const target = parseInt(number.textContent);
+        const increment = target / 20;
+        let current = 0;
+        
+        const timer = setInterval(() => {
+            current += increment;
+            number.textContent = Math.floor(current);
+            
+            if (current >= target) {
+                number.textContent = target;
+                clearInterval(timer);
+            }
+        }, 50);
+    });
+});
+</script>
+
+<style>
+/* 用户管理统计卡片样式 */
+.stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 2rem;
+    height: 100%;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(30px);
+}
+
+.stat-card.fade-in-up {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.stat-card:hover {
+    transform: translateY(-10px) scale(1.02);
+    box-shadow: 0 25px 50px var(--shadow-color);
+    border-color: var(--accent-color);
+}
+
+.shortcut-icon-wrapper {
+    position: relative;
+    display: inline-block;
+    margin-bottom: 1.5rem;
+}
+
+.shortcut-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-color), #17a2b8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    color: white;
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    transition: all 0.3s ease;
+    position: relative;
+    z-index: 2;
+}
+
+.shortcut-icon.warning-icon {
+    background: linear-gradient(135deg, var(--warning-color), #fbb040);
+    box-shadow: 0 10px 30px rgba(237, 137, 54, 0.3);
+}
+
+.shortcut-icon.success-icon {
+    background: linear-gradient(135deg, var(--success-color), #68d391);
+    box-shadow: 0 10px 30px rgba(72, 187, 120, 0.3);
+}
+
+.shortcut-icon.danger-icon {
+    background: linear-gradient(135deg, var(--danger-color), #fc8181);
+    box-shadow: 0 10px 30px rgba(245, 101, 101, 0.3);
+}
+
+.shortcut-icon.info-icon {
+    background: linear-gradient(135deg, #17a2b8, #20c997);
+    box-shadow: 0 10px 30px rgba(23, 162, 184, 0.3);
+}
+
+.shortcut-glow {
+    position: absolute;
+    top: -10px;
+    left: -10px;
+    right: -10px;
+    bottom: -10px;
+    background: linear-gradient(135deg, var(--accent-color), #17a2b8);
+    border-radius: 50%;
+    opacity: 0;
+    filter: blur(20px);
+    transition: opacity 0.3s ease;
+    z-index: 1;
+}
+
+.shortcut-glow.warning-glow {
+    background: linear-gradient(135deg, var(--warning-color), #fbb040);
+}
+
+.shortcut-glow.success-glow {
+    background: linear-gradient(135deg, var(--success-color), #68d391);
+}
+
+.shortcut-glow.danger-glow {
+    background: linear-gradient(135deg, var(--danger-color), #fc8181);
+}
+
+.shortcut-glow.info-glow {
+    background: linear-gradient(135deg, #17a2b8, #20c997);
+}
+
+.stat-card:hover .shortcut-icon {
+    transform: scale(1.1) rotate(10deg);
+}
+
+.stat-card:hover .shortcut-glow {
+    opacity: 0.3;
+}
+
+.stat-number {
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin: 0;
+    background: linear-gradient(135deg, var(--accent-color), #17a2b8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-number.warning-text {
+    background: linear-gradient(135deg, var(--warning-color), #fbb040);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-number.success-text {
+    background: linear-gradient(135deg, var(--success-color), #68d391);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-number.danger-text {
+    background: linear-gradient(135deg, var(--danger-color), #fc8181);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-number.info-text {
+    background: linear-gradient(135deg, #17a2b8, #20c997);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-label {
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+/* 上下文其他样式 */
+.avatar-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--bg-glass);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+
+.user-row {
+    transition: all 0.3s ease;
+}
+
+.user-row:hover {
+    background-color: var(--bg-glass);
+    transform: translateX(5px);
+}
+
+.empty-state {
+    padding: 3rem 2rem;
+}
+
+.table-responsive {
+    border-radius: 0 0 15px 15px;
+}
+
+.btn-group-sm .btn {
+    padding: 0.25rem 0.5rem;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .stat-card {
+        padding: 1.5rem;
+    }
+    
+    .shortcut-icon {
+        width: 60px;
+        height: 60px;
+        font-size: 2rem;
+    }
+    
+    .stat-number {
+        font-size: 2rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .stat-number {
+        font-size: 1.8rem;
+    }
+    
+    .shortcut-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.5rem;
+    }
+}
+</style>
+{% endblock %}

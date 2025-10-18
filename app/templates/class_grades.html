@@ -1,0 +1,351 @@
+{% extends "base.html" %}
+
+{% block title %}班级成绩统计 - {{ class_obj.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 页面头部 -->
+    <div class="hero-section mb-4">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="display-6 fw-bold mb-2 fade-in-up">
+                    <i class="fas fa-chart-bar me-3" style="color: var(--accent-color);"></i>
+                    {{ class_obj.name }} - 成绩统计
+                </h1>
+                <p class="lead mb-0 fade-in-up" style="animation-delay: 0.2s;">
+                    <span class="badge bg-primary me-2">{{ class_obj.code }}</span>
+                    查看班级所有作业的成绩统计和排名
+                </p>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{{ url_for('class_students', class_id=class_obj.id) }}" class="btn btn-secondary me-2">
+                    <i class="fas fa-users me-1"></i>
+                    学生管理
+                </a>
+                <a href="{{ url_for('export_class_grades', class_id=class_obj.id) }}" class="btn btn-success">
+                    <i class="fas fa-file-excel me-1"></i>
+                    导出Excel
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card stat-card text-center">
+                <div class="card-body">
+                    <div class="shortcut-icon-wrapper mb-3">
+                        <div class="shortcut-icon primary-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="shortcut-glow primary-glow"></div>
+                    </div>
+                    <h4 class="stat-number primary-text">{{ grade_stats|length }}</h4>
+                    <p class="stat-label mb-0">学生人数</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card stat-card text-center">
+                <div class="card-body">
+                    <div class="shortcut-icon-wrapper mb-3">
+                        <div class="shortcut-icon success-icon">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                        <div class="shortcut-glow success-glow"></div>
+                    </div>
+                    <h4 class="stat-number success-text">{{ assignments|length }}</h4>
+                    <p class="stat-label mb-0">作业数量</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card stat-card text-center">
+                <div class="card-body">
+                    <div class="shortcut-icon-wrapper mb-3">
+                        <div class="shortcut-icon warning-icon">
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <div class="shortcut-glow warning-glow"></div>
+                    </div>
+                    <h4 class="stat-number warning-text">
+                        {% set total_avg = grade_stats|selectattr('graded_count')|list|sum(attribute='average') %}
+                        {% set graded_students = grade_stats|selectattr('graded_count')|list|length %}
+                        {% if graded_students > 0 %}
+                            {{ "%.1f"|format(total_avg / graded_students) }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </h4>
+                    <p class="stat-label mb-0">班级平均分</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card stat-card text-center">
+                <div class="card-body">
+                    <div class="shortcut-icon-wrapper mb-3">
+                        <div class="shortcut-icon info-icon">
+                            <i class="fas fa-trophy"></i>
+                        </div>
+                        <div class="shortcut-glow info-glow"></div>
+                    </div>
+                    <h4 class="stat-number info-text">
+                        {% if grade_stats and grade_stats[0].average > 0 %}
+                            {{ grade_stats[0].average }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </h4>
+                    <p class="stat-label mb-0">最高平均分</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 成绩统计表格 -->
+    {% if grade_stats %}
+    <div class="card">
+        <div class="card-header bg-gradient">
+            <h5 class="mb-0">
+                <i class="fas fa-list me-2"></i>
+                学生成绩排名表
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover mb-0" id="gradesTable">
+                    <thead>
+                        <tr>
+                            <th width="6%">排名</th>
+                            <th width="12%">姓名</th>
+                            <th width="12%">学号</th>
+                            {% for assignment in assignments %}
+                            <th width="{{ 58 // assignments|length if assignments|length > 0 else 58 }}%">
+                                {{ assignment.title[:10] }}{% if assignment.title|length > 10 %}...{% endif %}
+                            </th>
+                            {% endfor %}
+                            <th width="8%">平均分</th>
+                            <th width="8%">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student_data in grade_stats %}
+                        <tr>
+                            <td>
+                                {% if student_data.rank <= 3 and student_data.average > 0 %}
+                                    {% if student_data.rank == 1 %}
+                                        <span class="badge bg-warning text-dark">
+                                            <i class="fas fa-trophy me-1"></i>
+                                            第{{ student_data.rank }}名
+                                        </span>
+                                    {% elif student_data.rank == 2 %}
+                                        <span class="badge bg-secondary">
+                                            <i class="fas fa-medal me-1"></i>
+                                            第{{ student_data.rank }}名
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-info">
+                                            <i class="fas fa-award me-1"></i>
+                                            第{{ student_data.rank }}名
+                                        </span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="badge bg-light text-dark">第{{ student_data.rank }}名</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong>{{ student_data.student.real_name }}</strong>
+                            </td>
+                            <td>{{ student_data.student.student_id or student_data.student.username }}</td>
+                            {% for assignment in assignments %}
+                            <td>
+                                {% set grade = student_data.grades.get(assignment.id) %}
+                                {% if grade is not none %}
+                                    {% if grade >= 90 %}
+                                        <span class="badge bg-success">{{ grade }}分</span>
+                                    {% elif grade >= 80 %}
+                                        <span class="badge bg-info">{{ grade }}分</span>
+                                    {% elif grade >= 70 %}
+                                        <span class="badge bg-warning">{{ grade }}分</span>
+                                    {% elif grade >= 60 %}
+                                        <span class="badge bg-secondary">{{ grade }}分</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">{{ grade }}分</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">未评分</span>
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                            <td>
+                                {% if student_data.average > 0 %}
+                                    <strong class="text-success">{{ student_data.average }}</strong>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ url_for('student_submission_history_with_student_id', assignment_id=assignments[0].id, student_id=student_data.student.id) if assignments else '#' }}" 
+                                   class="btn btn-sm btn-outline-primary" 
+                                   title="查看学生所有提交记录">
+                                    <i class="fas fa-history"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <div class="empty-state">
+                <i class="fas fa-chart-line" style="font-size: 4rem; color: var(--text-secondary); opacity: 0.5;"></i>
+                <h3 class="mt-4 mb-2">暂无成绩数据</h3>
+                <p class="text-muted mb-4">该班级还没有学生或作业成绩。</p>
+                <a href="{{ url_for('class_students', class_id=class_obj.id) }}" 
+                   class="btn btn-primary me-2">
+                    <i class="fas fa-users me-2"></i>
+                    管理学生
+                </a>
+                <a href="{{ url_for('create_assignment') }}" class="btn btn-success">
+                    <i class="fas fa-plus me-2"></i>
+                    创建作业
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 操作按钮 -->
+    <div class="text-center mt-4">
+        <a href="{{ url_for('manage_classes') }}" class="btn btn-secondary me-2">
+            <i class="fas fa-arrow-left me-2"></i>
+            返回班级列表
+        </a>
+        {% if assignments %}
+        <a href="{{ url_for('export_class_grades', class_id=class_obj.id) }}" class="btn btn-success">
+            <i class="fas fa-download me-2"></i>
+            下载成绩单
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 表格排序功能（可选）
+    const table = document.getElementById('gradesTable');
+    if (table) {
+        // 为表格行添加悬停效果
+        const tableRows = table.querySelectorAll('tbody tr');
+        tableRows.forEach(row => {
+            row.addEventListener('mouseenter', function() {
+                this.style.backgroundColor = 'var(--bs-light)';
+            });
+            row.addEventListener('mouseleave', function() {
+                this.style.backgroundColor = '';
+            });
+        });
+    }
+    
+    // 统计卡片动画
+    const statCards = document.querySelectorAll('.stat-card');
+    statCards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        card.style.animation = `fadeInUp 0.6s ease forwards ${index * 0.1}s`;
+    });
+});
+
+// 动画样式
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes fadeInUp {
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .stat-card {
+        transition: all 0.3s ease;
+        border: 1px solid var(--border-color);
+        border-radius: 15px;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px var(--shadow-color);
+    }
+    
+    .shortcut-icon-wrapper {
+        position: relative;
+        display: inline-block;
+    }
+    
+    .shortcut-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: white;
+        z-index: 2;
+        position: relative;
+    }
+    
+    .primary-icon { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .success-icon { background: linear-gradient(135deg, #48C774 0%, #2ED573 100%); }
+    .warning-icon { background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%); }
+    .info-icon { background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%); }
+    
+    .shortcut-glow {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        border-radius: 15px;
+        opacity: 0.3;
+        z-index: 1;
+        filter: blur(10px);
+        animation: pulse 2s infinite;
+    }
+    
+    .primary-glow { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .success-glow { background: linear-gradient(135deg, #48C774 0%, #2ED573 100%); }
+    .warning-glow { background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%); }
+    .info-glow { background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%); }
+    
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+    }
+    
+    .stat-number {
+        font-size: 2rem;
+        font-weight: bold;
+    }
+    
+    .primary-text { color: #667eea; }
+    .success-text { color: #48C774; }
+    .warning-text { color: #fdcb6e; }
+    .info-text { color: #74b9ff; }
+    
+    .stat-label {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+    }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}
