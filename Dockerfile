@@ -38,6 +38,7 @@ COPY app.py .
 COPY wsgi.py .
 COPY config.py .
 COPY init_db.py .
+COPY migrate_db.py .
 COPY start.sh .
 COPY app/ ./app/
 

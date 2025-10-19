@@ -37,14 +37,64 @@
                             <label for="class_id" class="form-label">
                                 <i class="fas fa-school me-1"></i>选择班级 <span class="text-danger">*</span>
                             </label>
-                            <select class="form-select" id="class_id" name="class_id" required>
-                                {% for class in classes %}
-                                <option value="{{ class.id }}" {% if class.id == major_assignment.class_id %}selected{% endif %}>
-                                    {{ class.name }}
-                                </option>
-                                {% endfor %}
+                            <select class="form-select" id="class_id" name="class_id" required disabled>
+                                <option value="{{ major_assignment.class_id }}">{{ major_assignment.class_info.name }}</option>
                             </select>
+                            <small class="text-muted">班级信息不可修改</small>
                         </div>
+
+                        <!-- 管理教师（仅超级管理员和创建者可见） -->
+                        {% if current_user.is_super_admin or current_user.id == major_assignment.creator_id %}
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-chalkboard-teacher me-1"></i>管理教师
+                            </label>
+                            <small class="text-muted d-block mb-2">可以选择多个教师管理此大作业</small>
+                            
+                            <!-- 搜索框 -->
+                            <div class="input-group mb-2">
+                                <input type="text" class="form-control" id="teacher_search" 
+                                       placeholder="输入教师姓名或用户名搜索..." autocomplete="off">
+                                <button type="button" class="btn btn-outline-secondary" id="clear_search">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            
+                            <!-- 搜索结果下拉列表（点击添加） -->
+                            <div id="search_results" class="list-group mb-3" style="display: none; max-height: 200px; overflow-y: auto;"></div>
+                            
+                            <!-- 已选择的教师（显示为标签） -->
+                            <div class="mb-2">
+                                <label class="form-label small text-muted">已选择的教师:</label>
+                                <div id="selected_teachers" class="d-flex flex-wrap gap-2">
+                                    <span class="text-muted">暂无</span>
+                                </div>
+                            </div>
+                            
+                            <!-- 隐藏的input用于提交表单 -->
+                            <div id="teacher_inputs"></div>
+                            
+                            <!-- 所有教师数据（用于JavaScript搜索） -->
+                            <script>
+                                window.allTeachers = [
+                                    {% for teacher in teachers %}
+                                    {
+                                        id: {{ teacher.id }},
+                                        name: '{{ teacher.real_name }}',
+                                        username: '{{ teacher.username }}'
+                                    }{% if not loop.last %},{% endif %}
+                                    {% endfor %}
+                                ];
+                                
+                                // 已选择的教师
+                                window.initialSelectedTeachers = [
+                                    {% for teacher in major_assignment.teachers %}
+                                    {{ teacher.id }}{% if not loop.last %},{% endif %}
+                                    {% endfor %}
+                                ];
+                            </script>
+                        </div>
+                        {% endif %}
 
                         <!-- 组队人数设置 -->
                         <div class="row mb-3">
@@ -130,7 +180,7 @@
                                 <i class="fas fa-calendar-alt me-1"></i>截止时间
                             </label>
                             <input type="datetime-local" class="form-control" id="due_date" name="due_date"
-                                   value="{% if major_assignment.due_date %}{{ major_assignment.due_date.strftime('%Y-%m-%dT%H:%M') }}{% endif %}">
+                                   value="{% if due_date_beijing %}{{ due_date_beijing.strftime('%Y-%m-%dT%H:%M') }}{% endif %}">
                             <small class="form-text text-muted">留空表示无截止时间</small>
                         </div>
 
@@ -179,7 +229,117 @@ function toggleRequirementType(type) {
     }
 }
 
-// 页面加载时默认选中"保持不变"
+// 教师选择功能
+if (typeof window.allTeachers !== 'undefined') {
+    const selectedTeachers = new Set(window.initialSelectedTeachers || []);
+    const teacherSearch = document.getElementById('teacher_search');
+    const searchResults = document.getElementById('search_results');
+    const selectedTeachersDiv = document.getElementById('selected_teachers');
+    const teacherInputsDiv = document.getElementById('teacher_inputs');
+    const clearSearchBtn = document.getElementById('clear_search');
+    
+    // 初始化显示已选教师
+    updateSelectedTeachersUI();
+    
+    // 搜索功能
+    teacherSearch.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase().trim();
+        
+        if (searchTerm === '') {
+            searchResults.style.display = 'none';
+            searchResults.innerHTML = '';
+            return;
+        }
+        
+        const filtered = window.allTeachers.filter(t => {
+            return !selectedTeachers.has(t.id) && 
+                   (t.name.toLowerCase().includes(searchTerm) || 
+                    t.username.toLowerCase().includes(searchTerm));
+        });
+        
+        if (filtered.length > 0) {
+            searchResults.innerHTML = filtered.map(t => `
+                <a href="#" class="list-group-item list-group-item-action" data-id="${t.id}" data-name="${t.name}" data-username="${t.username}">
+                    <i class="fas fa-user-plus me-2"></i>${t.name} (${t.username})
+                </a>
+            `).join('');
+            searchResults.style.display = 'block';
+        } else {
+            searchResults.innerHTML = '<div class="list-group-item text-muted">没有找到匹配的教师</div>';
+            searchResults.style.display = 'block';
+        }
+    });
+    
+    // 清空搜索
+    clearSearchBtn.addEventListener('click', function() {
+        teacherSearch.value = '';
+        searchResults.style.display = 'none';
+        searchResults.innerHTML = '';
+    });
+    
+    // 点击搜索结果添加教师
+    searchResults.addEventListener('click', function(e) {
+        e.preventDefault();
+        const item = e.target.closest('a[data-id]');
+        if (!item) return;
+        
+        const id = parseInt(item.dataset.id);
+        const name = item.dataset.name;
+        const username = item.dataset.username;
+        
+        addTeacher(id, name, username);
+        
+        teacherSearch.value = '';
+        searchResults.style.display = 'none';
+        searchResults.innerHTML = '';
+    });
+    
+    // 添加教师
+    function addTeacher(id, name, username) {
+        if (selectedTeachers.has(id)) return;
+        
+        selectedTeachers.add(id);
+        updateSelectedTeachersUI();
+    }
+    
+    // 移除教师
+    function removeTeacher(id) {
+        selectedTeachers.delete(id);
+        updateSelectedTeachersUI();
+    }
+    
+    // 更新UI
+    function updateSelectedTeachersUI() {
+        if (selectedTeachers.size === 0) {
+            selectedTeachersDiv.innerHTML = '<span class="text-muted">暂无</span>';
+            teacherInputsDiv.innerHTML = '';
+            return;
+        }
+        
+        const tags = Array.from(selectedTeachers).map(id => {
+            const teacher = window.allTeachers.find(t => t.id === id);
+            return `
+                <span class="badge bg-primary" style="font-size: 0.9rem; padding: 0.5rem 0.75rem;">
+                    ${teacher.name} (${teacher.username})
+                    <button type="button" class="btn-close btn-close-white ms-2" style="font-size: 0.7rem;" 
+                            onclick="removeTeacher(${id})" aria-label="移除"></button>
+                </span>
+            `;
+        }).join('');
+        
+        const inputs = Array.from(selectedTeachers).map(id => 
+            `<input type="hidden" name="teacher_ids" value="${id}">`
+        ).join('');
+        
+        selectedTeachersDiv.innerHTML = tags;
+        teacherInputsDiv.innerHTML = inputs;
+    }
+    
+    // 全局函数，供标签中的删除按钮调用
+    window.removeTeacher = removeTeacher;
+}
+
+// 页面加载时默认选中“保持不变”
 document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('req_none').checked = true;
     toggleRequirementType('none');

@@ -11,6 +11,11 @@ export SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
 
 # 初始化数据库
 cd /app
+
+# 先运行数据库迁移
+python3 migrate_db.py
+
+# 然后初始化管理员账户
 python3 -c "
 import os
 from app import create_app
@@ -20,9 +25,6 @@ from app.models import User, UserRole, Notification, MajorAssignment, Team, Team
 app = create_app('production')
 with app.app_context():
     try:
-        db.create_all()
-        print('数据库表创建完成（包括通知表）')
-        
         # 检查并添加缺失的列
         try:
             # 先尝试查询现有用户，如果出错说明字段不存在

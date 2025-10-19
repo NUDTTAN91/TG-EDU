@@ -3,6 +3,14 @@ from datetime import datetime
 from app.extensions import db
 
 
+# 大作业-教师关联表（多对多）
+major_assignment_teachers = db.Table('major_assignment_teachers',
+    db.Column('major_assignment_id', db.Integer, db.ForeignKey('major_assignment.id'), primary_key=True),
+    db.Column('teacher_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
+    db.Column('created_at', db.DateTime, default=datetime.utcnow)
+)
+
+
 class MajorAssignment(db.Model):
     """大作业模型"""
     id = db.Column(db.Integer, primary_key=True)
@@ -15,13 +23,25 @@ class MajorAssignment(db.Model):
     min_team_size = db.Column(db.Integer, default=2)
     max_team_size = db.Column(db.Integer, default=5)
     class_id = db.Column(db.Integer, db.ForeignKey('class.id'), nullable=False)
-    teacher_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    creator_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # 创建者
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)
     
     # 关系
-    teacher = db.relationship('User', backref='major_assignments')
+    creator = db.relationship('User', foreign_keys=[creator_id], backref='created_major_assignments')
+    teachers = db.relationship('User', secondary=major_assignment_teachers, 
+                              backref=db.backref('managed_major_assignments', lazy='dynamic'))
     class_info = db.relationship('Class', backref='major_assignments')
+    
+    def can_manage(self, user):
+        """检查用户是否可以管理此大作业"""
+        if user.is_super_admin:
+            return True
+        if user.id == self.creator_id:
+            return True
+        if user in self.teachers:
+            return True
+        return False
     
     def __repr__(self):
         return f'<MajorAssignment {self.title}>'

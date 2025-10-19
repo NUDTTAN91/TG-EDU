@@ -37,8 +37,19 @@
                         <strong>班级：</strong>{{ ma.class_info.name }}
                     </p>
                     <p class="card-text text-muted">
+                        <i class="fas fa-user me-2"></i>
+                        <strong>创建者：</strong>{{ ma.creator.real_name }}
+                    </p>
+                    <p class="card-text text-muted">
                         <i class="fas fa-chalkboard-teacher me-2"></i>
-                        <strong>教师：</strong>{{ ma.teacher.real_name }}
+                        <strong>管理教师：</strong>
+                        {% if ma.teachers %}
+                            {% for teacher in ma.teachers %}
+                                {{ teacher.real_name }}{% if not loop.last %}, {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            无
+                        {% endif %}
                     </p>
                     <p class="card-text text-muted">
                         <i class="fas fa-users me-2"></i>

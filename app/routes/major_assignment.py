@@ -23,10 +23,12 @@ def major_assignment_dashboard():
     if current_user.is_super_admin:
         major_assignments = MajorAssignment.query.order_by(MajorAssignment.created_at.desc()).all()
     elif current_user.is_teacher:
+        # 查询创建的、管理的和所教班级的大作业
         teacher_class_ids = [c.id for c in current_user.teaching_classes]
         major_assignments = MajorAssignment.query.filter(
             or_(
-                MajorAssignment.teacher_id == current_user.id,
+                MajorAssignment.creator_id == current_user.id,
+                MajorAssignment.teachers.any(id=current_user.id),
                 MajorAssignment.class_id.in_(teacher_class_ids)
             )
         ).order_by(MajorAssignment.created_at.desc()).all()
@@ -56,6 +58,7 @@ def create_major_assignment():
         max_team_size = request.form.get('max_team_size', 5, type=int)
         due_date_str = request.form.get('due_date')
         requirement_type = request.form.get('requirement_type', 'file')
+        teacher_ids = request.form.getlist('teacher_ids')  # 获取多个教师ID
         
         if not title or not class_id:
             flash('请填写必填项')
@@ -81,11 +84,22 @@ def create_major_assignment():
             title=title,
             description=description,
             class_id=class_id,
-            teacher_id=current_user.id,
+            creator_id=current_user.id,  # 创建者
             min_team_size=min_team_size,
             max_team_size=max_team_size,
             due_date=due_date
         )
+        
+        # 添加管理教师
+        if teacher_ids:
+            for teacher_id in teacher_ids:
+                teacher = User.query.get(int(teacher_id))
+                if teacher and (teacher.is_teacher or teacher.is_super_admin):
+                    major_assignment.teachers.append(teacher)
+        
+        # 如果没有指定教师，默认添加创建者
+        if not major_assignment.teachers and not current_user.is_super_admin:
+            major_assignment.teachers.append(current_user)
         
         if requirement_type == 'file':
             req_file = request.files.get('requirement_file')
@@ -109,12 +123,19 @@ def create_major_assignment():
         flash('大作业布置成功！')
         return redirect(url_for('major_assignment.major_assignment_dashboard'))
     
+    # GET请求
     if current_user.is_super_admin:
         classes = Class.query.filter_by(is_active=True).all()
+        # 超级管理员可以选择所有教师
+        teachers = User.query.filter(
+            (User.role == UserRole.TEACHER) | (User.role == UserRole.SUPER_ADMIN)
+        ).all()
     else:
         classes = current_user.teaching_classes
+        # 普通教师只能选择自己
+        teachers = [current_user]
     
-    return render_template('create_major_assignment.html', classes=classes)
+    return render_template('create_major_assignment.html', classes=classes, teachers=teachers)
 
 
 @bp.route('/major_assignments/<int:assignment_id>/teams')
@@ -124,11 +145,10 @@ def view_major_assignment_teams(assignment_id):
     """查看大作业的分组情况"""
     major_assignment = MajorAssignment.query.get_or_404(assignment_id)
     
-    if not current_user.is_super_admin:
-        if current_user.id != major_assignment.teacher_id:
-            if major_assignment.class_id not in [c.id for c in current_user.teaching_classes]:
-                flash('您没有权限查看此大作业')
-                return redirect(url_for('major_assignment.major_assignment_dashboard'))
+    # 使用can_manage方法检查权限
+    if not major_assignment.can_manage(current_user):
+        flash('您没有权限查看此大作业')
+        return redirect(url_for('major_assignment.major_assignment_dashboard'))
     
     teams = major_assignment.teams
     total_teams = len(teams)
@@ -244,7 +264,8 @@ def edit_major_assignment(assignment_id):
     """编辑大作业"""
     major_assignment = MajorAssignment.query.get_or_404(assignment_id)
     
-    if not current_user.is_super_admin and current_user.id != major_assignment.teacher_id:
+    # 使用can_manage方法检查权限
+    if not major_assignment.can_manage(current_user):
         flash('您没有权限编辑此大作业')
         return redirect(url_for('major_assignment.major_assignment_dashboard'))
     
@@ -253,6 +274,7 @@ def edit_major_assignment(assignment_id):
         major_assignment.description = request.form.get('description', '')
         major_assignment.min_team_size = request.form.get('min_team_size', 2, type=int)
         major_assignment.max_team_size = request.form.get('max_team_size', 5, type=int)
+        teacher_ids = request.form.getlist('teacher_ids')  # 获取多个教师ID
         
         due_date_str = request.form.get('due_date')
         if due_date_str:
@@ -264,11 +286,46 @@ def edit_major_assignment(assignment_id):
                 flash(f'日期格式错误: {str(e)}')
                 return redirect(url_for('major_assignment.edit_major_assignment', assignment_id=assignment_id))
         
+        # 更新管理教师（只有超级管理员和创建者可以修改）
+        if current_user.is_super_admin or current_user.id == major_assignment.creator_id:
+            # 清空现有管理教师
+            major_assignment.teachers = []
+            
+            # 添加新的管理教师
+            if teacher_ids:
+                for teacher_id in teacher_ids:
+                    teacher = User.query.get(int(teacher_id))
+                    if teacher and (teacher.is_teacher or teacher.is_super_admin):
+                        major_assignment.teachers.append(teacher)
+            
+            # 如果没有指定教师且非超级管理员，默认添加创建者
+            if not major_assignment.teachers and not current_user.is_super_admin:
+                creator = User.query.get(major_assignment.creator_id)
+                if creator:
+                    major_assignment.teachers.append(creator)
+        
         db.session.commit()
         flash('大作业修改成功！')
         return redirect(url_for('major_assignment.major_assignment_dashboard'))
     
-    return render_template('edit_major_assignment.html', major_assignment=major_assignment)
+    # GET请求 - 准备教师列表
+    if current_user.is_super_admin:
+        teachers = User.query.filter(
+            (User.role == UserRole.TEACHER) | (User.role == UserRole.SUPER_ADMIN)
+        ).all()
+    else:
+        # 普通教师只能选择自己
+        teachers = [current_user]
+    
+    # 将截止时间转换为北京时间（用于表单显示）
+    due_date_beijing = None
+    if major_assignment.due_date:
+        due_date_beijing = to_beijing_time(major_assignment.due_date)
+    
+    return render_template('edit_major_assignment.html', 
+                         major_assignment=major_assignment,
+                         teachers=teachers,
+                         due_date_beijing=due_date_beijing)
 
 
 @bp.route('/teams/<int:team_id>/invite', methods=['POST'])
@@ -324,6 +381,12 @@ def invite_team_members(team_id):
 def confirm_team(team_id):
     """教师确认团队"""
     team = Team.query.get_or_404(team_id)
+    
+    # 检查权限
+    if not team.major_assignment.can_manage(current_user):
+        flash('您没有权限确认此团队')
+        return redirect(url_for('major_assignment.major_assignment_dashboard'))
+    
     team.status = 'confirmed'
     team.confirmed_at = datetime.utcnow()
     team.confirmed_by = current_user.id
@@ -347,6 +410,12 @@ def confirm_team(team_id):
 def reject_team(team_id):
     """教师拒绝团队"""
     team = Team.query.get_or_404(team_id)
+    
+    # 检查权限
+    if not team.major_assignment.can_manage(current_user):
+        flash('您没有权限拒绝此团队')
+        return redirect(url_for('major_assignment.major_assignment_dashboard'))
+    
     reject_reason = request.form.get('reject_reason', '')
     
     team.status = 'rejected'
@@ -557,14 +626,16 @@ def escalate_leave_request(request_id):
     leave_request.status = 'pending_teacher'
     db.session.commit()
     
-    teacher = leave_request.team.major_assignment.teacher
-    NotificationService.create_notification(
-        sender_id=current_user.id,
-        receiver_id=teacher.id,
-        title='退组申请提升权限',
-        content=f'{current_user.real_name} 请求您处理退组申请（团队：{leave_request.team.name}）。原因：{leave_request.reason}',
-        notification_type='leave_request'
-    )
+    # 通知所有管理教师
+    major_assignment = leave_request.team.major_assignment
+    for teacher in major_assignment.teachers:
+        NotificationService.create_notification(
+            sender_id=current_user.id,
+            receiver_id=teacher.id,
+            title='退组申请提升权限',
+            content=f'{current_user.real_name} 请求您处理退组申请（团队：{leave_request.team.name}）。原因：{leave_request.reason}',
+            notification_type='leave_request'
+        )
     
     flash('已提升权限，等待教师处理')
     return redirect(url_for('notification.notifications'))
@@ -578,10 +649,10 @@ def approve_leave_request_by_teacher(request_id):
     leave_request = LeaveTeamRequest.query.get_or_404(request_id)
     team = leave_request.team
     
-    if not current_user.is_super_admin:
-        if current_user.id != team.major_assignment.teacher_id:
-            flash('您没有权限处理此请求')
-            return redirect(url_for('notification.notifications'))
+    # 检查权限
+    if not team.major_assignment.can_manage(current_user):
+        flash('您没有权限处理此请求')
+        return redirect(url_for('notification.notifications'))
     
     if leave_request.status != 'pending_teacher':
         flash('该请求已处理')
@@ -617,10 +688,10 @@ def reject_leave_request_by_teacher(request_id):
     leave_request = LeaveTeamRequest.query.get_or_404(request_id)
     team = leave_request.team
     
-    if not current_user.is_super_admin:
-        if current_user.id != team.major_assignment.teacher_id:
-            flash('您没有权限处理此请求')
-            return redirect(url_for('notification.notifications'))
+    # 检查权限
+    if not team.major_assignment.can_manage(current_user):
+        flash('您没有权限处理此请求')
+        return redirect(url_for('notification.notifications'))
     
     if leave_request.status != 'pending_teacher':
         flash('该请求已处理')
