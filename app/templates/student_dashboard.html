@@ -131,7 +131,7 @@
                         <!-- 附件信息 -->
                         {% if assignment.attachment_file_path %}
                             <div class="mb-3">
-                                <a href="{{ url_for('download.student_download_assignment_attachment', assignment_id=assignment.id) }}" 
+                                <a href="{{ url_for('download.download_assignment_attachment', assignment_id=assignment.id) }}" 
                                    class="btn btn-sm btn-outline-info">
                                     <i class="fas fa-paperclip me-1"></i>
                                     下载附件
