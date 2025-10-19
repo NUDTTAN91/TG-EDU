@@ -60,7 +60,7 @@
                         {% if assignment.attachment_file_path %}
                         <div class="mt-3">
                             <p><strong>作业附件：</strong></p>
-                            <a href="{{ url_for('download.student_download_assignment_attachment', assignment_id=assignment.id) }}" 
+                            <a href="{{ url_for('download.download_assignment_attachment', assignment_id=assignment.id) }}" 
                                class="btn btn-sm btn-outline-info">
                                 <i class="fas fa-paperclip me-1"></i>
                                 下载附件 ({{ assignment.attachment_original_filename or assignment.attachment_filename }})

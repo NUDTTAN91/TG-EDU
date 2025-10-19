@@ -150,24 +150,24 @@
                     {% endif %}
                     
                     <!-- 查找我的团队 -->
-                    {% set my_team = None %}
+                    {% set ns = namespace(my_team=None) %}
                     {% for team in ma.teams %}
                         {% if team.leader_id == current_user.id %}
-                            {% set my_team = team %}
+                            {% set ns.my_team = team %}
                         {% else %}
                             {% for member in team.members %}
                                 {% if member.user_id == current_user.id %}
-                                    {% set my_team = team %}
+                                    {% set ns.my_team = team %}
                                 {% endif %}
                             {% endfor %}
                         {% endif %}
                     {% endfor %}
                     
-                    {% if my_team %}
+                    {% if ns.my_team %}
                         <div class="alert alert-success py-2 mb-2">
                             <i class="fas fa-check-circle me-1"></i>
-                            已加入团队: {{ my_team.name }}
-                            {% if my_team.status == 'confirmed' %}
+                            已加入团队: {{ ns.my_team.name }}
+                            {% if ns.my_team.status == 'confirmed' %}
                                 <span class="badge bg-success ms-1">已确认</span>
                             {% else %}
                                 <span class="badge bg-warning ms-1">待确认</span>
@@ -184,7 +184,7 @@
                     <a href="{{ url_for('major_assignment.student_major_assignment_detail', assignment_id=ma.id) }}" 
                        class="btn w-100" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: bold;">
                         <i class="fas fa-arrow-right me-2"></i>
-                        {% if my_team %}查看团队{% else %}立即组队{% endif %}
+                        {% if ns.my_team %}查看团队{% else %}立即组队{% endif %}
                     </a>
                 </div>
             </div>
