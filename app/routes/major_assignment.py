@@ -200,6 +200,14 @@ def student_major_assignment_detail(assignment_id):
         if my_team:
             break
     
+    # 获取邀请记录（只有组长才能查看）
+    team_invitations = []
+    if my_team and my_team.leader_id == current_user.id:
+        # 查询该团队的所有邀请
+        team_invitations = TeamInvitation.query.filter_by(
+            team_id=my_team.id
+        ).order_by(TeamInvitation.created_at.desc()).all()
+    
     classmates = []
     if my_team and my_team.leader_id == current_user.id:
         existing_member_ids = {current_user.id}
@@ -217,7 +225,8 @@ def student_major_assignment_detail(assignment_id):
     return render_template('student_major_assignment_detail.html',
                          major_assignment=major_assignment,
                          my_team=my_team,
-                         classmates=classmates)
+                         classmates=classmates,
+                         team_invitations=team_invitations)
 
 
 @bp.route('/major_assignments/<int:assignment_id>/create_team', methods=['POST'])
@@ -226,8 +235,8 @@ def student_major_assignment_detail(assignment_id):
 def create_team(assignment_id):
     """学生创建团队"""
     major_assignment = MajorAssignment.query.get_or_404(assignment_id)
-    team_name = request.form.get('team_name')
     
+    # 检查是否已经在团队中
     for team in major_assignment.teams:
         if team.leader_id == current_user.id:
             flash('您已经是一个团队的组长')
@@ -236,6 +245,9 @@ def create_team(assignment_id):
             if member.user_id == current_user.id:
                 flash('您已经加入了一个团队')
                 return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=assignment_id))
+    
+    # 自动生成团队名称：组长姓名 + 的团队
+    team_name = f'{current_user.real_name}的团队'
     
     team = Team(
         name=team_name,
@@ -345,47 +357,79 @@ def edit_major_assignment(assignment_id):
 @bp.route('/teams/<int:team_id>/invite', methods=['POST'])
 @login_required
 def invite_team_members(team_id):
-    """组长邀请成员加入团队"""
+    """组长邀请成员加入团队（通过姓名和学号验证）"""
     team = Team.query.get_or_404(team_id)
     
     if team.leader_id != current_user.id:
         flash('只有组长才能邀请成员')
         return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=team.major_assignment_id))
     
-    invitee_ids = request.form.getlist('invitee_ids')
+    # 获取输入的姓名和学号
+    invitee_name = request.form.get('invitee_name', '').strip()
+    invitee_number = request.form.get('invitee_number', '').strip()
     
-    for invitee_id in invitee_ids:
-        invitee = User.query.get(int(invitee_id))
-        if not invitee:
-            continue
-        
-        in_team = False
-        for t in team.major_assignment.teams:
-            if t.leader_id == invitee.id or any(m.user_id == invitee.id for m in t.members):
-                flash(f'{invitee.real_name} 已经有团队了')
-                in_team = True
-                break
-        
-        if in_team:
-            continue
-        
-        invitation = TeamInvitation(
-            team_id=team_id,
-            inviter_id=current_user.id,
-            invitee_id=invitee.id
-        )
-        db.session.add(invitation)
-        
-        NotificationService.create_notification(
-            sender_id=current_user.id,
-            receiver_id=invitee.id,
-            title=f'团队邀请：{team.name}',
-            content=f'{current_user.real_name} 邀请您加入团队「{team.name}」，大作业：{team.major_assignment.title}',
-            notification_type='team_invitation'
-        )
+    if not invitee_name or not invitee_number:
+        flash('请填写同学的姓名和学号')
+        return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=team.major_assignment_id))
+    
+    # 查找匹配的学生（姓名和学号必须同时匹配）
+    invitee = User.query.filter(
+        User.real_name == invitee_name,
+        User.student_id == invitee_number,
+        User.role == UserRole.STUDENT
+    ).first()
+    
+    if not invitee:
+        flash(f'找不到姓名为「{invitee_name}」、学号为「{invitee_number}」的学生，请检查后重试')
+        return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=team.major_assignment_id))
+    
+    # 检查是否在同一个班级
+    major_assignment = team.major_assignment
+    class_obj = Class.query.get(major_assignment.class_id)
+    if invitee not in class_obj.students:
+        flash(f'{invitee.real_name} 不在该大作业的班级中')
+        return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=team.major_assignment_id))
+    
+    # 检查是否已经在团队中
+    for t in major_assignment.teams:
+        if t.leader_id == invitee.id:
+            flash(f'{invitee.real_name} 已经是其他团队的组长')
+            return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=team.major_assignment_id))
+        for m in t.members:
+            if m.user_id == invitee.id:
+                flash(f'{invitee.real_name} 已经加入了其他团队')
+                return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=team.major_assignment_id))
+    
+    # 检查是否已经发送过邀请
+    existing_invitation = TeamInvitation.query.filter_by(
+        team_id=team_id,
+        invitee_id=invitee.id,
+        status='pending'
+    ).first()
+    
+    if existing_invitation:
+        flash(f'已经向 {invitee.real_name} 发送过邀请，请等待对方回应')
+        return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=team.major_assignment_id))
+    
+    # 创建邀请
+    invitation = TeamInvitation(
+        team_id=team_id,
+        inviter_id=current_user.id,
+        invitee_id=invitee.id
+    )
+    db.session.add(invitation)
+    
+    # 发送通知
+    NotificationService.create_notification(
+        sender_id=current_user.id,
+        receiver_id=invitee.id,
+        title=f'团队邀请：{team.name}',
+        content=f'{current_user.real_name} 邀请您加入团队「{team.name}」，大作业：{team.major_assignment.title}',
+        notification_type='team_invitation'
+    )
     
     db.session.commit()
-    flash('邀请已发送')
+    flash(f'已向 {invitee.real_name} 发送邀请')
     return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=team.major_assignment_id))
 
 
@@ -549,6 +593,69 @@ def reject_team_invitation(invitation_id):
     
     flash('已拒绝邀请')
     return redirect(url_for('notification.notifications'))
+
+
+@bp.route('/team_invitations/<int:invitation_id>/resend', methods=['POST'])
+@login_required
+def resend_team_invitation(invitation_id):
+    """重新发送团队邀请"""
+    invitation = TeamInvitation.query.get_or_404(invitation_id)
+    team = invitation.team
+    
+    # 检查是否是组长
+    if team.leader_id != current_user.id:
+        flash('只有组长才能重新发送邀请')
+        return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=team.major_assignment_id))
+    
+    # 只有被拒绝的邀请才能重新发送
+    if invitation.status != 'rejected':
+        flash('只能重新发送被拒绝的邀请')
+        return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=team.major_assignment_id))
+    
+    invitee = invitation.invitee
+    major_assignment = team.major_assignment
+    
+    # 检查被邀请人是否已经在其他团队中
+    for t in major_assignment.teams:
+        if t.leader_id == invitee.id:
+            flash(f'{invitee.real_name} 已经是其他团队的组长，无法邀请')
+            return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=team.major_assignment_id))
+        for m in t.members:
+            if m.user_id == invitee.id:
+                flash(f'{invitee.real_name} 已经加入了其他团队，无法邀请')
+                return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=team.major_assignment_id))
+    
+    # 检查是否有待处理的邀请
+    existing_pending = TeamInvitation.query.filter_by(
+        team_id=team.id,
+        invitee_id=invitee.id,
+        status='pending'
+    ).first()
+    
+    if existing_pending:
+        flash(f'已经向 {invitee.real_name} 发送过邀请，请等待对方回应')
+        return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=team.major_assignment_id))
+    
+    # 创建新的邀请
+    new_invitation = TeamInvitation(
+        team_id=team.id,
+        inviter_id=current_user.id,
+        invitee_id=invitee.id
+    )
+    db.session.add(new_invitation)
+    
+    # 发送通知
+    NotificationService.create_notification(
+        sender_id=current_user.id,
+        receiver_id=invitee.id,
+        title=f'团队邀请：{team.name}',
+        content=f'{current_user.real_name} 再次邀请您加入团队「{team.name}」，大作业：{major_assignment.title}',
+        notification_type='team_invitation'
+    )
+    
+    db.session.commit()
+    flash(f'已重新向 {invitee.real_name} 发送邀请')
+    return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=team.major_assignment_id))
 
 
 @bp.route('/leave_requests/<int:request_id>/approve_by_leader', methods=['POST'])
@@ -1036,7 +1143,7 @@ def add_team_member(team_id):
     # 查找学生
     student = User.query.filter(
         User.real_name == name,
-        User.username == number,
+        User.student_id == number,
         User.role == UserRole.STUDENT
     ).first()
     

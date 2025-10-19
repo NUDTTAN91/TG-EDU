@@ -107,6 +107,12 @@
                         <button class="btn btn-danger ms-2" data-bs-toggle="modal" data-bs-target="#dissolveModal">
                             <i class="fas fa-trash-alt me-1"></i>解散团队
                         </button>
+                        <button class="btn btn-info ms-2" data-bs-toggle="modal" data-bs-target="#invitationRecordsModal">
+                            <i class="fas fa-history me-1"></i>邀请记录
+                            {% if team_invitations|length > 0 %}
+                            <span class="badge bg-light text-dark">{{ team_invitations|length }}</span>
+                            {% endif %}
+                        </button>
                     </div>
                     {% else %}
                     <!-- 组员操作 -->
@@ -264,6 +270,120 @@
                     <button type="submit" class="btn btn-warning">提交申请</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- 邀请记录模态框 -->
+{% if my_team and my_team.leader_id == current_user.id %}
+<div class="modal fade" id="invitationRecordsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-history me-2"></i>邀请记录
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                {% if team_invitations|length > 0 %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>被邀请人</th>
+                                <th>学号</th>
+                                <th>邀请时间</th>
+                                <th>状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for invitation in team_invitations %}
+                            <tr>
+                                <td>
+                                    <i class="fas fa-user me-1"></i>
+                                    {{ invitation.invitee.real_name }}
+                                </td>
+                                <td>{{ invitation.invitee.student_id }}</td>
+                                <td>
+                                    <small class="text-muted">
+                                        {{ invitation.created_at|beijing_time }}
+                                    </small>
+                                </td>
+                                <td>
+                                    {% if invitation.status == 'pending' %}
+                                    <span class="badge bg-warning">
+                                        <i class="fas fa-clock me-1"></i>待处理
+                                    </span>
+                                    {% elif invitation.status == 'accepted' %}
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-check-circle me-1"></i>已接受
+                                    </span>
+                                    {% elif invitation.status == 'rejected' %}
+                                    <span class="badge bg-danger">
+                                        <i class="fas fa-times-circle me-1"></i>已拒绝
+                                    </span>
+                                    {% elif invitation.status == 'cancelled' %}
+                                    <span class="badge bg-secondary">
+                                        <i class="fas fa-ban me-1"></i>已取消
+                                    </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if invitation.status == 'rejected' %}
+                                    <!-- 检查被邀请人是否已加入其他团队 -->
+                                    {% set invitee_in_other_team = false %}
+                                    {% for team in major_assignment.teams %}
+                                        {% if team.leader_id == invitation.invitee.id %}
+                                            {% set invitee_in_other_team = true %}
+                                        {% endif %}
+                                        {% for member in team.members %}
+                                            {% if member.user_id == invitation.invitee.id %}
+                                                {% set invitee_in_other_team = true %}
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% endfor %}
+                                    
+                                    {% if invitee_in_other_team %}
+                                    <span class="badge bg-secondary">
+                                        <i class="fas fa-user-check me-1"></i>已加入其他组
+                                    </span>
+                                    {% else %}
+                                    <form action="{{ url_for('major_assignment.resend_team_invitation', invitation_id=invitation.id) }}" 
+                                          method="POST" style="display: inline;">
+                                        <button type="submit" class="btn btn-sm btn-primary" 
+                                                onclick="return confirm('确定要重新发送邀请给 {{ invitation.invitee.real_name }} 吗？');">
+                                            <i class="fas fa-redo me-1"></i>重新邀请
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                    {% elif invitation.status == 'accepted' %}
+                                    <span class="text-muted small">
+                                        <i class="fas fa-check me-1"></i>已加入团队
+                                    </span>
+                                    {% elif invitation.status == 'pending' %}
+                                    <span class="text-muted small">
+                                        <i class="fas fa-hourglass-half me-1"></i>等待回应
+                                    </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">暂无邀请记录</p>
+                </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
         </div>
     </div>
 </div>

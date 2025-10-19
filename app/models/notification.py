@@ -22,5 +22,19 @@ class Notification(db.Model):
     related_assignment = db.relationship('Assignment', foreign_keys=[related_assignment_id])
     related_submission = db.relationship('Submission', foreign_keys=[related_submission_id])
     
+    def get_team_invitation(self):
+        """获取关联的团队邀请（通过发送者和接收者匹配）"""
+        if self.notification_type != 'team_invitation':
+            return None
+        
+        from app.models.team import TeamInvitation
+        # 查找发送者是sender、接收者是receiver的邀请
+        invitation = TeamInvitation.query.filter_by(
+            inviter_id=self.sender_id,
+            invitee_id=self.receiver_id
+        ).order_by(TeamInvitation.created_at.desc()).first()
+        
+        return invitation
+    
     def __repr__(self):
         return f'<Notification {self.title}>'

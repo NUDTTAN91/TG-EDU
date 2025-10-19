@@ -118,6 +118,52 @@
                                 <i class="fas fa-clock ms-3"></i> {{ notification.created_at|beijing_time }}
                             </small>
                             
+                            <!-- 团队邀请操作按钮 -->
+                            {% if notification.notification_type == 'team_invitation' %}
+                            <div class="mt-3">
+                                {% set invitation = notification.get_team_invitation() %}
+                                {% if invitation and invitation.status == 'pending' %}
+                                <form action="{{ url_for('major_assignment.accept_team_invitation', invitation_id=invitation.id) }}" 
+                                      method="POST" style="display: inline;">
+                                    <button type="submit" class="btn btn-sm btn-success">
+                                        <i class="fas fa-check me-1"></i>接受邀请
+                                    </button>
+                                </form>
+                                <button class="btn btn-sm btn-danger" data-bs-toggle="modal" 
+                                        data-bs-target="#rejectInvitationModal{{ invitation.id }}">
+                                    <i class="fas fa-times me-1"></i>拒绝邀请
+                                </button>
+                                
+                                <!-- 拒绝邀请模态框 -->
+                                <div class="modal fade" id="rejectInvitationModal{{ invitation.id }}" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header bg-danger text-white">
+                                                <h5 class="modal-title">拒绝团队邀请</h5>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <form action="{{ url_for('major_assignment.reject_team_invitation', invitation_id=invitation.id) }}" method="POST">
+                                                <div class="modal-body">
+                                                    <p>确定要拒绝该团队邀请吗？</p>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                                                    <button type="submit" class="btn btn-danger">确认拒绝</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% elif invitation and invitation.status == 'accepted' %}
+                                <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>已接受</span>
+                                {% elif invitation and invitation.status == 'rejected' %}
+                                <span class="badge bg-danger"><i class="fas fa-times-circle me-1"></i>已拒绝</span>
+                                {% elif invitation and invitation.status == 'cancelled' %}
+                                <span class="badge bg-secondary"><i class="fas fa-ban me-1"></i>已取消</span>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                            
                             <!-- 相关链接 -->
                             {% if notification.related_assignment_id %}
                             <div class="mt-2">
