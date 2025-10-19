@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block title %}任务总览 - {{ major_assignment.title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2>
+                        <i class="fas fa-list-check me-2"></i>
+                        任务总览
+                    </h2>
+                    <p class="text-muted">
+                        <i class="fas fa-school me-2"></i>{{ major_assignment.title }} - {{ major_assignment.class_info.name }}
+                    </p>
+                </div>
+                <div>
+                    <a href="{{ url_for('major_assignment.manage_stages', assignment_id=major_assignment.id) }}" 
+                       class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>返回阶段管理
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 统计信息 -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <h3 class="mb-0">{{ teams|length }}</h3>
+                    <p class="text-muted mb-0">团队总数</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <h3 class="mb-0">
+                        {% set total_count = namespace(value=0) %}
+                        {% for team_tasks in tasks_by_team.values() %}
+                            {% set total_count.value = total_count.value + team_tasks|length %}
+                        {% endfor %}
+                        {{ total_count.value }}
+                    </h3>
+                    <p class="text-muted mb-0">任务总数</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <h3 class="mb-0 text-success">
+                        {% set completed_count = namespace(value=0) %}
+                        {% for team_tasks in tasks_by_team.values() %}
+                            {% for task in team_tasks %}
+                                {% if task.status == 'completed' %}
+                                    {% set completed_count.value = completed_count.value + 1 %}
+                                {% endif %}
+                            {% endfor %}
+                        {% endfor %}
+                        {{ completed_count.value }}
+                    </h3>
+                    <p class="text-muted mb-0">已完成</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <h3 class="mb-0 text-primary">
+                        {% set in_progress_count = namespace(value=0) %}
+                        {% for team_tasks in tasks_by_team.values() %}
+                            {% for task in team_tasks %}
+                                {% if task.status == 'in_progress' %}
+                                    {% set in_progress_count.value = in_progress_count.value + 1 %}
+                                {% endif %}
+                            {% endfor %}
+                        {% endfor %}
+                        {{ in_progress_count.value }}
+                    </h3>
+                    <p class="text-muted mb-0">进行中</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 任务列表 -->
+    {% if tasks_by_team %}
+    {% for team, tasks in tasks_by_team.items() %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-users me-2"></i>
+                    {{ team.name }}
+                </h5>
+                <div>
+                    <span class="badge bg-light text-dark">{{ tasks|length }} 个任务</span>
+                    <span class="badge bg-success ms-1">{{ tasks|selectattr('status', 'equalto', 'completed')|list|length }} 已完成</span>
+                    <span class="badge bg-primary ms-1">{{ tasks|selectattr('status', 'equalto', 'in_progress')|list|length }} 进行中</span>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if tasks %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="30%">任务标题</th>
+                            <th width="15%">负责人</th>
+                            <th width="10%">优先级</th>
+                            <th width="12%">状态</th>
+                            <th width="18%">进度</th>
+                            <th width="15%">最后更新</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for task in tasks %}
+                        <tr>
+                            <td>
+                                <strong>{{ task.title }}</strong>
+                                {% if task.description %}
+                                <br><small class="text-muted">{{ task.description[:60] }}...</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if task.assignee %}
+                                <span class="badge bg-info">
+                                    <i class="fas fa-user me-1"></i>{{ task.assignee.real_name }}
+                                </span>
+                                {% else %}
+                                <span class="text-muted">未分配</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge {% if task.priority == 'high' %}bg-danger
+                                                  {% elif task.priority == 'medium' %}bg-warning
+                                                  {% else %}bg-secondary{% endif %}">
+                                    {% if task.priority == 'high' %}高
+                                    {% elif task.priority == 'medium' %}中
+                                    {% else %}低{% endif %}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge {% if task.status == 'completed' %}bg-success
+                                                  {% elif task.status == 'in_progress' %}bg-primary
+                                                  {% else %}bg-secondary{% endif %}">
+                                    {% if task.status == 'completed' %}已完成
+                                    {% elif task.status == 'in_progress' %}进行中
+                                    {% else %}待开始{% endif %}
+                                </span>
+                                {% if task.completed_at %}
+                                <br><small class="text-muted">{{ task.completed_at|beijing_time }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar {% if task.progress == 100 %}bg-success
+                                                              {% elif task.progress >= 50 %}bg-primary
+                                                              {% else %}bg-warning{% endif %}"
+                                         role="progressbar"
+                                         style="width: {{ task.progress }}%">
+                                        {{ task.progress }}%
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <small class="text-muted">
+                                    <i class="fas fa-clock me-1"></i>
+                                    {{ task.updated_at|beijing_time }}
+                                </small>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted text-center mb-0">该团队暂无任务</p>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="alert alert-info text-center">
+        <i class="fas fa-info-circle fa-3x mb-3"></i>
+        <p class="mb-0">暂无团队任务</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

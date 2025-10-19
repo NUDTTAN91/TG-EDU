@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+
+{% block title %}管理分工角色 - {{ stage.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2>
+                        <i class="fas fa-user-tag me-2"></i>
+                        {{ stage.name }} - 分工角色管理
+                    </h2>
+                    <p class="text-muted">
+                        <i class="fas fa-layer-group me-2"></i>{{ stage.major_assignment.title }}
+                        <i class="fas fa-school ms-3 me-2"></i>{{ stage.major_assignment.class_info.name }}
+                    </p>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addRoleModal">
+                        <i class="fas fa-plus me-1"></i>添加角色
+                    </button>
+                    <a href="{{ url_for('major_assignment.manage_stages', assignment_id=stage.major_assignment_id) }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>返回
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 阶段信息 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-info-circle me-2"></i>阶段信息</h5>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <p class="mb-2">
+                                <strong>阶段类型：</strong>
+                                <span class="badge bg-info">分工阶段</span>
+                            </p>
+                        </div>
+                        <div class="col-md-4">
+                            <p class="mb-2">
+                                <i class="fas fa-calendar-alt me-2"></i>
+                                <strong>开始时间：</strong>{{ stage.start_date|beijing_time }}
+                            </p>
+                        </div>
+                        <div class="col-md-4">
+                            <p class="mb-2">
+                                <i class="fas fa-calendar-alt me-2"></i>
+                                <strong>结束时间：</strong>{{ stage.end_date|beijing_time }}
+                            </p>
+                        </div>
+                    </div>
+                    {% if stage.description %}
+                    <p class="mb-0 mt-2">
+                        <strong>描述：</strong>{{ stage.description }}
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 角色列表 -->
+    <div class="row">
+        <div class="col-12">
+            {% if division_roles %}
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>
+                        分工角色列表（共 {{ division_roles|length }} 个）
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="5%">#</th>
+                                    <th width="25%">角色名称</th>
+                                    <th width="40%">角色描述</th>
+                                    <th width="15%">是否必须</th>
+                                    <th width="15%">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for role in division_roles %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td>
+                                        <strong>{{ role.name }}</strong>
+                                    </td>
+                                    <td>
+                                        {% if role.description %}
+                                        {{ role.description }}
+                                        {% else %}
+                                        <span class="text-muted">无描述</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if role.is_required %}
+                                        <span class="badge bg-danger">必须</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">可选</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-warning" 
+                                                    onclick="editRole({{ role.id }}, '{{ role.name }}', '{{ role.description or '' }}', {{ 'true' if role.is_required else 'false' }})">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-outline-danger" 
+                                                    onclick="deleteRole({{ role.id }}, '{{ role.name }}')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-info mt-3">
+                <i class="fas fa-info-circle me-1"></i>
+                <strong>说明：</strong>
+                <ul class="mb-0 mt-2">
+                    <li><strong>必须角色：</strong>每个团队必须分配此角色，否则无法完成分工</li>
+                    <li><strong>可选角色：</strong>团队可以选择是否分配此角色</li>
+                    <li>组长将在学生端为团队成员分配这些角色</li>
+                    <li>阶段结束时，未分配的必须角色将被随机分配</li>
+                </ul>
+            </div>
+            {% else %}
+            <div class="alert alert-info text-center">
+                <i class="fas fa-info-circle fa-3x mb-3"></i>
+                <h5>暂无分工角色</h5>
+                <p class="mb-0">请点击"添加角色"按钮创建分工角色</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- 添加角色模态框 -->
+<div class="modal fade" id="addRoleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus me-2"></i>添加分工角色
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('major_assignment.create_division_role', stage_id=stage.id) }}" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="role_name" class="form-label">角色名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="role_name" name="name" 
+                               placeholder="例如：组长、文档编写员、代码开发员" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="role_description" class="form-label">角色描述</label>
+                        <textarea class="form-control" id="role_description" name="description" rows="3"
+                                  placeholder="描述该角色的职责和工作内容"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="is_required" name="is_required" checked>
+                            <label class="form-check-label" for="is_required">
+                                <strong>必须角色</strong>
+                            </label>
+                            <div class="form-text">勾选表示每个团队必须分配此角色</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>创建角色
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑角色模态框 -->
+<div class="modal fade" id="editRoleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title">
+                    <i class="fas fa-edit me-2"></i>编辑分工角色
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editRoleForm" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="edit_role_name" class="form-label">角色名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="edit_role_name" name="name" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit_role_description" class="form-label">角色描述</label>
+                        <textarea class="form-control" id="edit_role_description" name="description" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="edit_is_required" name="is_required">
+                            <label class="form-check-label" for="edit_is_required">
+                                <strong>必须角色</strong>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-save me-1"></i>保存修改
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function editRole(id, name, description, isRequired) {
+    document.getElementById('edit_role_name').value = name;
+    document.getElementById('edit_role_description').value = description;
+    document.getElementById('edit_is_required').checked = isRequired;
+    
+    document.getElementById('editRoleForm').action = `/major_assignments/division_roles/${id}/edit`;
+    
+    new bootstrap.Modal(document.getElementById('editRoleModal')).show();
+}
+
+function deleteRole(id, name) {
+    if (confirm(`确定要删除角色「${name}」吗？\n\n注意：删除后，所有团队中该角色的分配也将被清除。`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/major_assignments/division_roles/${id}/delete`;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+{% endblock %}

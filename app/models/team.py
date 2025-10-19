@@ -19,7 +19,9 @@ class MajorAssignment(db.Model):
     requirement_file_path = db.Column(db.String(500))
     requirement_file_name = db.Column(db.String(255))
     requirement_url = db.Column(db.String(500))
-    due_date = db.Column(db.DateTime)
+    start_date = db.Column(db.DateTime)  # 新增：开始日期
+    end_date = db.Column(db.DateTime)    # 新增：结束日期
+    due_date = db.Column(db.DateTime)    # 保留旧字段兼容
     min_team_size = db.Column(db.Integer, default=2)
     max_team_size = db.Column(db.Integer, default=5)
     class_id = db.Column(db.Integer, db.ForeignKey('class.id'), nullable=False)
@@ -53,11 +55,13 @@ class Team(db.Model):
     name = db.Column(db.String(100), nullable=False)
     major_assignment_id = db.Column(db.Integer, db.ForeignKey('major_assignment.id'), nullable=False)
     leader_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    status = db.Column(db.String(50), default='pending')
+    status = db.Column(db.String(50), default='pending')  # pending/confirmed/rejected
     size_exception_reason = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    confirmed_at = db.Column(db.DateTime)
-    confirmed_by = db.Column(db.Integer, db.ForeignKey('user.id'))
+    confirmed_at = db.Column(db.DateTime)  # 老师确认时间
+    confirmed_by = db.Column(db.Integer, db.ForeignKey('user.id'))  # 确认人
+    confirmation_requested_at = db.Column(db.DateTime)  # 新增：组长请求确认时间
+    is_locked = db.Column(db.Boolean, default=False)  # 新增：是否锁定（确认后锁定）
     
     # 关系
     leader = db.relationship('User', foreign_keys=[leader_id], backref='led_teams')
@@ -155,3 +159,144 @@ class DissolveTeamRequest(db.Model):
     
     def __repr__(self):
         return f'<DissolveTeamRequest Team{self.team_id}>'
+
+
+class Stage(db.Model):
+    """阶段模型"""
+    id = db.Column(db.Integer, primary_key=True)
+    major_assignment_id = db.Column(db.Integer, db.ForeignKey('major_assignment.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text)
+    stage_type = db.Column(db.String(50), nullable=False)  # team_formation/division/custom
+    start_date = db.Column(db.DateTime)
+    end_date = db.Column(db.DateTime)
+    order = db.Column(db.Integer, default=0)  # 阶段顺序
+    status = db.Column(db.String(50), default='pending')  # pending/active/completed
+    is_locked = db.Column(db.Boolean, default=False)  # 是否锁定
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # 关系
+    major_assignment = db.relationship('MajorAssignment', backref='stages')
+    
+    def get_team_divisions(self, team_id):
+        """获取某个团队在该阶段的所有分工（支持自由定义格式）"""
+        from app.models.team import TeamDivision
+        from sqlalchemy import func
+        
+        # 查询该团队在该阶段的分工，按角色名称分组
+        divisions_query = db.session.query(
+            TeamDivision.role_name,
+            TeamDivision.role_description,
+            func.group_concat(TeamDivision.member_id).label('member_ids')
+        ).filter_by(
+            team_id=team_id,
+            stage_id=self.id
+        ).group_by(
+            TeamDivision.role_name,
+            TeamDivision.role_description
+        ).all()
+        
+        # 构建返回数据
+        divisions = []
+        for div in divisions_query:
+            # 解析成员ID列表
+            member_ids = [int(mid) for mid in div.member_ids.split(',')] if div.member_ids else []
+            
+            # 获取成员对象
+            from app.models import User
+            members = User.query.filter(User.id.in_(member_ids)).all() if member_ids else []
+            
+            divisions.append({
+                'role_name': div.role_name,
+                'role_description': div.role_description,
+                'members': members,
+                'member_count': len(members)
+            })
+        
+        return divisions
+    
+    def __repr__(self):
+        return f'<Stage {self.name}>'
+
+
+class DivisionRole(db.Model):
+    """分工角色模型"""
+    id = db.Column(db.Integer, primary_key=True)
+    stage_id = db.Column(db.Integer, db.ForeignKey('stage.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text)
+    is_required = db.Column(db.Boolean, default=True)  # 是否必须
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # 关系
+    stage = db.relationship('Stage', backref='division_roles')
+    
+    def __repr__(self):
+        return f'<DivisionRole {self.name}>'
+
+
+class TeamDivision(db.Model):
+    """团队分工模型（支持自由定义角色）"""
+    id = db.Column(db.Integer, primary_key=True)
+    team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=False)
+    stage_id = db.Column(db.Integer, db.ForeignKey('stage.id'))  # 关联阶段
+    division_role_id = db.Column(db.Integer, db.ForeignKey('division_role.id'))  # 旧方式，可选
+    role_name = db.Column(db.String(100))  # 自由定义的角色名称
+    role_description = db.Column(db.Text)  # 自由定义的角色描述
+    member_id = db.Column(db.Integer, db.ForeignKey('user.id'))  # 可以为空（未分配）
+    assigned_at = db.Column(db.DateTime)
+    assigned_by = db.Column(db.Integer, db.ForeignKey('user.id'))  # 分配人
+    
+    # 关系
+    team = db.relationship('Team', backref='divisions')
+    stage = db.relationship('Stage', backref='team_divisions')
+    division_role = db.relationship('DivisionRole', backref='team_divisions')
+    member = db.relationship('User', foreign_keys=[member_id], backref='division_assignments')
+    assigner = db.relationship('User', foreign_keys=[assigned_by])
+    
+    def __repr__(self):
+        return f'<TeamDivision Team{self.team_id} Role{self.role_name or self.division_role_id}>'
+
+
+class TeamTask(db.Model):
+    """团队任务模型"""
+    id = db.Column(db.Integer, primary_key=True)
+    team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=False)
+    stage_id = db.Column(db.Integer, db.ForeignKey('stage.id'), nullable=True)  # 可为空，不再依赖阶段
+    title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text)
+    assigned_to = db.Column(db.Integer, db.ForeignKey('user.id'))  # 分配给谁（可选，可分配给多人）
+    priority = db.Column(db.String(20), default='medium')  # low/medium/high
+    status = db.Column(db.String(50), default='pending')  # pending/in_progress/completed
+    progress = db.Column(db.Integer, default=0)  # 进度百分比 0-100
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    completed_at = db.Column(db.DateTime)
+    
+    # 关系
+    team = db.relationship('Team', backref='tasks')
+    stage = db.relationship('Stage', backref='tasks')
+    assignee = db.relationship('User', foreign_keys=[assigned_to], backref='assigned_tasks')
+    creator = db.relationship('User', foreign_keys=[created_by], backref='created_tasks')
+    
+    def __repr__(self):
+        return f'<TeamTask {self.title}>'
+
+
+class TaskProgress(db.Model):
+    """任务进度记录模型"""
+    id = db.Column(db.Integer, primary_key=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('team_task.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    progress = db.Column(db.Integer, nullable=False)  # 进度百分比 0-100
+    status = db.Column(db.String(50))  # pending/in_progress/completed
+    comment = db.Column(db.Text)  # 进度说明
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # 关系
+    task = db.relationship('TeamTask', backref='progress_records')
+    user = db.relationship('User', backref='task_progress_records')
+    
+    def __repr__(self):
+        return f'<TaskProgress Task{self.task_id} {self.progress}%>'

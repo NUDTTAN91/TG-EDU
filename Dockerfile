@@ -39,6 +39,12 @@ COPY wsgi.py .
 COPY config.py .
 COPY init_db.py .
 COPY migrate_db.py .
+COPY migrate_stage_system.py .
+COPY migrate_remove_teacher_id.py .
+COPY migrate_team_division_free_roles.py .
+COPY migrate_task_stage.py .
+COPY migrate_task_stage_nullable.py .
+COPY update_stage_status.py .
 COPY start.sh .
 COPY app/ ./app/
 

@@ -18,16 +18,21 @@
                         <i class="fas fa-users ms-3 me-2"></i>组队人数：{{ major_assignment.min_team_size }} - {{ major_assignment.max_team_size }} 人
                     </p>
                 </div>
-                <a href="{{ url_for('major_assignment.major_assignment_dashboard') }}" class="btn btn-secondary">
-                    <i class="fas fa-arrow-left me-1"></i>返回
-                </a>
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('major_assignment.manage_stages', assignment_id=major_assignment.id) }}" class="btn btn-primary">
+                        <i class="fas fa-layer-group me-1"></i>阶段管理
+                    </a>
+                    <a href="{{ url_for('major_assignment.major_assignment_dashboard') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>返回
+                    </a>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- 统计卡片 -->
     <div class="row mb-4">
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="card text-center shadow-sm">
                 <div class="card-body">
                     <h3 class="text-primary">{{ total_teams }}</h3>
@@ -35,7 +40,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="card text-center shadow-sm">
                 <div class="card-body">
                     <h3 class="text-success">{{ confirmed_teams }}</h3>
@@ -43,7 +48,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="card text-center shadow-sm">
                 <div class="card-body">
                     <h3 class="text-warning">{{ pending_teams }}</h3>
@@ -51,24 +56,84 @@
                 </div>
             </div>
         </div>
+        <div class="col-md-3">
+            <div class="card text-center shadow-sm">
+                <div class="card-body">
+                    <h3 class="text-info">{{ total_students }}</h3>
+                    <p class="text-muted mb-0">已组队学生</p>
+                </div>
+            </div>
+        </div>
     </div>
+
+    <!-- 阶段进度卡片 -->
+    {% if stages|length > 0 %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0">
+                        <i class="fas fa-tasks me-2"></i>
+                        阶段进度
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for stage in stages %}
+                        <div class="col-md-4 mb-2">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-layer-group me-2 
+                                    {% if stage.status == 'active' %}text-success
+                                    {% elif stage.status == 'completed' %}text-secondary
+                                    {% else %}text-warning{% endif %}"></i>
+                                <div class="flex-grow-1">
+                                    <strong>{{ stage.name }}</strong>
+                                    <span class="badge 
+                                        {% if stage.status == 'pending' %}bg-warning
+                                        {% elif stage.status == 'active' %}bg-success
+                                        {% elif stage.status == 'completed' %}bg-secondary
+                                        {% else %}bg-info{% endif %} ms-2">
+                                        {% if stage.status == 'pending' %}待开始
+                                        {% elif stage.status == 'active' %}进行中
+                                        {% elif stage.status == 'completed' %}已完成
+                                        {% else %}{{ stage.status }}{% endif %}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- 团队列表 -->
     {% if teams %}
     <div class="row">
         {% for team in teams %}
         <div class="col-md-6 col-lg-4 mb-4">
-            <div class="card h-100 {% if team.status == 'confirmed' %}border-success{% elif team.status == 'rejected' %}border-danger{% else %}border-warning{% endif %}">
-                <div class="card-header {% if team.status == 'confirmed' %}bg-success{% elif team.status == 'rejected' %}bg-danger{% else %}bg-warning{% endif %} text-white">
+            <div class="card h-100 {% if team.status == 'confirmed' %}border-success{% elif team.status == 'rejected' %}border-danger{% elif team.confirmation_requested_at %}border-info{% else %}border-warning{% endif %}">
+                <div class="card-header {% if team.status == 'confirmed' %}bg-success{% elif team.status == 'rejected' %}bg-danger{% elif team.confirmation_requested_at %}bg-info{% else %}bg-warning{% endif %} text-white">
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">
                             <i class="fas fa-users me-2"></i>
                             {{ team.name }}
+                            {% if team.is_locked %}
+                            <i class="fas fa-lock ms-2" title="已锁定"></i>
+                            {% endif %}
                         </h5>
                         {% if team.status == 'confirmed' %}
-                        <span class="badge bg-light text-success">已确认</span>
+                        <span class="badge bg-light text-success">
+                            <i class="fas fa-check-circle me-1"></i>已确认
+                        </span>
                         {% elif team.status == 'rejected' %}
                         <span class="badge bg-light text-danger">已拒绝</span>
+                        {% elif team.confirmation_requested_at %}
+                        <span class="badge bg-light text-info">
+                            <i class="fas fa-clock me-1"></i>请求确认
+                        </span>
                         {% else %}
                         <span class="badge bg-light text-warning">待确认</span>
                         {% endif %}
@@ -103,9 +168,67 @@
                         </span>
                     </p>
                     
+                    <!-- 团队分工 -->
+                    {% if division_stages|length > 0 %}
+                    <hr>
+                    <p class="mb-2"><strong><i class="fas fa-tasks me-2"></i>团队分工：</strong></p>
+                    {% for stage in division_stages %}
+                        {% set team_divisions = stage.get_team_divisions(team.id) %}
+                        {% if team_divisions|length > 0 %}
+                        <div class="mb-3">
+                            <small class="text-muted d-block mb-1">
+                                <i class="fas fa-layer-group me-1"></i>{{ stage.name }}
+                            </small>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th width="35%">角色</th>
+                                            <th width="65%">负责成员</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for division in team_divisions %}
+                                        <tr>
+                                            <td>
+                                                <small><strong>{{ division.role_name }}</strong></small>
+                                                {% if division.role_description %}
+                                                <br><small class="text-muted">{{ division.role_description[:30] }}{% if division.role_description|length > 30 %}...{% endif %}</small>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if division.members|length > 0 %}
+                                                <div class="d-flex flex-wrap gap-1">
+                                                    {% for member in division.members %}
+                                                    <span class="badge bg-primary" style="font-size: 0.75rem;">
+                                                        {{ member.real_name }}
+                                                    </span>
+                                                    {% endfor %}
+                                                </div>
+                                                {% else %}
+                                                <small class="text-muted">未分配</small>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                    {% endif %}
+                    
                     {% if team.size_exception_reason %}
                     <div class="alert alert-warning small mb-2">
                         <strong>人数异常说明：</strong>{{ team.size_exception_reason }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if team.confirmation_requested_at %}
+                    <div class="alert alert-info small mb-2">
+                        <i class="fas fa-info-circle me-1"></i>
+                        组长已请求确认（{{ team.confirmation_requested_at|beijing_time }}）
                     </div>
                     {% endif %}
                     

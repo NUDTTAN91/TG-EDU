@@ -86,6 +86,12 @@
                                class="btn btn-sm btn-outline-secondary">
                                 <i class="fas fa-edit me-1"></i>编辑
                             </a>
+                            {% if ma.can_manage(current_user) %}
+                            <button class="btn btn-sm btn-outline-danger" 
+                                    onclick="deleteMajorAssignment({{ ma.id }}, '{{ ma.title }}')">
+                                <i class="fas fa-trash me-1"></i>删除
+                            </button>
+                            {% endif %}
                         {% else %}
                             <a href="{{ url_for('major_assignment.student_major_assignment_detail', assignment_id=ma.id) }}" 
                                class="btn btn-sm btn-primary w-100">
@@ -110,4 +116,29 @@
     </div>
     {% endif %}
 </div>
+
+<script>
+function deleteMajorAssignment(id, title) {
+    if (confirm(`确定要删除大作业「${title}」吗？\n\n注意：这将删除：\n- 所有团队和成员\n- 所有邀请和请求\n- 所有阶段和分工\n- 作业要求文件\n\n此操作不可恢复！`)) {
+        fetch(`/major_assignments/${id}/delete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('错误：' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('请求失败：' + error);
+        });
+    }
+}
+</script>
 {% endblock %}

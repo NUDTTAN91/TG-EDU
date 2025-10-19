@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block title %}任务管理 - {{ team.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2>
+                        <i class="fas fa-list-check me-2"></i>
+                        {{ team.name }} - 任务管理
+                    </h2>
+                </div>
+                <div>
+                    {% if is_leader %}
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTaskModal">
+                        <i class="fas fa-plus me-1"></i>创建任务
+                    </button>
+                    {% endif %}
+                    <a href="{{ url_for('major_assignment.student_major_assignment_detail', assignment_id=team.major_assignment_id) }}" 
+                       class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>返回
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 阶段信息 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <p class="mb-2">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>说明：</strong>
+                                {% if is_leader %}
+                                您可以创建任务并分配给团队成员，成员可以更新任务进度
+                                {% else %}
+                                您可以查看任务并更新自己的任务进度
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 任务统计 -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <h3 class="mb-0">{{ tasks|length }}</h3>
+                    <p class="text-muted mb-0">总任务数</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <h3 class="mb-0 text-success">
+                        {{ tasks|selectattr('status', 'equalto', 'completed')|list|length }}
+                    </h3>
+                    <p class="text-muted mb-0">已完成</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <h3 class="mb-0 text-primary">
+                        {{ tasks|selectattr('status', 'equalto', 'in_progress')|list|length }}
+                    </h3>
+                    <p class="text-muted mb-0">进行中</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm">
+                <div class="card-body text-center">
+                    <h3 class="mb-0 text-warning">
+                        {{ tasks|selectattr('status', 'equalto', 'pending')|list|length }}
+                    </h3>
+                    <p class="text-muted mb-0">待开始</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 任务列表 -->
+    <div class="row">
+        <div class="col-12">
+            {% if tasks %}
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-tasks me-2"></i>任务列表
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="25%">任务标题</th>
+                                    <th width="20%">负责人</th>
+                                    <th width="10%">优先级</th>
+                                    <th width="12%">状态</th>
+                                    <th width="18%">进度</th>
+                                    <th width="15%">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for task in tasks %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ task.title }}</strong>
+                                        {% if task.description %}
+                                        <br><small class="text-muted">{{ task.description[:80] }}...</small>
+                                        {% endif %}
+                                        <br><small class="text-muted">
+                                            <i class="fas fa-clock me-1"></i>
+                                            {{ task.created_at|beijing_time }}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        {% if task.assignee %}
+                                        <span class="badge bg-info">
+                                            <i class="fas fa-user me-1"></i>{{ task.assignee.real_name }}
+                                        </span>
+                                        {% else %}
+                                        <span class="text-muted">未分配</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge {% if task.priority == 'high' %}bg-danger
+                                                          {% elif task.priority == 'medium' %}bg-warning
+                                                          {% else %}bg-secondary{% endif %}">
+                                            {% if task.priority == 'high' %}高
+                                            {% elif task.priority == 'medium' %}中
+                                            {% else %}低{% endif %}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge {% if task.status == 'completed' %}bg-success
+                                                          {% elif task.status == 'in_progress' %}bg-primary
+                                                          {% else %}bg-secondary{% endif %}">
+                                            {% if task.status == 'completed' %}已完成
+                                            {% elif task.status == 'in_progress' %}进行中
+                                            {% else %}待开始{% endif %}
+                                        </span>
+                                        {% if task.completed_at %}
+                                        <br><small class="text-muted">{{ task.completed_at|beijing_time }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar {% if task.progress == 100 %}bg-success
+                                                                      {% elif task.progress >= 50 %}bg-primary
+                                                                      {% else %}bg-warning{% endif %}"
+                                                 role="progressbar"
+                                                 style="width: {{ task.progress }}%">
+                                                {{ task.progress }}%
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-info" 
+                                                onclick="viewTaskHistory({{ task.id }})" 
+                                                title="查看进度历史">
+                                            <i class="fas fa-history"></i>
+                                        </button>
+                                        {% if is_leader %}
+                                        <button class="btn btn-sm btn-outline-danger" 
+                                                onclick="deleteTask({{ task.id }}, '{{ task.title }}')" 
+                                                title="删除任务">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-info text-center">
+                <i class="fas fa-info-circle fa-3x mb-3"></i>
+                <p class="mb-0">暂无任务，请点击"创建任务"按钮添加</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- 创建任务模态框 -->
+<div class="modal fade" id="addTaskModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus me-2"></i>创建新任务
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('major_assignment.create_task', team_id=team.id) }}" 
+                  method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="task_title" class="form-label">
+                            任务标题 <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" class="form-control" id="task_title" name="title" 
+                               placeholder="例如：完成需求分析文档" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="task_description" class="form-label">任务描述</label>
+                        <textarea class="form-control" id="task_description" name="description" 
+                                  rows="3" placeholder="详细描述任务内容和要求"></textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="assigned_to" class="form-label">分配给</label>
+                            <select class="form-select" id="assigned_to" name="assigned_to">
+                                <option value="">不指定（团队共享任务）</option>
+                                {% for member in team_members %}
+                                <option value="{{ member.id }}">
+                                    {{ member.real_name }} ({{ member.student_id }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="priority" class="form-label">优先级</label>
+                            <select class="form-select" id="priority" name="priority">
+                                <option value="low">低</option>
+                                <option value="medium" selected>中</option>
+                                <option value="high">高</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>创建任务
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function deleteTask(taskId, taskTitle) {
+    if (confirm(`确定要删除任务「${taskTitle}」吗？`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/tasks/${taskId}/delete`;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function viewTaskHistory(taskId) {
+    // TODO: 显示任务进度历史
+    alert('任务历史功能开发中');
+}
+</script>
+{% endblock %}
