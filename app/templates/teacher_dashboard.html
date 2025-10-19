@@ -22,7 +22,7 @@
                                 <i class="fas fa-download me-2"></i>
                                 批量下载
                             </button>
-                            <a href="{{ url_for('create_assignment') }}" class="btn btn-primary btn-lg">
+                            <a href="{{ url_for('assignment.create_assignment') }}" class="btn btn-primary btn-lg">
                                 <i class="fas fa-plus me-2"></i>
                                 创建新作业
                             </a>
@@ -179,7 +179,7 @@
                             </div>
                             
                             <div class="assignment-actions">
-                                <a href="{{ url_for('view_submissions', assignment_id=assignment.id) }}" class="btn btn-primary btn-sm">
+                                <a href="{{ url_for('assignment.view_submissions', assignment_id=assignment.id) }}" class="btn btn-primary btn-sm">
                                     <i class="fas fa-eye me-1"></i>
                                     查看提交
                                 </a>
@@ -189,7 +189,7 @@
                                     <i class="fas fa-download me-1"></i>
                                     下载
                                 </button>
-                                <a href="{{ url_for('edit_assignment', assignment_id=assignment.id) }}" class="btn btn-warning btn-sm ms-1">
+                                <a href="{{ url_for('assignment.edit_assignment', assignment_id=assignment.id) }}" class="btn btn-warning btn-sm ms-1">
                                     <i class="fas fa-edit me-1"></i>
                                     编辑
                                 </a>
@@ -211,7 +211,7 @@
                     </div>
                     <h3 class="empty-title">您还没有创建任何作业</h3>
                     <p class="empty-desc">开始创建您的第一个作业，让学生们开始提交吧！</p>
-                    <a href="{{ url_for('create_assignment') }}" class="btn btn-primary btn-lg">
+                    <a href="{{ url_for('assignment.create_assignment') }}" class="btn btn-primary btn-lg">
                         <i class="fas fa-plus me-2"></i>
                         创建第一个作业
                     </a>
@@ -681,7 +681,7 @@ function formatTime(seconds) {
 
 // 显示批量下载页面
 function showBatchDownloadPage() {
-    window.location.href = '{{ url_for("batch_download_assignments") }}';
+    window.location.href = '{{ url_for("download.start_batch_download") }}';
 }
 </script>
 

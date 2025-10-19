@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+
+{% block title %}{{ major_assignment.title }} - 我的团队{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <!-- 作业信息 -->
+            <div class="card shadow mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-project-diagram me-2"></i>
+                        {{ major_assignment.title }}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    {% if major_assignment.description %}
+                    <p class="mb-3">{{ major_assignment.description }}</p>
+                    {% endif %}
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-2">
+                                <i class="fas fa-users me-2"></i>
+                                <strong>组队人数：</strong>{{ major_assignment.min_team_size }} - {{ major_assignment.max_team_size }} 人
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-2">
+                                <i class="fas fa-calendar-alt me-2"></i>
+                                <strong>截止时间：</strong>
+                                {{ major_assignment.due_date|beijing_time if major_assignment.due_date else '无' }}
+                            </p>
+                        </div>
+                    </div>
+                    
+                    {% if major_assignment.requirement_file_path %}
+                    <a href="{{ url_for('major_assignment.download_major_assignment_requirement', assignment_id=major_assignment.id) }}" 
+                       class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-download me-1"></i>下载作业要求文件
+                    </a>
+                    {% elif major_assignment.requirement_url %}
+                    <a href="{{ major_assignment.requirement_url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-external-link-alt me-1"></i>查看作业要求
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if my_team %}
+            <!-- 我的团队 -->
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-users me-2"></i>
+                        我的团队：{{ my_team.name }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>团队信息</h6>
+                            <p>
+                                <i class="fas fa-crown text-warning me-2"></i>
+                                <strong>组长：</strong>{{ my_team.leader.real_name }}
+                            </p>
+                            <p>
+                                <strong>人数：</strong>{{ my_team.get_member_count() }} 人
+                            </p>
+                            <p>
+                                <strong>状态：</strong>
+                                {% if my_team.status == 'confirmed' %}
+                                <span class="badge bg-success">已确认</span>
+                                {% elif my_team.status == 'rejected' %}
+                                <span class="badge bg-danger">已拒绝</span>
+                                {% else %}
+                                <span class="badge bg-warning">待确认</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>团队成员</h6>
+                            <ul class="list-unstyled">
+                                <li class="mb-1">
+                                    <i class="fas fa-crown text-warning me-2"></i>
+                                    {{ my_team.leader.real_name }} ({{ my_team.leader.student_id }})
+                                </li>
+                                {% for member in my_team.members %}
+                                <li class="mb-1">
+                                    <i class="fas fa-user me-2"></i>
+                                    {{ member.user.real_name }} ({{ member.user.student_id }})
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- 组长操作 -->
+                    {% if my_team.leader_id == current_user.id %}
+                    <hr>
+                    <div class="mb-3">
+                        <h6>组长操作</h6>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#inviteModal">
+                            <i class="fas fa-user-plus me-1"></i>邀请成员
+                        </button>
+                    </div>
+                    {% else %}
+                    <!-- 组员操作 -->
+                    <hr>
+                    <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#leaveModal">
+                        <i class="fas fa-sign-out-alt me-1"></i>申请退组
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            
+            {% else %}
+            <!-- 创建或加入团队 -->
+            <div class="card shadow">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-users me-2"></i>
+                        组队
+                    </h5>
+                </div>
+                <div class="card-body text-center">
+                    <i class="fas fa-users fa-4x text-muted mb-3"></i>
+                    <p class="text-muted mb-4">您还没有加入任何团队</p>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createTeamModal">
+                        <i class="fas fa-plus me-1"></i>创建团队
+                    </button>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- 创建团队模态框 -->
+<div class="modal fade" id="createTeamModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">创建团队</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('major_assignment.create_team', assignment_id=major_assignment.id) }}" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">团队名称</label>
+                        <input type="text" class="form-control" name="team_name" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">创建</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 邀请成员模态框 -->
+{% if my_team and my_team.leader_id == current_user.id %}
+<div class="modal fade" id="inviteModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">邀请成员</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('major_assignment.invite_team_members', team_id=my_team.id) }}" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">选择同学（可多选）</label>
+                        <select class="form-select" name="invitee_ids" multiple size="10" required>
+                            {% for classmate in classmates %}
+                            <option value="{{ classmate.id }}">
+                                {{ classmate.real_name }} ({{ classmate.student_id }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <small class="form-text text-muted">按住Ctrl或Cmd键可多选</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">发送邀请</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- 退组申请模态框 -->
+{% if my_team and my_team.leader_id != current_user.id %}
+<div class="modal fade" id="leaveModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title">申请退组</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('major_assignment.request_leave_team', team_id=my_team.id) }}" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">退组原因</label>
+                        <textarea class="form-control" name="reason" rows="3" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-warning">提交申请</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

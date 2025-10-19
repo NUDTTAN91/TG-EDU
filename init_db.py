@@ -8,10 +8,13 @@ import os
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from app import app, db, User, Assignment, Notification
+from app import create_app
+from app.extensions import db
+from app.models import User, Assignment, Notification, MajorAssignment, Team, TeamMember, TeamInvitation, LeaveTeamRequest
 
 def init_database():
     """初始化数据库"""
+    app = create_app('production')
     with app.app_context():
         # 创建所有表
         db.create_all()

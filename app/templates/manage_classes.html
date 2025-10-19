@@ -21,7 +21,7 @@
         </div>
         <div class="col-md-4 text-end">
             {% if current_user.is_super_admin %}
-                <a href="{{ url_for('add_class') }}" class="btn btn-primary btn-lg">
+                <a href="{{ url_for('class_mgmt.add_class') }}" class="btn btn-primary btn-lg">
                     <i class="fas fa-plus me-2"></i>
                     创建班级
                 </a>
@@ -187,20 +187,20 @@
                             </div>
                             
                             <div class="class-actions d-flex flex-wrap gap-2">
-                                <a href="{{ url_for('class_students', class_id=class_obj.id) }}" 
+                                <a href="{{ url_for('class_mgmt.class_students', class_id=class_obj.id) }}" 
                                    class="btn btn-sm btn-primary d-flex align-items-center" 
                                    title="管理班级学生 - 添加/移除学生">
                                     <i class="fas fa-users me-1"></i>
                                     管理学生 ({{ class_obj.students|length }})
                                 </a>
-                                <a href="{{ url_for('class_grades', class_id=class_obj.id) }}" 
+                                <a href="{{ url_for('class_mgmt.class_grades', class_id=class_obj.id) }}" 
                                    class="btn btn-sm btn-success d-flex align-items-center" 
                                    title="查看班级成绩统计和排名">
                                     <i class="fas fa-chart-bar me-1"></i>
                                     成绩统计
                                 </a>
                                 {% if current_user.is_super_admin or current_user in class_obj.teachers %}
-                                    <a href="{{ url_for('edit_class', class_id=class_obj.id) }}" 
+                                    <a href="{{ url_for('class_mgmt.edit_class', class_id=class_obj.id) }}" 
                                        class="btn btn-sm btn-outline-secondary d-flex align-items-center" 
                                        title="编辑班级">
                                         <i class="fas fa-edit me-1"></i>
@@ -231,7 +231,7 @@
                     <h5 class="text-muted">暂无班级</h5>
                     {% if current_user.is_super_admin %}
                         <p class="text-muted">点击上方"创建班级"按钮创建第一个班级</p>
-                        <a href="{{ url_for('add_class') }}" class="btn btn-primary">
+                        <a href="{{ url_for('class_mgmt.add_class') }}" class="btn btn-primary">
                             <i class="fas fa-plus me-2"></i>
                             创建班级
                         </a>

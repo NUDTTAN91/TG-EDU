@@ -20,7 +20,7 @@
             </p>
         </div>
         <div class="col-md-4 text-end">
-            <a href="{{ url_for('add_user') }}" class="btn btn-primary btn-lg">
+            <a href="{{ url_for('user_mgmt.add_user') }}" class="btn btn-primary btn-lg">
                 <i class="fas fa-user-plus me-2"></i>
                 添加用户
             </a>
@@ -268,7 +268,7 @@
                                 <td class="text-center">
                                     <div class="btn-group btn-group-sm" role="group">
                                         {% if current_user.is_super_admin %}
-                                            <a href="{{ url_for('edit_user', user_id=user.id) }}" 
+                                            <a href="{{ url_for('user_mgmt.edit_user', user_id=user.id) }}" 
                                                class="btn btn-outline-primary" 
                                                title="编辑用户">
                                                 <i class="fas fa-edit"></i>
@@ -315,7 +315,7 @@
                     <i class="fas fa-users fa-3x text-muted mb-3"></i>
                     <h5 class="text-muted">暂无用户</h5>
                     <p class="text-muted">点击上方"添加用户"按钮创建第一个用户</p>
-                    <a href="{{ url_for('add_user') }}" class="btn btn-primary">
+                    <a href="{{ url_for('user_mgmt.add_user') }}" class="btn btn-primary">
                         <i class="fas fa-user-plus me-2"></i>
                         添加用户
                     </a>
@@ -341,14 +341,14 @@
                     <ul class="pagination justify-content-end mb-0">
                         <!-- 首页 -->
                         <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-                            <a class="page-link" href="{{ url_for('manage_users', page=1, per_page=request.args.get('per_page', 10), role=request.args.get('role', ''), class=request.args.get('class', '')) }}" aria-label="首页">
+                            <a class="page-link" href="{{ url_for('user_mgmt.manage_users', page=1, per_page=request.args.get('per_page', 10), role=request.args.get('role', ''), class=request.args.get('class', '')) }}" aria-label="首页">
                                 <i class="fas fa-angle-double-left"></i>
                             </a>
                         </li>
                         
                         <!-- 上一页 -->
                         <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-                            <a class="page-link" href="{{ url_for('manage_users', page=pagination.prev_num, per_page=request.args.get('per_page', 10), role=request.args.get('role', ''), class=request.args.get('class', '')) }}" aria-label="上一页">
+                            <a class="page-link" href="{{ url_for('user_mgmt.manage_users', page=pagination.prev_num, per_page=request.args.get('per_page', 10), role=request.args.get('role', ''), class=request.args.get('class', '')) }}" aria-label="上一页">
                                 <i class="fas fa-angle-left"></i>
                             </a>
                         </li>
@@ -365,7 +365,7 @@
                                     </li>
                                 {% else %}
                                     <li class="page-item">
-                                        <a class="page-link" href="{{ url_for('manage_users', page=page_num, per_page=request.args.get('per_page', 10), role=request.args.get('role', ''), class=request.args.get('class', '')) }}">
+                                        <a class="page-link" href="{{ url_for('user_mgmt.manage_users', page=page_num, per_page=request.args.get('per_page', 10), role=request.args.get('role', ''), class=request.args.get('class', '')) }}">
                                             {{ page_num }}
                                         </a>
                                     </li>
@@ -379,14 +379,14 @@
                         
                         <!-- 下一页 -->
                         <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-                            <a class="page-link" href="{{ url_for('manage_users', page=pagination.next_num, per_page=request.args.get('per_page', 10), role=request.args.get('role', ''), class=request.args.get('class', '')) }}" aria-label="下一页">
+                            <a class="page-link" href="{{ url_for('user_mgmt.manage_users', page=pagination.next_num, per_page=request.args.get('per_page', 10), role=request.args.get('role', ''), class=request.args.get('class', '')) }}" aria-label="下一页">
                                 <i class="fas fa-angle-right"></i>
                             </a>
                         </li>
                         
                         <!-- 末页 -->
                         <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-                            <a class="page-link" href="{{ url_for('manage_users', page=pagination.pages, per_page=request.args.get('per_page', 10), role=request.args.get('role', ''), class=request.args.get('class', '')) }}" aria-label="末页">
+                            <a class="page-link" href="{{ url_for('user_mgmt.manage_users', page=pagination.pages, per_page=request.args.get('per_page', 10), role=request.args.get('role', ''), class=request.args.get('class', '')) }}" aria-label="末页">
                                 <i class="fas fa-angle-double-right"></i>
                             </a>
                         </li>

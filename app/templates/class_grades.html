@@ -18,14 +18,16 @@
                 </p>
             </div>
             <div class="col-md-4 text-end">
-                <a href="{{ url_for('class_students', class_id=class_obj.id) }}" class="btn btn-secondary me-2">
+                <a href="{{ url_for('class_mgmt.class_students', class_id=class_obj.id) }}" class="btn btn-secondary me-2">
                     <i class="fas fa-users me-1"></i>
                     学生管理
                 </a>
-                <a href="{{ url_for('export_class_grades', class_id=class_obj.id) }}" class="btn btn-success">
+                {# 导出Excel功能待实现
+                <a href="{{ url_for('class_mgmt.export_class_grades', class_id=class_obj.id) }}" class="btn btn-success">
                     <i class="fas fa-file-excel me-1"></i>
                     导出Excel
                 </a>
+                #}
             </div>
         </div>
     </div>
@@ -187,7 +189,7 @@
                                 {% endif %}
                             </td>
                             <td>
-                                <a href="{{ url_for('student_submission_history_with_student_id', assignment_id=assignments[0].id, student_id=student_data.student.id) if assignments else '#' }}" 
+                                <a href="{{ url_for('submission.student_submission_history_with_student_id', assignment_id=assignments[0].id, student_id=student_data.student.id) if assignments else '#' }}" 
                                    class="btn btn-sm btn-outline-primary" 
                                    title="查看学生所有提交记录">
                                     <i class="fas fa-history"></i>
@@ -207,12 +209,12 @@
                 <i class="fas fa-chart-line" style="font-size: 4rem; color: var(--text-secondary); opacity: 0.5;"></i>
                 <h3 class="mt-4 mb-2">暂无成绩数据</h3>
                 <p class="text-muted mb-4">该班级还没有学生或作业成绩。</p>
-                <a href="{{ url_for('class_students', class_id=class_obj.id) }}" 
+                <a href="{{ url_for('class_mgmt.class_students', class_id=class_obj.id) }}" 
                    class="btn btn-primary me-2">
                     <i class="fas fa-users me-2"></i>
                     管理学生
                 </a>
-                <a href="{{ url_for('create_assignment') }}" class="btn btn-success">
+                <a href="{{ url_for('assignment.create_assignment') }}" class="btn btn-success">
                     <i class="fas fa-plus me-2"></i>
                     创建作业
                 </a>
@@ -223,15 +225,17 @@
 
     <!-- 操作按钮 -->
     <div class="text-center mt-4">
-        <a href="{{ url_for('manage_classes') }}" class="btn btn-secondary me-2">
+        <a href="{{ url_for('class_mgmt.manage_classes') }}" class="btn btn-secondary me-2">
             <i class="fas fa-arrow-left me-2"></i>
             返回班级列表
         </a>
         {% if assignments %}
-        <a href="{{ url_for('export_class_grades', class_id=class_obj.id) }}" class="btn btn-success">
+        {# 导出Excel功能待实现
+        <a href="{{ url_for('class_mgmt.export_class_grades', class_id=class_obj.id) }}" class="btn btn-success">
             <i class="fas fa-download me-2"></i>
             下载成绩单
         </a>
+        #}
         {% endif %}
     </div>
 </div>

@@ -134,7 +134,7 @@
                                     <input type="text" class="form-control" 
                                            value="{{ assignment.attachment_original_filename or assignment.attachment_filename }}" 
                                            readonly>
-                                    <a href="{{ url_for('download_assignment_attachment', assignment_id=assignment.id) }}" 
+                                    <a href="{{ url_for('download.download_assignment_attachment', assignment_id=assignment.id) }}" 
                                        class="btn btn-outline-primary">
                                         <i class="fas fa-download me-1"></i>
                                         下载
@@ -288,12 +288,12 @@
                 <!-- 操作按钮 -->
                 <div class="d-flex gap-3 justify-content-center">
                     {% if current_user.is_super_admin %}
-                        <a href="{{ url_for('super_admin_dashboard') }}" class="btn btn-secondary btn-lg">
+                        <a href="{{ url_for('admin.super_admin_dashboard') }}" class="btn btn-secondary btn-lg">
                             <i class="fas fa-arrow-left me-2"></i>
                             取消编辑
                         </a>
                     {% else %}
-                        <a href="{{ url_for('teacher_dashboard') }}" class="btn btn-secondary btn-lg">
+                        <a href="{{ url_for('admin.teacher_dashboard') }}" class="btn btn-secondary btn-lg">
                             <i class="fas fa-arrow-left me-2"></i>
                             取消编辑
                         </a>

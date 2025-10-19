@@ -25,7 +25,7 @@
             </button>
             {% endif %}
             
-            <a class="navbar-brand" href="{{ url_for('index') }}">
+            <a class="navbar-brand" href="{{ url_for('main.index') }}">
                 <i class="fas fa-graduation-cap me-2"></i>
                 TG作业系统
             </a>
@@ -63,7 +63,7 @@
                                     {% if all_unread %}
                                         {% for notification in all_unread[:3] %}
                                         <li>
-                                            <a class="dropdown-item notification-item" href="{{ url_for('notifications') }}">
+                                            <a class="dropdown-item notification-item" href="{{ url_for('notification.notifications') }}">
                                                 <div class="d-flex">
                                                     <div class="flex-shrink-0">
                                                         {% if notification.notification_type == 'grade' %}
@@ -96,7 +96,7 @@
                                 
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
-                                    <a class="dropdown-item text-center text-primary" href="{{ url_for('notifications') }}">
+                                    <a class="dropdown-item text-center text-primary" href="{{ url_for('notification.notifications') }}">
                                         <i class="fas fa-list me-1"></i>查看所有通知
                                     </a>
                                 </li>
@@ -108,11 +108,11 @@
                             <i class="fas fa-user me-1"></i>{{ current_user.real_name }}
                         </span>
                         
-                        <a class="nav-link" href="{{ url_for('logout') }}">
+                        <a class="nav-link" href="{{ url_for('auth.logout') }}">
                             <i class="fas fa-sign-out-alt me-1"></i>退出
                         </a>
                     {% else %}
-                        <a class="nav-link" href="{{ url_for('login') }}">
+                        <a class="nav-link" href="{{ url_for('auth.login') }}">
                             <i class="fas fa-user me-1"></i>用户登录
                         </a>
                     {% endif %}
@@ -159,7 +159,7 @@
                     主页导航
                 </h6>
                 <div class="menu-list">
-                    <a href="{{ url_for('index') }}" class="menu-item">
+                    <a href="{{ url_for('main.index') }}" class="menu-item">
                         <div class="menu-icon">
                             <i class="fas fa-home"></i>
                         </div>
@@ -167,21 +167,21 @@
                     </a>
                     
                     {% if current_user.is_super_admin %}
-                        <a href="{{ url_for('super_admin_dashboard') }}" class="menu-item">
+                        <a href="{{ url_for('admin.super_admin_dashboard') }}" class="menu-item">
                             <div class="menu-icon">
                                 <i class="fas fa-tachometer-alt"></i>
                             </div>
                             <span class="menu-title">超级管理员</span>
                         </a>
                     {% elif current_user.is_teacher %}
-                        <a href="{{ url_for('teacher_dashboard') }}" class="menu-item">
+                        <a href="{{ url_for('admin.teacher_dashboard') }}" class="menu-item">
                             <div class="menu-icon">
                                 <i class="fas fa-chalkboard-teacher"></i>
                             </div>
                             <span class="menu-title">教师后台</span>
                         </a>
                     {% else %}
-                        <a href="{{ url_for('student_dashboard') }}" class="menu-item">
+                        <a href="{{ url_for('student.dashboard') }}" class="menu-item">
                             <div class="menu-icon">
                                 <i class="fas fa-user-graduate"></i>
                             </div>
@@ -201,7 +201,7 @@
                 <div class="menu-list">
                     {% if current_user.is_super_admin %}
                         <!-- 1. 用户管理 -->
-                        <a href="{{ url_for('manage_users') }}" class="menu-item primary">
+                        <a href="{{ url_for('user_mgmt.manage_users') }}" class="menu-item primary">
                             <div class="menu-icon">
                                 <i class="fas fa-users"></i>
                             </div>
@@ -209,7 +209,7 @@
                         </a>
                         
                         <!-- 2. 班级管理 -->
-                        <a href="{{ url_for('manage_classes') }}" class="menu-item warning">
+                        <a href="{{ url_for('class_mgmt.manage_classes') }}" class="menu-item warning">
                             <div class="menu-icon">
                                 <i class="fas fa-school"></i>
                             </div>
@@ -217,7 +217,7 @@
                         </a>
                         
                         <!-- 3. 创建作业 -->
-                        <a href="{{ url_for('create_assignment') }}" class="menu-item success">
+                        <a href="{{ url_for('assignment.create_assignment') }}" class="menu-item success">
                             <div class="menu-icon">
                                 <i class="fas fa-plus-circle"></i>
                             </div>
@@ -225,11 +225,19 @@
                         </a>
                         
                         <!-- 4. 作业管理 -->
-                        <a href="{{ url_for('super_admin_dashboard') }}" class="menu-item info">
+                        <a href="{{ url_for('admin.super_admin_dashboard') }}" class="menu-item info">
                             <div class="menu-icon">
                                 <i class="fas fa-tasks"></i>
                             </div>
                             <span class="menu-title">作业管理</span>
+                        </a>
+                        
+                        <!-- 5. 大作业管理 -->
+                        <a href="{{ url_for('major_assignment.major_assignment_dashboard') }}" class="menu-item purple">
+                            <div class="menu-icon">
+                                <i class="fas fa-project-diagram"></i>
+                            </div>
+                            <span class="menu-title">大作业管理</span>
                         </a>
                         
                         <div class="menu-item secondary" onclick="showBatchImport()">
@@ -249,28 +257,36 @@
                     {% endif %}
                     
                     {% if current_user.is_teacher %}
-                        <a href="{{ url_for('create_assignment') }}" class="menu-item success">
+                        <a href="{{ url_for('assignment.create_assignment') }}" class="menu-item success">
                             <div class="menu-icon">
                                 <i class="fas fa-plus-circle"></i>
                             </div>
                             <span class="menu-title">创建作业</span>
                         </a>
                         
-                        <a href="{{ url_for('teacher_dashboard') }}" class="menu-item info">
+                        <a href="{{ url_for('admin.teacher_dashboard') }}" class="menu-item info">
                             <div class="menu-icon">
                                 <i class="fas fa-tasks"></i>
                             </div>
                             <span class="menu-title">作业管理</span>
                         </a>
                         
-                        <a href="{{ url_for('manage_users') }}" class="menu-item info">
+                        <!-- 大作业管理 -->
+                        <a href="{{ url_for('major_assignment.major_assignment_dashboard') }}" class="menu-item purple">
+                            <div class="menu-icon">
+                                <i class="fas fa-project-diagram"></i>
+                            </div>
+                            <span class="menu-title">大作业管理</span>
+                        </a>
+                        
+                        <a href="{{ url_for('user_mgmt.manage_users') }}" class="menu-item info">
                             <div class="menu-icon">
                                 <i class="fas fa-user-graduate"></i>
                             </div>
                             <span class="menu-title">学生管理</span>
                         </a>
                         
-                        <a href="{{ url_for('manage_classes') }}" class="menu-item warning">
+                        <a href="{{ url_for('class_mgmt.manage_classes') }}" class="menu-item warning">
                             <div class="menu-icon">
                                 <i class="fas fa-school"></i>
                             </div>
@@ -295,7 +311,7 @@
                     通知中心
                 </h6>
                 <div class="menu-list">
-                    <a href="{{ url_for('notifications') }}" class="menu-item info">
+                    <a href="{{ url_for('notification.notifications') }}" class="menu-item info">
                         <div class="menu-icon">
                             <i class="fas fa-bell"></i>
                         </div>
@@ -308,7 +324,7 @@
                     </a>
                     
                     {% if current_user.is_teacher or current_user.is_super_admin %}
-                    <a href="{{ url_for('create_notification_page') }}" class="menu-item success">
+                    <a href="{{ url_for('notification.create_notification_page') }}" class="menu-item success">
                         <div class="menu-icon">
                             <i class="fas fa-paper-plane"></i>
                         </div>
@@ -547,7 +563,7 @@
     }
     
     function showSystemReset() {
-        window.location.href = "{{ url_for('reset_system') }}";
+        window.location.href = "{{ url_for('advanced.reset_system') }}";
     }
     </script>
     

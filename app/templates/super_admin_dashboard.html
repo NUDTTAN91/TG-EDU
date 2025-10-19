@@ -111,7 +111,7 @@
                 </div>
                 <h5 class="card-title">创建班级</h5>
                 <p class="card-text text-muted">创建新的班级，分配教师和学生</p>
-                <a href="{{ url_for('add_class') }}" class="btn btn-success">
+                <a href="{{ url_for('class_mgmt.add_class') }}" class="btn btn-success">
                     <i class="fas fa-plus me-2"></i>
                     创建班级
                 </a>
@@ -129,7 +129,7 @@
                 </div>
                 <h5 class="card-title">管理班级</h5>
                 <p class="card-text text-muted">管理所有班级，添加/移除学生</p>
-                <a href="{{ url_for('manage_classes') }}" class="btn btn-warning">
+                <a href="{{ url_for('class_mgmt.manage_classes') }}" class="btn btn-warning">
                     <i class="fas fa-cog me-2"></i>
                     管理班级
                 </a>
@@ -147,7 +147,7 @@
                 </div>
                 <h5 class="card-title">添加学生</h5>
                 <p class="card-text text-muted">创建新学生并分配到班级</p>
-                <a href="{{ url_for('add_user') }}" class="btn btn-info">
+                <a href="{{ url_for('user_mgmt.add_user') }}" class="btn btn-info">
                     <i class="fas fa-user-plus me-2"></i>
                     添加学生
                 </a>
@@ -243,7 +243,7 @@
                                 </div>
                                 
                                 <div class="assignment-actions d-flex flex-wrap gap-2">
-                                    <a href="{{ url_for('view_submissions', assignment_id=assignment.id) }}" class="btn btn-primary btn-sm d-flex align-items-center">
+                                    <a href="{{ url_for('assignment.view_submissions', assignment_id=assignment.id) }}" class="btn btn-primary btn-sm d-flex align-items-center">
                                         <i class="fas fa-eye me-1"></i>
                                         查看提交
                                     </a>
@@ -253,7 +253,7 @@
                                         <i class="fas fa-download me-1"></i>
                                         下载
                                     </button>
-                                    <a href="{{ url_for('edit_assignment', assignment_id=assignment.id) }}" class="btn btn-warning btn-sm d-flex align-items-center">
+                                    <a href="{{ url_for('assignment.edit_assignment', assignment_id=assignment.id) }}" class="btn btn-warning btn-sm d-flex align-items-center">
                                         <i class="fas fa-edit me-1"></i>
                                         编辑
                                     </a>
@@ -844,7 +844,7 @@ let downloadStartTime = Date.now();
 
 // 显示批量下载页面
 function showBatchDownloadPage() {
-    window.location.href = '{{ url_for("batch_download_assignments") }}';
+    window.location.href = '{{ url_for("download.start_batch_download") }}';
 }
 </script>
 

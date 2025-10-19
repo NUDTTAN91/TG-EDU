@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}布置大作业 - TG作业系统{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-project-diagram me-2"></i>
+                        布置大作业
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data">
+                        <!-- 作业标题 -->
+                        <div class="mb-3">
+                            <label for="title" class="form-label">
+                                <i class="fas fa-heading me-1"></i>作业标题 <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="title" name="title" required>
+                        </div>
+
+                        <!-- 作业描述 -->
+                        <div class="mb-3">
+                            <label for="description" class="form-label">
+                                <i class="fas fa-align-left me-1"></i>作业描述
+                            </label>
+                            <textarea class="form-control" id="description" name="description" rows="4"></textarea>
+                        </div>
+
+                        <!-- 选择班级 -->
+                        <div class="mb-3">
+                            <label for="class_id" class="form-label">
+                                <i class="fas fa-school me-1"></i>选择班级 <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="class_id" name="class_id" required>
+                                <option value="">请选择班级</option>
+                                {% for class in classes %}
+                                <option value="{{ class.id }}">{{ class.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- 组队人数设置 -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="min_team_size" class="form-label">
+                                    <i class="fas fa-users me-1"></i>最小组队人数 <span class="text-danger">*</span>
+                                </label>
+                                <input type="number" class="form-control" id="min_team_size" 
+                                       name="min_team_size" value="2" min="1" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="max_team_size" class="form-label">
+                                    <i class="fas fa-users me-1"></i>最大组队人数 <span class="text-danger">*</span>
+                                </label>
+                                <input type="number" class="form-control" id="max_team_size" 
+                                       name="max_team_size" value="5" min="1" required>
+                            </div>
+                        </div>
+
+                        <!-- 作业要求（文件或链接） -->
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-file-alt me-1"></i>作业要求 <span class="text-danger">*</span>
+                            </label>
+                            <div class="mb-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="requirement_type" 
+                                           id="req_file" value="file" checked onclick="toggleRequirementType('file')">
+                                    <label class="form-check-label" for="req_file">
+                                        上传文件
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="requirement_type" 
+                                           id="req_url" value="url" onclick="toggleRequirementType('url')">
+                                    <label class="form-check-label" for="req_url">
+                                        提供链接
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div id="file_upload_section">
+                                <input type="file" class="form-control" id="requirement_file" name="requirement_file">
+                                <small class="form-text text-muted">支持PDF、Word、图片等格式</small>
+                            </div>
+                            
+                            <div id="url_input_section" style="display: none;">
+                                <input type="url" class="form-control" id="requirement_url" 
+                                       name="requirement_url" placeholder="https://example.com/assignment">
+                                <small class="form-text text-muted">请输入完整的URL地址</small>
+                            </div>
+                        </div>
+
+                        <!-- 截止时间 -->
+                        <div class="mb-3">
+                            <label for="due_date" class="form-label">
+                                <i class="fas fa-calendar-alt me-1"></i>截止时间
+                            </label>
+                            <input type="datetime-local" class="form-control" id="due_date" name="due_date">
+                            <small class="form-text text-muted">留空表示无截止时间</small>
+                        </div>
+
+                        <!-- 提交按钮 -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('major_assignment.major_assignment_dashboard') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-1"></i>返回
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-check me-1"></i>布置大作业
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleRequirementType(type) {
+    const fileSection = document.getElementById('file_upload_section');
+    const urlSection = document.getElementById('url_input_section');
+    const fileInput = document.getElementById('requirement_file');
+    const urlInput = document.getElementById('requirement_url');
+    
+    if (type === 'file') {
+        fileSection.style.display = 'block';
+        urlSection.style.display = 'none';
+        fileInput.required = true;
+        urlInput.required = false;
+        urlInput.value = '';
+    } else {
+        fileSection.style.display = 'none';
+        urlSection.style.display = 'block';
+        fileInput.required = false;
+        urlInput.required = true;
+        fileInput.value = '';
+    }
+}
+
+// 验证组队人数
+document.querySelector('form').addEventListener('submit', function(e) {
+    const minSize = parseInt(document.getElementById('min_team_size').value);
+    const maxSize = parseInt(document.getElementById('max_team_size').value);
+    
+    if (minSize > maxSize) {
+        e.preventDefault();
+        alert('最小组队人数不能大于最大组队人数！');
+        return false;
+    }
+    
+    if (minSize < 1 || maxSize < 1) {
+        e.preventDefault();
+        alert('组队人数必须大于0！');
+        return false;
+    }
+});
+</script>
+{% endblock %}

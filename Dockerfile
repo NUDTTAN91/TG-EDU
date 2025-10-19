@@ -35,6 +35,8 @@ RUN pip3 config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple &&
 
 # 复制应用代码
 COPY app.py .
+COPY wsgi.py .
+COPY config.py .
 COPY init_db.py .
 COPY start.sh .
 COPY app/ ./app/

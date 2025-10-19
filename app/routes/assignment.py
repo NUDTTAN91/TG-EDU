@@ -1,0 +1,383 @@
+"""作业管理路由"""
+from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask_login import login_required, current_user
+from datetime import datetime, timedelta
+from collections import defaultdict
+from app.extensions import db
+from app.models import Assignment, Class, User, UserRole, Submission, AssignmentGrade
+from app.services import FileService
+from app.utils import require_teacher_or_admin, to_beijing_time
+from sqlalchemy import func
+
+bp = Blueprint('assignment', __name__, url_prefix='/admin/assignment')
+
+
+@bp.route('/create', methods=['GET', 'POST'])
+@login_required
+@require_teacher_or_admin
+def create_assignment():
+    """创建作业"""
+    if request.method == 'POST':
+        title = request.form['title']
+        description = request.form['description']
+        due_date_str = request.form['due_date']
+        allowed_file_types = request.form.get('allowed_file_types', '')
+        max_file_size = request.form.get('max_file_size', '50')
+        max_submissions = request.form.get('max_submissions', '0')
+        class_id = request.form.get('class_id')
+        
+        # 处理附件上传
+        attachment_filename = None
+        attachment_original_filename = None
+        attachment_file_path = None
+        attachment_file_size = None
+        
+        if 'attachment' in request.files:
+            attachment_file = request.files['attachment']
+            if attachment_file and attachment_file.filename:
+                attachment_filename, attachment_original_filename, attachment_file_path, attachment_file_size = \
+                    FileService.save_assignment_attachment(attachment_file)
+        
+        # 验证班级权限
+        if class_id:
+            selected_class = Class.query.get(class_id)
+            if not selected_class:
+                flash('选择的班级不存在')
+                return render_template('create_assignment.html', available_classes=get_available_classes())
+            
+            if not current_user.is_super_admin and current_user not in selected_class.teachers:
+                flash('您没有权限为此班级创建作业')
+                return render_template('create_assignment.html', available_classes=get_available_classes())
+        
+        # 处理截止时间
+        due_date = None
+        if due_date_str:
+            try:
+                local_time = datetime.strptime(due_date_str, '%Y-%m-%dT%H:%M')
+                due_date = local_time - timedelta(hours=8)  # 转换为UTC
+            except ValueError:
+                flash('日期格式错误')
+                return render_template('create_assignment.html', available_classes=get_available_classes())
+        
+        # 处理文件大小限制
+        try:
+            max_size_mb = float(max_file_size)
+            if max_size_mb < 1:
+                flash('文件大小不能小于1MB')
+                return render_template('create_assignment.html', available_classes=get_available_classes())
+            elif max_size_mb > 10240:
+                flash('文件大小不能超过10GB (10240MB)')
+                return render_template('create_assignment.html', available_classes=get_available_classes())
+            max_size_bytes = int(max_size_mb * 1024 * 1024)
+        except (ValueError, TypeError):
+            max_size_bytes = 50 * 1024 * 1024
+        
+        # 处理提交次数限制
+        try:
+            max_submissions_count = int(max_submissions)
+            if max_submissions_count < 0:
+                max_submissions_count = 0
+        except (ValueError, TypeError):
+            max_submissions_count = 0
+        
+        # 处理文件类型
+        if allowed_file_types:
+            file_types = []
+            for ext in allowed_file_types.split(','):
+                ext = ext.strip().lower()
+                if ext.startswith('.'):
+                    ext = ext[1:]
+                if ext:
+                    file_types.append(ext)
+            allowed_file_types = ','.join(file_types)
+        
+        assignment = Assignment(
+            title=title,
+            description=description,
+            due_date=due_date,
+            allowed_file_types=allowed_file_types,
+            max_file_size=max_size_bytes,
+            max_submissions=max_submissions_count,
+            teacher_id=current_user.id,
+            class_id=class_id if class_id else None,
+            attachment_filename=attachment_filename,
+            attachment_original_filename=attachment_original_filename,
+            attachment_file_path=attachment_file_path,
+            attachment_file_size=attachment_file_size
+        )
+        
+        db.session.add(assignment)
+        db.session.commit()
+        flash('作业创建成功')
+        
+        if current_user.is_super_admin:
+            return redirect(url_for('admin.super_admin_dashboard'))
+        else:
+            return redirect(url_for('admin.teacher_dashboard'))
+    
+    available_classes = get_available_classes()
+    return render_template('create_assignment.html', available_classes=available_classes)
+
+
+@bp.route('/<int:assignment_id>/submissions')
+@login_required
+@require_teacher_or_admin
+def view_submissions(assignment_id):
+    """查看作业提交"""
+    assignment = Assignment.query.get_or_404(assignment_id)
+    
+    # 权限检查
+    if not can_manage_assignment(current_user, assignment):
+        flash('您没有权限查看此作业')
+        return redirect(url_for('admin.teacher_dashboard' if current_user.is_teacher else 'admin.super_admin_dashboard'))
+    
+    # 获取所有提交记录
+    submissions = Submission.query.filter_by(assignment_id=assignment_id).order_by(Submission.submitted_at.desc()).all()
+    
+    # 按学生分组统计
+    student_submissions = defaultdict(list)
+    for submission in submissions:
+        if submission.student_id is None:
+            continue
+        student_key = (submission.student_id, submission.student_name, submission.student_number)
+        student_submissions[student_key].append(submission)
+    
+    # 构建学生提交统计数据
+    student_stats = []
+    for (student_id, student_name, student_number), student_subs in student_submissions.items():
+        latest_submission = student_subs[0]
+        submission_count = len(student_subs)
+        
+        # 获取最新评分
+        latest_grade = get_student_assignment_average_grade(assignment_id, student_id)
+        latest_feedback = None
+        
+        # 获取最近的反馈
+        latest_grade_record = AssignmentGrade.query.filter(
+            AssignmentGrade.assignment_id == assignment_id,
+            AssignmentGrade.student_id == student_id,
+            AssignmentGrade.feedback.isnot(None),
+            AssignmentGrade.feedback != ''
+        ).order_by(AssignmentGrade.updated_at.desc()).first()
+        
+        if latest_grade_record:
+            latest_feedback = latest_grade_record.feedback
+        
+        # 如果新系统没有评分，尝试从旧系统获取
+        if latest_grade is None:
+            graded_submissions = [s for s in student_subs if s.grade is not None]
+            if graded_submissions:
+                latest_graded = graded_submissions[0]
+                latest_grade = latest_graded.grade
+                if not latest_feedback:
+                    latest_feedback = latest_graded.feedback
+        
+        student_stats.append({
+            'student_id': student_id,
+            'student_name': student_name,
+            'student_number': student_number,
+            'submission_count': submission_count,
+            'latest_submission': latest_submission,
+            'latest_grade': latest_grade,
+            'latest_feedback': latest_feedback,
+            'all_submissions': student_subs
+        })
+    
+    # 按学生姓名排序
+    student_stats.sort(key=lambda x: x['student_name'])
+    
+    return render_template('submissions.html', assignment=assignment, student_stats=student_stats)
+
+
+@bp.route('/<int:assignment_id>/edit', methods=['GET', 'POST'])
+@login_required
+@require_teacher_or_admin
+def edit_assignment(assignment_id):
+    """编辑作业"""
+    assignment = Assignment.query.get_or_404(assignment_id)
+    
+    # 权限检查
+    if not can_manage_assignment(current_user, assignment):
+        flash('您没有权限编辑此作业')
+        return redirect(url_for('admin.teacher_dashboard' if current_user.is_teacher else 'admin.super_admin_dashboard'))
+    
+    if request.method == 'POST':
+        title = request.form['title']
+        description = request.form.get('description', '')
+        due_date_str = request.form.get('due_date')
+        file_types = request.form.get('file_types', '')
+        max_size = request.form.get('max_size', '50')
+        max_submissions = request.form.get('max_submissions', '0')
+        class_id = request.form.get('class_id')
+        
+        # 处理附件上传
+        if 'attachment' in request.files:
+            attachment_file = request.files['attachment']
+            if attachment_file and attachment_file.filename:
+                # 删除旧附件
+                if assignment.attachment_file_path:
+                    FileService.delete_file(assignment.attachment_file_path)
+                
+                # 保存新附件
+                attachment_filename, attachment_original_filename, attachment_file_path, attachment_file_size = \
+                    FileService.save_assignment_attachment(attachment_file)
+                
+                assignment.attachment_filename = attachment_filename
+                assignment.attachment_original_filename = attachment_original_filename
+                assignment.attachment_file_path = attachment_file_path
+                assignment.attachment_file_size = attachment_file_size
+        
+        # 检查是否需要删除附件
+        if 'delete_attachment' in request.form and request.form['delete_attachment'] == 'on':
+            if assignment.attachment_file_path:
+                FileService.delete_file(assignment.attachment_file_path)
+                assignment.attachment_filename = None
+                assignment.attachment_original_filename = None
+                assignment.attachment_file_path = None
+                assignment.attachment_file_size = None
+        
+        # 验证班级权限
+        if class_id:
+            selected_class = Class.query.get(class_id)
+            if not selected_class:
+                flash('选择的班级不存在')
+                return render_template('edit_assignment.html', assignment=assignment, available_classes=get_available_classes())
+            
+            if not current_user.is_super_admin and current_user not in selected_class.teachers:
+                flash('您没有权限将作业分配到此班级')
+                return render_template('edit_assignment.html', assignment=assignment, available_classes=get_available_classes())
+        
+        # 验证和处理数据
+        try:
+            max_size_mb = float(max_size)
+            if max_size_mb < 1:
+                flash('文件大小不能小于1MB')
+                return render_template('edit_assignment.html', assignment=assignment, available_classes=get_available_classes())
+            elif max_size_mb > 10240:
+                flash('文件大小不能超过10GB (10240MB)')
+                return render_template('edit_assignment.html', assignment=assignment, available_classes=get_available_classes())
+            max_size_bytes = int(max_size_mb * 1024 * 1024)
+        except (ValueError, TypeError):
+            flash('文件大小限制必须是有效的数字')
+            return render_template('edit_assignment.html', assignment=assignment, available_classes=get_available_classes())
+        
+        # 处理提交次数限制
+        try:
+            max_submissions_count = int(max_submissions)
+            if max_submissions_count < 0:
+                max_submissions_count = 0
+        except (ValueError, TypeError):
+            max_submissions_count = 0
+        
+        # 处理截止时间
+        due_date = None
+        if due_date_str:
+            try:
+                local_time = datetime.strptime(due_date_str, '%Y-%m-%dT%H:%M')
+                due_date = local_time - timedelta(hours=8)
+            except ValueError:
+                flash('截止时间格式不正确')
+                return render_template('edit_assignment.html', assignment=assignment, available_classes=get_available_classes())
+        
+        # 处理文件类型
+        allowed_file_types = ''
+        if file_types:
+            file_types_list = []
+            for ext in file_types.split(','):
+                ext = ext.strip().lower()
+                if ext.startswith('.'):
+                    ext = ext[1:]
+                if ext:
+                    file_types_list.append(ext)
+            allowed_file_types = ','.join(file_types_list)
+        
+        # 更新作业信息
+        assignment.title = title
+        assignment.description = description
+        assignment.due_date = due_date
+        assignment.allowed_file_types = allowed_file_types
+        assignment.max_file_size = max_size_bytes
+        assignment.max_submissions = max_submissions_count
+        assignment.class_id = class_id if class_id else None
+        
+        db.session.commit()
+        flash('作业信息已成功更新')
+        
+        if current_user.is_super_admin:
+            return redirect(url_for('admin.super_admin_dashboard'))
+        else:
+            return redirect(url_for('admin.teacher_dashboard'))
+    
+    available_classes = get_available_classes()
+    return render_template('edit_assignment.html', assignment=assignment, available_classes=available_classes)
+
+
+@bp.route('/<int:assignment_id>/delete', methods=['POST'])
+@login_required
+@require_teacher_or_admin
+def delete_assignment(assignment_id):
+    """删除作业"""
+    import os
+    assignment = Assignment.query.get_or_404(assignment_id)
+    
+    # 权限检查
+    if not can_manage_assignment(current_user, assignment):
+        flash('您没有权限删除此作业')
+        return redirect(url_for('admin.teacher_dashboard' if current_user.is_teacher else 'admin.super_admin_dashboard'))
+    
+    # 删除相关的提交文件
+    for submission in assignment.submissions:
+        try:
+            if os.path.exists(submission.file_path):
+                os.remove(submission.file_path)
+        except Exception as e:
+            print(f"删除文件失败: {e}")
+    
+    # 删除作业附件
+    if assignment.attachment_file_path:
+        FileService.delete_file(assignment.attachment_file_path)
+    
+    assignment_title = assignment.title
+    db.session.delete(assignment)
+    db.session.commit()
+    
+    flash(f'作业 "{assignment_title}" 及其所有提交已成功删除')
+    
+    if current_user.is_super_admin:
+        return redirect(url_for('admin.super_admin_dashboard'))
+    else:
+        return redirect(url_for('admin.teacher_dashboard'))
+
+
+def get_available_classes():
+    """获取当前用户可用的班级列表"""
+    if current_user.is_super_admin:
+        return Class.query.filter_by(is_active=True).all()
+    elif current_user.is_teacher:
+        return current_user.teaching_classes
+    else:
+        return []
+
+
+def can_manage_assignment(user, assignment):
+    """检查用户是否能管理作业"""
+    if user.is_super_admin:
+        return True
+    if user.is_teacher:
+        # 教师可以管理自己创建的作业
+        if assignment.teacher_id == user.id:
+            return True
+        # 教师可以管理自己负责班级的作业
+        if assignment.class_id and assignment.class_info in user.teaching_classes:
+            return True
+    return False
+
+
+def get_student_assignment_average_grade(assignment_id, student_id):
+    """获取学生在某作业的平均分"""
+    avg_grade = db.session.query(func.avg(AssignmentGrade.grade)).filter(
+        AssignmentGrade.assignment_id == assignment_id,
+        AssignmentGrade.student_id == student_id
+    ).scalar()
+    
+    return round(avg_grade, 2) if avg_grade is not None else None

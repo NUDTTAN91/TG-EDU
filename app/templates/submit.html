@@ -240,7 +240,7 @@
                     </div>
                     
                     <div class="d-flex gap-3 justify-content-end">
-                        <a href="{{ url_for('index') }}" class="btn btn-secondary btn-lg">
+                        <a href="{{ url_for('main.index') }}" class="btn btn-secondary btn-lg">
                             <i class="fas fa-arrow-left me-2"></i>
                             返回列表
                         </a>
@@ -742,9 +742,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 setTimeout(() => {
                     // 检查是否是登录用户
                     {% if logged_in_student %}
-                        window.location.href = '{{ url_for("student_dashboard") }}';
+                        window.location.href = '{{ url_for("student.dashboard") }}';
                     {% else %}
-                        window.location.href = '{{ url_for("index") }}';
+                        window.location.href = '{{ url_for("main.index") }}';
                     {% endif %}
                 }, 3000);
             } else {
@@ -842,9 +842,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // 如果是成功状态，跳转页面
         if (document.getElementById('uploadSuccess').style.display === 'block') {
             {% if logged_in_student %}
-                window.location.href = '{{ url_for("student_dashboard") }}';
+                window.location.href = '{{ url_for("student.dashboard") }}';
             {% else %}
-                window.location.href = '{{ url_for("index") }}';
+                window.location.href = '{{ url_for("main.index") }}';
             {% endif %}
         }
     });

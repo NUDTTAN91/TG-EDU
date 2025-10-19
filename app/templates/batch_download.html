@@ -120,7 +120,7 @@
 
                     <!-- 操作按钮 -->
                     <div class="d-flex justify-content-between">
-                        <a href="{{ url_for('super_admin_dashboard') if current_user.is_super_admin else url_for('teacher_dashboard') }}" 
+                        <a href="{{ url_for('admin.super_admin_dashboard') if current_user.is_super_admin else url_for('admin.teacher_dashboard') }}" 
                            class="btn btn-secondary">
                             <i class="fas fa-arrow-left me-2"></i>
                             返回

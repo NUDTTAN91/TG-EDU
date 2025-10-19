@@ -13,8 +13,11 @@ export SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
 cd /app
 python3 -c "
 import os
-from app import app, db, User, UserRole, Notification
+from app import create_app
+from app.extensions import db
+from app.models import User, UserRole, Notification, MajorAssignment, Team, TeamMember, TeamInvitation, LeaveTeamRequest
 
+app = create_app('production')
 with app.app_context():
     try:
         db.create_all()
@@ -89,4 +92,4 @@ exec gunicorn --bind 0.0.0.0:5000 \
     --max-requests-jitter 100 \
     --access-logfile - \
     --error-logfile - \
-    app:app
+    wsgi:app

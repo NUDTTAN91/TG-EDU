@@ -15,7 +15,7 @@
                 <p class="page-subtitle">对 {{ student.real_name }} 的整个作业进行评分</p>
             </div>
             <div>
-                <a href="{{ url_for('view_submissions', assignment_id=assignment.id) }}" class="btn btn-outline-secondary">
+                <a href="{{ url_for('assignment.view_submissions', assignment_id=assignment.id) }}" class="btn btn-outline-secondary">
                     <i class="fas fa-arrow-left me-2"></i>
                     返回
                 </a>
@@ -136,13 +136,13 @@
                                 </td>
                                 <td>
                                     <div class="btn-group" role="group">
-                                        <a href="{{ url_for('download_file', submission_id=submission.id) }}" 
+                                        <a href="{{ url_for('submission.download_file', submission_id=submission.id) }}" 
                                            class="btn btn-sm btn-outline-primary" 
                                            title="下载文件">
                                             <i class="fas fa-download"></i>
                                         </a>
                                         {% if submission.is_pdf() %}
-                                            <a href="{{ url_for('preview_file', submission_id=submission.id) }}" 
+                                            <a href="{{ url_for('submission.preview_file', submission_id=submission.id) }}" 
                                                class="btn btn-sm btn-outline-info" 
                                                target="_blank"
                                                title="预览PDF">
@@ -232,7 +232,7 @@
                 </div>
                 
                 <div class="d-flex justify-content-between">
-                    <a href="{{ url_for('view_submissions', assignment_id=assignment.id) }}" 
+                    <a href="{{ url_for('assignment.view_submissions', assignment_id=assignment.id) }}" 
                        class="btn btn-secondary">
                         <i class="fas fa-arrow-left me-2"></i>
                         返回

@@ -15,7 +15,7 @@
         </p>
         {% if not current_user.is_authenticated %}
             <div class="fade-in-up" style="animation-delay: 0.4s;">
-                <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg me-3">
+                <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg me-3">
                     <i class="fas fa-sign-in-alt me-2"></i>
                     立即登录
                 </a>
@@ -136,7 +136,7 @@
     <div class="row g-4">
         {% if current_user.is_super_admin %}
             <div class="col-lg-4 col-md-6">
-                <a href="{{ url_for('super_admin_dashboard') }}" class="text-decoration-none">
+                <a href="{{ url_for('admin.super_admin_dashboard') }}" class="text-decoration-none">
                     <div class="card quick-nav-card h-100">
                         <div class="card-body text-center">
                             <div class="quick-nav-icon mb-3">
@@ -150,7 +150,7 @@
             </div>
         {% elif current_user.is_teacher %}
             <div class="col-lg-4 col-md-6">
-                <a href="{{ url_for('teacher_dashboard') }}" class="text-decoration-none">
+                <a href="{{ url_for('admin.teacher_dashboard') }}" class="text-decoration-none">
                     <div class="card quick-nav-card h-100">
                         <div class="card-body text-center">
                             <div class="quick-nav-icon mb-3">
@@ -164,7 +164,7 @@
             </div>
         {% else %}
             <div class="col-lg-4 col-md-6">
-                <a href="{{ url_for('student_dashboard') }}" class="text-decoration-none">
+                <a href="{{ url_for('student.dashboard') }}" class="text-decoration-none">
                     <div class="card quick-nav-card h-100">
                         <div class="card-body text-center">
                             <div class="quick-nav-icon mb-3">
@@ -193,7 +193,7 @@
         </div>
         
         <div class="col-lg-4 col-md-6">
-            <a href="{{ url_for('logout') }}" class="text-decoration-none">
+            <a href="{{ url_for('auth.logout') }}" class="text-decoration-none">
                 <div class="card quick-nav-card h-100">
                     <div class="card-body text-center">
                         <div class="quick-nav-icon mb-3">

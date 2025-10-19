@@ -50,12 +50,12 @@
                 </h2>
                 <div>
                     {% if current_user.is_teacher or current_user.is_super_admin %}
-                    <a href="{{ url_for('create_notification_page') }}" class="btn btn-primary">
+                    <a href="{{ url_for('notification.create_notification_page') }}" class="btn btn-primary">
                         <i class="fas fa-plus"></i> 发送通知
                     </a>
                     {% endif %}
                     {% if not show_unread_only %}
-                    <form action="{{ url_for('mark_all_read') }}" method="POST" style="display: inline;">
+                    <form action="{{ url_for('notification.mark_all_read') }}" method="POST" style="display: inline;">
                         <button type="submit" class="btn btn-secondary">
                             <i class="fas fa-check-double"></i> 全部标记为已读
                         </button>
@@ -68,13 +68,13 @@
             <ul class="nav nav-tabs mb-3">
                 <li class="nav-item">
                     <a class="nav-link {% if not show_unread_only %}active{% endif %}" 
-                       href="{{ url_for('notifications') }}">
+                       href="{{ url_for('notification.notifications') }}">
                         全部通知
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {% if show_unread_only %}active{% endif %}" 
-                       href="{{ url_for('unread_notifications') }}">
+                       href="{{ url_for('notification.unread_notifications') }}">
                         未读通知
                         {% if unread_notification_count > 0 %}
                         <span class="badge bg-danger">{{ unread_notification_count }}</span>
@@ -121,7 +121,7 @@
                             <!-- 相关链接 -->
                             {% if notification.related_assignment_id %}
                             <div class="mt-2">
-                                <a href="{{ url_for('student_submission_history', assignment_id=notification.related_assignment_id) }}" 
+                                <a href="{{ url_for('submission.student_submission_history', assignment_id=notification.related_assignment_id) }}" 
                                    class="btn btn-sm btn-outline-primary">
                                     <i class="fas fa-eye"></i> 查看作业详情
                                 </a>
@@ -137,7 +137,7 @@
                                 <i class="fas fa-check"></i> 标记已读
                             </button>
                             {% endif %}
-                            <form action="{{ url_for('delete_notification', notification_id=notification.id) }}" 
+                            <form action="{{ url_for('notification.delete_notification', notification_id=notification.id) }}" 
                                   method="POST" style="display: inline;" 
                                   onsubmit="return confirm('确定要删除这条通知吗？');">
                                 <button type="submit" class="btn btn-sm btn-outline-danger">

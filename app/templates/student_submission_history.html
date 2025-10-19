@@ -60,7 +60,7 @@
                         {% if assignment.attachment_file_path %}
                         <div class="mt-3">
                             <p><strong>作业附件：</strong></p>
-                            <a href="{{ url_for('student_download_assignment_attachment', assignment_id=assignment.id) }}" 
+                            <a href="{{ url_for('download.student_download_assignment_attachment', assignment_id=assignment.id) }}" 
                                class="btn btn-sm btn-outline-info">
                                 <i class="fas fa-paperclip me-1"></i>
                                 下载附件 ({{ assignment.attachment_original_filename or assignment.attachment_filename }})
@@ -216,7 +216,7 @@
                                 </td>
                                 <td>
                                     <div class="btn-group" role="group">
-                                        <a href="{{ url_for('download_file', submission_id=submission.id) }}" 
+                                        <a href="{{ url_for('submission.download_file', submission_id=submission.id) }}" 
                                            class="btn btn-sm btn-outline-primary" 
                                            title="下载文件">
                                             <i class="fas fa-download"></i>
@@ -332,7 +332,7 @@
                     <h3 class="mt-4 mb-2">暂无提交记录</h3>
                     <p class="text-muted mb-4">您还没有提交过此作业。</p>
                     {% if not assignment.is_overdue() %}
-                    <a href="{{ url_for('submit_assignment', assignment_id=assignment.id) }}" 
+                    <a href="{{ url_for('submission.submit_assignment', assignment_id=assignment.id) }}" 
                        class="btn btn-primary">
                         <i class="fas fa-upload me-2"></i>
                         立即提交作业
@@ -345,12 +345,12 @@
 
         <!-- 操作按钮 -->
         <div class="text-center mt-4">
-            <a href="{{ url_for('student_dashboard') }}" class="btn btn-secondary me-2">
+            <a href="{{ url_for('student.dashboard') }}" class="btn btn-secondary me-2">
                 <i class="fas fa-arrow-left me-2"></i>
                 返回作业列表
             </a>
             {% if not assignment.is_overdue() %}
-            <a href="{{ url_for('submit_assignment', assignment_id=assignment.id) }}" 
+            <a href="{{ url_for('submission.submit_assignment', assignment_id=assignment.id) }}" 
                class="btn btn-primary">
                 <i class="fas fa-upload me-2"></i>
                 {% if submission_history %}重新提交{% else %}提交作业{% endif %}

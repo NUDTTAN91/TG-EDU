@@ -13,7 +13,7 @@
                     </h4>
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="{{ url_for('create_notification_page') }}">
+                    <form method="POST" action="{{ url_for('notification.create_notification_page') }}">
                         <!-- 通知标题 -->
                         <div class="mb-3">
                             <label for="title" class="form-label">通知标题 <span class="text-danger">*</span></label>
@@ -119,7 +119,7 @@
 
                         <!-- 提交按钮 -->
                         <div class="d-flex justify-content-between">
-                            <a href="{{ url_for('notifications') }}" class="btn btn-secondary">
+                            <a href="{{ url_for('notification.notifications') }}" class="btn btn-secondary">
                                 <i class="fas fa-arrow-left"></i> 返回
                             </a>
                             <button type="submit" class="btn btn-primary">

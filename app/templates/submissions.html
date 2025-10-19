@@ -10,7 +10,7 @@
                 <h1>{{ assignment.title }} - 提交列表</h1>
                 <p class="text-muted">共 {{ student_stats|length }} 名学生提交，总计 {{ student_stats|sum(attribute='submission_count') }} 份提交</p>
             </div>
-            <a href="{% if current_user.is_super_admin %}{{ url_for('super_admin_dashboard') }}{% else %}{{ url_for('teacher_dashboard') }}{% endif %}" class="btn btn-secondary">返回管理后台</a>
+            <a href="{% if current_user.is_super_admin %}{{ url_for('admin.super_admin_dashboard') }}{% else %}{{ url_for('admin.teacher_dashboard') }}{% endif %}" class="btn btn-secondary">返回管理后台</a>
         </div>
         
         {% if assignment.description %}
@@ -25,7 +25,7 @@
             <div class="alert alert-success mb-4">
                 <h6>作业附件:</h6>
                 <p class="mb-2">此作业包含附件供参考:</p>
-                <a href="{{ url_for('download_assignment_attachment', assignment_id=assignment.id) }}" 
+                <a href="{{ url_for('download.download_assignment_attachment', assignment_id=assignment.id) }}" 
                    class="btn btn-sm btn-outline-success">
                     <i class="fas fa-paperclip me-1"></i>
                     下载附件 ({{ assignment.attachment_original_filename or assignment.attachment_filename }})
@@ -48,7 +48,7 @@
                     </thead>
                     <tbody>
                         {% for student_stat in student_stats %}
-                            <tr class="clickable-row" data-href="{{ url_for('grade_assignment_overall', assignment_id=assignment.id, student_id=student_stat.student_id) }}">
+                            <tr class="clickable-row" data-href="{{ url_for('grading.grade_assignment_overall', assignment_id=assignment.id, student_id=student_stat.student_id) }}">
                                 <td>
                                     <strong>{{ student_stat.student_name }}</strong>
                                 </td>
@@ -84,12 +84,12 @@
                                 </td>
                                 <td>
                                     <div class="btn-group" role="group">
-                                        <a href="{{ url_for('grade_assignment_overall', assignment_id=assignment.id, student_id=student_stat.student_id) }}" 
+                                        <a href="{{ url_for('grading.grade_assignment_overall', assignment_id=assignment.id, student_id=student_stat.student_id) }}" 
                                            class="btn btn-sm btn-primary" 
                                            title="评分">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        <a href="{{ url_for('download_file', submission_id=student_stat.latest_submission.id) }}" 
+                                        <a href="{{ url_for('submission.download_file', submission_id=student_stat.latest_submission.id) }}" 
                                            class="btn btn-sm btn-outline-primary" 
                                            title="下载最新提交">
                                             <i class="fas fa-download"></i>

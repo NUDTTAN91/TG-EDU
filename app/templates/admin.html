@@ -83,11 +83,11 @@
                 作业管理
             </h2>
             <div>
-                <a href="{{ url_for('batch_download_assignments') }}" class="btn btn-info me-2">
+                <a href="{{ url_for('download.start_batch_download') }}" class="btn btn-info me-2">
                     <i class="fas fa-download me-2"></i>
                     批量下载
                 </a>
-                <a href="{{ url_for('create_assignment') }}" class="btn btn-success btn-lg pulse">
+                <a href="{{ url_for('assignment.create_assignment') }}" class="btn btn-success btn-lg pulse">
                     <i class="fas fa-plus me-2"></i>
                     创建新作业
                 </a>
@@ -201,12 +201,12 @@
                                 </td>
                                 <td>
                                     <div class="btn-group" role="group">
-                                        <a href="{{ url_for('view_submissions', assignment_id=assignment.id) }}" 
+                                        <a href="{{ url_for('assignment.view_submissions', assignment_id=assignment.id) }}" 
                                            class="btn btn-sm btn-primary" 
                                            title="查看提交">
                                             <i class="fas fa-eye"></i>
                                         </a>
-                                        <a href="{{ url_for('download_assignment', assignment_id=assignment.id) }}" 
+                                        <a href="{{ url_for('download.download_assignment', assignment_id=assignment.id) }}" 
                                            class="btn btn-sm btn-success" 
                                            title="下载作业">
                                             <i class="fas fa-download"></i>
@@ -236,7 +236,7 @@
             <i class="fas fa-clipboard" style="font-size: 4rem; color: var(--text-secondary); opacity: 0.5;"></i>
             <h3 class="mt-4 mb-2">您还没有创建任何作业</h3>
             <p class="text-muted mb-4">开始创建您的第一个作业，让学生们开始提交吧！</p>
-            <a href="{{ url_for('create_assignment') }}" class="btn btn-success btn-lg pulse">
+            <a href="{{ url_for('assignment.create_assignment') }}" class="btn btn-success btn-lg pulse">
                 <i class="fas fa-plus me-2"></i>
                 创建第一个作业
             </a>

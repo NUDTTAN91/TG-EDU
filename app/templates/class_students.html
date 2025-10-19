@@ -18,16 +18,16 @@
                 </p>
             </div>
             <div class="col-md-4 text-end">
-                <a href="{{ url_for('manage_classes') }}" class="btn btn-secondary me-2">
+                <a href="{{ url_for('class_mgmt.manage_classes') }}" class="btn btn-secondary me-2">
                     <i class="fas fa-arrow-left me-1"></i>
                     返回班级列表
                 </a>
-                <a href="{{ url_for('class_grades', class_id=class_obj.id) }}" class="btn btn-success me-2">
+                <a href="{{ url_for('class_mgmt.class_grades', class_id=class_obj.id) }}" class="btn btn-success me-2">
                     <i class="fas fa-chart-bar me-1"></i>
                     成绩统计
                 </a>
                 {% if current_user.is_super_admin %}
-                    <a href="{{ url_for('edit_class', class_id=class_obj.id) }}" class="btn btn-warning">
+                    <a href="{{ url_for('class_mgmt.edit_class', class_id=class_obj.id) }}" class="btn btn-warning">
                         <i class="fas fa-edit me-1"></i>
                         编辑班级
                     </a>
@@ -168,7 +168,7 @@
                                                 </small>
                                             </td>
                                             <td>
-                                                <form method="POST" action="{{ url_for('remove_student_from_class', class_id=class_obj.id) }}" 
+                                                <form method="POST" action="{{ url_for('class_mgmt.remove_student_from_class', class_id=class_obj.id) }}" 
                                                       class="d-inline remove-student-form">
                                                     <input type="hidden" name="student_id" value="{{ student.id }}">
                                                     <button type="submit" class="btn btn-sm btn-outline-danger" 
@@ -205,7 +205,7 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="{{ url_for('add_student_to_class', class_id=class_obj.id) }}" class="needs-validation" novalidate>
+                    <form method="POST" action="{{ url_for('class_mgmt.add_student_to_class', class_id=class_obj.id) }}" class="needs-validation" novalidate>
                         <div class="mb-3">
                             <label for="student_id" class="form-label">
                                 <i class="fas fa-search me-1"></i>
@@ -240,7 +240,7 @@
                                 原因可能是：<br>
                                 • 所有学生都已在班级中<br>
                                 • 系统中没有学生用户<br>
-                                • <a href="{{ url_for('add_user') }}" class="text-decoration-none">点击这里创建新学生</a>
+                                • <a href="{{ url_for('user_mgmt.add_user') }}" class="text-decoration-none">点击这里创建新学生</a>
                             </small>
                         </div>
                     {% endif %}

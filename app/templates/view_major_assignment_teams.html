@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}查看分组情况 - {{ major_assignment.title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2>
+                        <i class="fas fa-users me-2"></i>
+                        {{ major_assignment.title }} - 分组情况
+                    </h2>
+                    <p class="text-muted">
+                        <i class="fas fa-school me-2"></i>{{ major_assignment.class_info.name }}
+                        <i class="fas fa-users ms-3 me-2"></i>组队人数：{{ major_assignment.min_team_size }} - {{ major_assignment.max_team_size }} 人
+                    </p>
+                </div>
+                <a href="{{ url_for('major_assignment.major_assignment_dashboard') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-1"></i>返回
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card text-center shadow-sm">
+                <div class="card-body">
+                    <h3 class="text-primary">{{ total_teams }}</h3>
+                    <p class="text-muted mb-0">团队总数</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center shadow-sm">
+                <div class="card-body">
+                    <h3 class="text-success">{{ confirmed_teams }}</h3>
+                    <p class="text-muted mb-0">已确认</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center shadow-sm">
+                <div class="card-body">
+                    <h3 class="text-warning">{{ pending_teams }}</h3>
+                    <p class="text-muted mb-0">待确认</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 团队列表 -->
+    {% if teams %}
+    <div class="row">
+        {% for team in teams %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card h-100 {% if team.status == 'confirmed' %}border-success{% elif team.status == 'rejected' %}border-danger{% else %}border-warning{% endif %}">
+                <div class="card-header {% if team.status == 'confirmed' %}bg-success{% elif team.status == 'rejected' %}bg-danger{% else %}bg-warning{% endif %} text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-users me-2"></i>
+                            {{ team.name }}
+                        </h5>
+                        {% if team.status == 'confirmed' %}
+                        <span class="badge bg-light text-success">已确认</span>
+                        {% elif team.status == 'rejected' %}
+                        <span class="badge bg-light text-danger">已拒绝</span>
+                        {% else %}
+                        <span class="badge bg-light text-warning">待确认</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- 组长信息 -->
+                    <p class="mb-2">
+                        <i class="fas fa-crown text-warning me-2"></i>
+                        <strong>组长：</strong>{{ team.leader.real_name }} ({{ team.leader.student_id }})
+                    </p>
+                    
+                    <!-- 成员列表 -->
+                    <p class="mb-2"><strong>成员：</strong></p>
+                    <ul class="list-unstyled ms-3">
+                        {% for member in team.members %}
+                        <li class="mb-1">
+                            <i class="fas fa-user me-2"></i>
+                            {{ member.user.real_name }} ({{ member.user.student_id }})
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    
+                    <!-- 人数信息 -->
+                    <p class="mb-2">
+                        <strong>总人数：</strong>
+                        <span class="{% if team.is_size_valid() %}text-success{% else %}text-danger{% endif %}">
+                            {{ team.get_member_count() }} 人
+                            {% if not team.is_size_valid() %}
+                            <i class="fas fa-exclamation-triangle ms-1"></i>
+                            {% endif %}
+                        </span>
+                    </p>
+                    
+                    {% if team.size_exception_reason %}
+                    <div class="alert alert-warning small mb-2">
+                        <strong>人数异常说明：</strong>{{ team.size_exception_reason }}
+                    </div>
+                    {% endif %}
+                    
+                    <p class="text-muted small mb-0">
+                        <i class="fas fa-clock me-1"></i>
+                        创建时间：{{ team.created_at|beijing_time }}
+                    </p>
+                </div>
+                
+                {% if team.status == 'pending' %}
+                <div class="card-footer bg-light">
+                    <div class="btn-group w-100">
+                        <form action="{{ url_for('major_assignment.confirm_team', team_id=team.id) }}" method="POST" style="display: inline;">
+                            <button type="submit" class="btn btn-sm btn-success">
+                                <i class="fas fa-check me-1"></i>确认
+                            </button>
+                        </form>
+                        <button class="btn btn-sm btn-danger" onclick="rejectTeam({{ team.id }})">
+                            <i class="fas fa-times me-1"></i>拒绝
+                        </button>
+                    </div>
+                </div>
+                {% elif team.status == 'confirmed' %}
+                <div class="card-footer bg-light text-center text-success">
+                    <i class="fas fa-check-circle me-1"></i>
+                    已于 {{ team.confirmed_at|beijing_time }} 确认
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-info text-center">
+        <i class="fas fa-info-circle fa-3x mb-3"></i>
+        <p class="mb-0">暂无团队</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- 拒绝模态框 -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">拒绝团队</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="rejectForm" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">拒绝原因</label>
+                        <textarea class="form-control" name="reject_reason" rows="3" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-danger">确认拒绝</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function rejectTeam(teamId) {
+    const form = document.getElementById('rejectForm');
+    form.action = `/major_assignments/teams/${teamId}/reject`;
+    const modal = new bootstrap.Modal(document.getElementById('rejectModal'));
+    modal.show();
+}
+</script>
+{% endblock %}

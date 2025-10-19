@@ -131,7 +131,7 @@
                         <!-- 附件信息 -->
                         {% if assignment.attachment_file_path %}
                             <div class="mb-3">
-                                <a href="{{ url_for('student_download_assignment_attachment', assignment_id=assignment.id) }}" 
+                                <a href="{{ url_for('download.student_download_assignment_attachment', assignment_id=assignment.id) }}" 
                                    class="btn btn-sm btn-outline-info">
                                     <i class="fas fa-paperclip me-1"></i>
                                     下载附件
@@ -152,19 +152,19 @@
                         <div class="d-flex flex-wrap gap-2">
                             {% if not assignment.is_overdue() %}
                                 {% if submitted %}
-                                    <a href="{{ url_for('submit_assignment', assignment_id=assignment.id) }}" 
+                                    <a href="{{ url_for('submission.submit_assignment', assignment_id=assignment.id) }}" 
                                        class="btn btn-outline-primary flex-fill">
                                         <i class="fas fa-edit me-2"></i>
                                         重新提交
                                     </a>
-                                    <a href="{{ url_for('student_submission_history', assignment_id=assignment.id) }}" 
+                                    <a href="{{ url_for('submission.student_submission_history', assignment_id=assignment.id) }}" 
                                        class="btn btn-outline-info flex-fill" 
                                        title="查看提交记录和评分">
                                         <i class="fas fa-history me-2"></i>
                                         查看评分
                                     </a>
                                 {% else %}
-                                    <a href="{{ url_for('submit_assignment', assignment_id=assignment.id) }}" 
+                                    <a href="{{ url_for('submission.submit_assignment', assignment_id=assignment.id) }}" 
                                        class="btn btn-success flex-fill">
                                         <i class="fas fa-upload me-2"></i>
                                         提交作业
@@ -172,7 +172,7 @@
                                 {% endif %}
                             {% else %}
                                 {% if submitted %}
-                                    <a href="{{ url_for('student_submission_history', assignment_id=assignment.id) }}" 
+                                    <a href="{{ url_for('submission.student_submission_history', assignment_id=assignment.id) }}" 
                                        class="btn btn-outline-info flex-fill" 
                                        title="查看提交记录和评分">
                                         <i class="fas fa-history me-2"></i>
