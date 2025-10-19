@@ -22,7 +22,7 @@
 
 <!-- 快速统计 -->
 <div class="row mb-5">
-    <div class="col-md-4 mb-3">
+    <div class="col-md-3 mb-3">
         <div class="card stat-card text-center">
             <div class="card-body">
                 <div class="shortcut-icon-wrapper mb-3">
@@ -36,7 +36,21 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4 mb-3">
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card text-center">
+            <div class="card-body">
+                <div class="shortcut-icon-wrapper mb-3">
+                    <div class="shortcut-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                        <i class="fas fa-project-diagram"></i>
+                    </div>
+                    <div class="shortcut-glow" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></div>
+                </div>
+                <h3 class="stat-number" style="color: #667eea;">{{ major_assignments|length }}</h3>
+                <p class="stat-label mb-0">大作业</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
         <div class="card stat-card text-center">
             <div class="card-body">
                 <div class="shortcut-icon-wrapper mb-3">
@@ -50,7 +64,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4 mb-3">
+    <div class="col-md-3 mb-3">
         <div class="card stat-card text-center">
             <div class="card-body">
                 <div class="shortcut-icon-wrapper mb-3">
@@ -66,6 +80,121 @@
         </div>
     </div>
 </div>
+
+<!-- 大作业列表（置顶显示） -->
+{% if major_assignments %}
+<div class="alert alert-info border-0 shadow-sm mb-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+    <div class="d-flex align-items-center">
+        <div class="me-3">
+            <i class="fas fa-bullhorn fa-2x"></i>
+        </div>
+        <div>
+            <h5 class="mb-1"><i class="fas fa-star me-1"></i>重要提醒：有 {{ major_assignments|length }} 个大作业需要组队完成</h5>
+            <p class="mb-0">大作业需要团队协作完成，请尽快组建或加入团队！</p>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <h2 class="fw-bold" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+            <i class="fas fa-star me-2" style="color: #667eea;"></i>
+            大作业（团队任务）
+        </h2>
+    </div>
+</div>
+
+<div class="row">
+    {% for ma in major_assignments %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card assignment-card h-100" style="border: 2px solid #667eea; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);">
+                <div class="card-header text-white d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <h6 class="mb-0 fw-bold">
+                        <i class="fas fa-users me-1"></i>{{ ma.title }}
+                        <span class="badge bg-warning ms-1" style="font-size: 0.7rem;">团队</span>
+                    </h6>
+                    {% if ma.due_date %}
+                        <span class="badge bg-light text-dark">进行中</span>
+                    {% else %}
+                        <span class="badge bg-light text-dark">无截止时间</span>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    {% if ma.description %}
+                        <p class="card-text text-muted mb-3">
+                            {{ ma.description[:100] }}{% if ma.description|length > 100 %}...{% endif %}
+                        </p>
+                    {% endif %}
+                    
+                    <div class="mb-2">
+                        <small class="text-muted">
+                            <i class="fas fa-school me-1"></i>
+                            <strong>班级:</strong> {{ ma.class_info.name }}
+                        </small>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <small class="text-muted">
+                            <i class="fas fa-users me-1"></i>
+                            <strong>组队人数:</strong> {{ ma.min_team_size }} - {{ ma.max_team_size }} 人
+                        </small>
+                    </div>
+                    
+                    {% if ma.due_date %}
+                        <div class="mb-3">
+                            <small class="text-muted">
+                                <i class="fas fa-clock me-1"></i>
+                                <strong>截止时间:</strong> {{ ma.due_date|beijing_time }}
+                            </small>
+                        </div>
+                    {% endif %}
+                    
+                    <!-- 查找我的团队 -->
+                    {% set my_team = None %}
+                    {% for team in ma.teams %}
+                        {% if team.leader_id == current_user.id %}
+                            {% set my_team = team %}
+                        {% else %}
+                            {% for member in team.members %}
+                                {% if member.user_id == current_user.id %}
+                                    {% set my_team = team %}
+                                {% endif %}
+                            {% endfor %}
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if my_team %}
+                        <div class="alert alert-success py-2 mb-2">
+                            <i class="fas fa-check-circle me-1"></i>
+                            已加入团队: {{ my_team.name }}
+                            {% if my_team.status == 'confirmed' %}
+                                <span class="badge bg-success ms-1">已确认</span>
+                            {% else %}
+                                <span class="badge bg-warning ms-1">待确认</span>
+                            {% endif %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-warning py-2 mb-2">
+                            <i class="fas fa-exclamation-triangle me-1"></i>
+                            尚未组队，请尽快创建或加入团队
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="card-footer bg-transparent">
+                    <a href="{{ url_for('major_assignment.student_major_assignment_detail', assignment_id=ma.id) }}" 
+                       class="btn w-100" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: bold;">
+                        <i class="fas fa-arrow-right me-2"></i>
+                        {% if my_team %}查看团队{% else %}立即组队{% endif %}
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+
+<!-- 分隔线 -->
+<hr class="my-5" style="border-top: 2px dashed #dee2e6;">
+{% endif %}
 
 <!-- 可用作业列表 -->
 <div class="row mb-4">
@@ -199,98 +328,6 @@
             <p class="text-muted mb-4">请等待老师发布新的作业。</p>
         </div>
     </div>
-{% endif %}
-
-<!-- 大作业列表 -->
-{% if major_assignments %}
-<div class="row mb-4 mt-5">
-    <div class="col-12">
-        <h2 class="fw-bold">
-            <i class="fas fa-project-diagram me-2" style="color: var(--accent-color);"></i>
-            大作业
-        </h2>
-    </div>
-</div>
-
-<div class="row">
-    {% for ma in major_assignments %}
-        <div class="col-md-6 col-lg-4 mb-4">
-            <div class="card assignment-card h-100 border-primary">
-                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0 fw-bold"><i class="fas fa-users me-1"></i>{{ ma.title }}</h6>
-                    {% if ma.due_date %}
-                        <span class="badge bg-warning">进行中</span>
-                    {% else %}
-                        <span class="badge bg-success">无截止时间</span>
-                    {% endif %}
-                </div>
-                <div class="card-body">
-                    {% if ma.description %}
-                        <p class="card-text text-muted mb-3">
-                            {{ ma.description[:100] }}{% if ma.description|length > 100 %}...{% endif %}
-                        </p>
-                    {% endif %}
-                    
-                    <div class="mb-2">
-                        <small class="text-muted">
-                            <i class="fas fa-school me-1"></i>
-                            <strong>班级:</strong> {{ ma.class_info.name }}
-                        </small>
-                    </div>
-                    
-                    <div class="mb-2">
-                        <small class="text-muted">
-                            <i class="fas fa-users me-1"></i>
-                            <strong>组队人数:</strong> {{ ma.min_team_size }} - {{ ma.max_team_size }} 人
-                        </small>
-                    </div>
-                    
-                    {% if ma.due_date %}
-                        <div class="mb-3">
-                            <small class="text-muted">
-                                <i class="fas fa-clock me-1"></i>
-                                <strong>截止时间:</strong> {{ ma.due_date|beijing_time }}
-                            </small>
-                        </div>
-                    {% endif %}
-                    
-                    <!-- 查找我的团队 -->
-                    {% set my_team = None %}
-                    {% for team in ma.teams %}
-                        {% if team.leader_id == current_user.id %}
-                            {% set my_team = team %}
-                        {% else %}
-                            {% for member in team.members %}
-                                {% if member.user_id == current_user.id %}
-                                    {% set my_team = team %}
-                                {% endif %}
-                            {% endfor %}
-                        {% endif %}
-                    {% endfor %}
-                    
-                    {% if my_team %}
-                        <div class="alert alert-success py-2 mb-2">
-                            <i class="fas fa-users me-1"></i>
-                            已加入团队: {{ my_team.name }}
-                            {% if my_team.status == 'confirmed' %}
-                                <span class="badge bg-success ms-1">已确认</span>
-                            {% else %}
-                                <span class="badge bg-warning ms-1">待确认</span>
-                            {% endif %}
-                        </div>
-                    {% endif %}
-                </div>
-                <div class="card-footer bg-transparent">
-                    <a href="{{ url_for('major_assignment.student_major_assignment_detail', assignment_id=ma.id) }}" 
-                       class="btn btn-primary w-100">
-                        <i class="fas fa-arrow-right me-2"></i>
-                        {% if my_team %}查看团队{% else %}组建团队{% endif %}
-                    </a>
-                </div>
-            </div>
-        </div>
-    {% endfor %}
-</div>
 {% endif %}
 
 {% endblock %}
