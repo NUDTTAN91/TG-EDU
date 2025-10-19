@@ -104,6 +104,9 @@
                         <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#inviteModal">
                             <i class="fas fa-user-plus me-1"></i>邀请成员
                         </button>
+                        <button class="btn btn-danger ms-2" data-bs-toggle="modal" data-bs-target="#dissolveModal">
+                            <i class="fas fa-trash-alt me-1"></i>解散团队
+                        </button>
                     </div>
                     {% else %}
                     <!-- 组员操作 -->
@@ -147,10 +150,11 @@
             </div>
             <form action="{{ url_for('major_assignment.create_team', assignment_id=major_assignment.id) }}" method="POST">
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">团队名称</label>
-                        <input type="text" class="form-control" name="team_name" required>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        团队名称将自动生成为：<strong>您的姓名 + 的团队</strong>
                     </div>
+                    <p class="text-muted">点击"创建"按钮后，您将成为团队组长</p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
@@ -172,21 +176,66 @@
             </div>
             <form action="{{ url_for('major_assignment.invite_team_members', team_id=my_team.id) }}" method="POST">
                 <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        请准确填写同学的姓名和学号进行邀请
+                    </div>
                     <div class="mb-3">
-                        <label class="form-label">选择同学（可多选）</label>
-                        <select class="form-select" name="invitee_ids" multiple size="10" required>
-                            {% for classmate in classmates %}
-                            <option value="{{ classmate.id }}">
-                                {{ classmate.real_name }} ({{ classmate.student_id }})
-                            </option>
-                            {% endfor %}
-                        </select>
-                        <small class="form-text text-muted">按住Ctrl或Cmd键可多选</small>
+                        <label for="invitee_name" class="form-label">
+                            <i class="fas fa-user me-1"></i>同学姓名 <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" class="form-control" id="invitee_name" name="invitee_name" 
+                               placeholder="请输入同学的真实姓名" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="invitee_number" class="form-label">
+                            <i class="fas fa-id-card me-1"></i>同学学号 <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" class="form-control" id="invitee_number" name="invitee_number" 
+                               placeholder="请输入同学的学号" required>
+                        <small class="form-text text-muted">姓名和学号必须同时匹配才能发送邀请</small>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="submit" class="btn btn-primary">发送邀请</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-paper-plane me-1"></i>发送邀请
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- 解散团队模态框 -->
+{% if my_team and my_team.leader_id == current_user.id %}
+<div class="modal fade" id="dissolveModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle me-2"></i>解散团队
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('major_assignment.request_dissolve_team', team_id=my_team.id) }}" method="POST">
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        <strong>注意：</strong>解散团队需要超级管理员或负责老师确认后才会生效。解散后，所有团队成员将被移除。
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">解散原因 <span class="text-danger">*</span></label>
+                        <textarea class="form-control" name="reason" rows="3" 
+                                  placeholder="请说明解散团队的原因..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash-alt me-1"></i>申请解散
+                    </button>
                 </div>
             </form>
         </div>

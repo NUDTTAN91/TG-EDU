@@ -134,3 +134,24 @@ class LeaveTeamRequest(db.Model):
     
     def __repr__(self):
         return f'<LeaveTeamRequest Team{self.team_id}>'
+
+
+class DissolveTeamRequest(db.Model):
+    """解散团队请求模型"""
+    id = db.Column(db.Integer, primary_key=True)
+    team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=False)
+    leader_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    reason = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(50), default='pending')  # pending, approved, rejected
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    responded_at = db.Column(db.DateTime)
+    reviewer_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    review_comment = db.Column(db.Text)
+    
+    # 关系
+    team = db.relationship('Team', backref='dissolve_requests')
+    leader = db.relationship('User', foreign_keys=[leader_id], backref='dissolve_requests')
+    reviewer = db.relationship('User', foreign_keys=[reviewer_id])
+    
+    def __repr__(self):
+        return f'<DissolveTeamRequest Team{self.team_id}>'

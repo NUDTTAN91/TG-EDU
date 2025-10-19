@@ -8,7 +8,7 @@ from sqlalchemy import or_
 
 from app.extensions import db
 from app.models import User, Class, UserRole
-from app.models.team import MajorAssignment, Team, TeamMember, TeamInvitation, LeaveTeamRequest
+from app.models.team import MajorAssignment, Team, TeamMember, TeamInvitation, LeaveTeamRequest, DissolveTeamRequest
 from app.utils import safe_chinese_filename, to_beijing_time, BEIJING_TZ
 from app.utils.decorators import require_teacher_or_admin, require_role
 from app.services import NotificationService
@@ -729,3 +729,422 @@ def reject_leave_request_by_teacher(request_id):
     
     flash('已拒绝退组申请')
     return redirect(url_for('notification.notifications'))
+
+
+@bp.route('/teams/<int:team_id>/request_dissolve', methods=['POST'])
+@login_required
+def request_dissolve_team(team_id):
+    """组长申请解散团队"""
+    team = Team.query.get_or_404(team_id)
+    
+    # 检查是否是组长
+    if team.leader_id != current_user.id:
+        flash('只有组长才能申请解散团队')
+        return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=team.major_assignment_id))
+    
+    # 检查是否已有待处理的解散请求
+    existing_request = DissolveTeamRequest.query.filter_by(
+        team_id=team_id,
+        status='pending'
+    ).first()
+    
+    if existing_request:
+        flash('已经提交过解散申请，请等待处理')
+        return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=team.major_assignment_id))
+    
+    reason = request.form.get('reason', '').strip()
+    if not reason:
+        flash('请填写解散原因')
+        return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=team.major_assignment_id))
+    
+    # 创建解散请求
+    dissolve_request = DissolveTeamRequest(
+        team_id=team_id,
+        leader_id=current_user.id,
+        reason=reason
+    )
+    db.session.add(dissolve_request)
+    db.session.commit()
+    
+    # 通知所有管理教师和超级管理员
+    major_assignment = team.major_assignment
+    
+    # 通知管理教师
+    for teacher in major_assignment.teachers:
+        NotificationService.create_notification(
+            sender_id=current_user.id,
+            receiver_id=teacher.id,
+            title=f'团队解散申请：{team.name}',
+            content=f'{current_user.real_name} 申请解散团队「{team.name}」（大作业：{major_assignment.title}）。原因：{reason}',
+            notification_type='dissolve_request'
+        )
+    
+    # 通知超级管理员
+    super_admins = User.query.filter_by(role=UserRole.SUPER_ADMIN).all()
+    for admin in super_admins:
+        if admin.id not in [t.id for t in major_assignment.teachers]:
+            NotificationService.create_notification(
+                sender_id=current_user.id,
+                receiver_id=admin.id,
+                title=f'团队解散申请：{team.name}',
+                content=f'{current_user.real_name} 申请解散团队「{team.name}」（大作业：{major_assignment.title}）。原因：{reason}',
+                notification_type='dissolve_request'
+            )
+    
+    flash('解散申请已提交，等待管理员或负责老师审批')
+    return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=team.major_assignment_id))
+
+
+@bp.route('/dissolve_requests/<int:request_id>/approve', methods=['POST'])
+@login_required
+@require_teacher_or_admin
+def approve_dissolve_request(request_id):
+    """管理员/教师批准解散团队请求"""
+    dissolve_request = DissolveTeamRequest.query.get_or_404(request_id)
+    team = dissolve_request.team
+    
+    # 检查权限
+    if not team.major_assignment.can_manage(current_user):
+        flash('您没有权限处理此请求')
+        return redirect(url_for('notification.notifications'))
+    
+    if dissolve_request.status != 'pending':
+        flash('该请求已处理')
+        return redirect(url_for('notification.notifications'))
+    
+    # 批准解散
+    dissolve_request.status = 'approved'
+    dissolve_request.responded_at = datetime.utcnow()
+    dissolve_request.reviewer_id = current_user.id
+    
+    # 删除所有团队成员
+    TeamMember.query.filter_by(team_id=team.id).delete()
+    
+    # 删除所有邀请
+    TeamInvitation.query.filter_by(team_id=team.id).delete()
+    
+    # 删除团队
+    team_name = team.name
+    leader_id = team.leader_id
+    assignment_id = team.major_assignment_id
+    
+    db.session.delete(team)
+    db.session.commit()
+    
+    # 通知组长
+    NotificationService.create_notification(
+        sender_id=current_user.id,
+        receiver_id=leader_id,
+        title='团队解散申请已批准',
+        content=f'{current_user.real_name} 已批准您解散团队「{team_name}」的申请',
+        notification_type='system'
+    )
+    
+    flash('已批准解散团队申请')
+    return redirect(url_for('notification.notifications'))
+
+
+@bp.route('/dissolve_requests/<int:request_id>/reject', methods=['POST'])
+@login_required
+@require_teacher_or_admin
+def reject_dissolve_request(request_id):
+    """管理员/教师拒绝解散团队请求"""
+    dissolve_request = DissolveTeamRequest.query.get_or_404(request_id)
+    team = dissolve_request.team
+    
+    # 检查权限
+    if not team.major_assignment.can_manage(current_user):
+        flash('您没有权限处理此请求')
+        return redirect(url_for('notification.notifications'))
+    
+    if dissolve_request.status != 'pending':
+        flash('该请求已处理')
+        return redirect(url_for('notification.notifications'))
+    
+    review_comment = request.form.get('review_comment', '')
+    
+    dissolve_request.status = 'rejected'
+    dissolve_request.responded_at = datetime.utcnow()
+    dissolve_request.reviewer_id = current_user.id
+    dissolve_request.review_comment = review_comment
+    db.session.commit()
+    
+    # 通知组长
+    NotificationService.create_notification(
+        sender_id=current_user.id,
+        receiver_id=dissolve_request.leader_id,
+        title='团队解散申请被拒绝',
+        content=f'{current_user.real_name} 拒绝了您解散团队「{team.name}」的申请。理由：{review_comment}',
+        notification_type='system'
+    )
+    
+    flash('已拒绝解散团队申请')
+    return redirect(url_for('notification.notifications'))
+
+
+@bp.route('/teams/<int:team_id>/admin_dissolve', methods=['POST'])
+@login_required
+@require_teacher_or_admin
+def admin_dissolve_team(team_id):
+    """管理员/教师直接解散团队"""
+    team = Team.query.get_or_404(team_id)
+    
+    # 检查权限
+    if not team.major_assignment.can_manage(current_user):
+        flash('您没有权限解散此团队')
+        return redirect(url_for('major_assignment.view_major_assignment_teams', assignment_id=team.major_assignment_id))
+    
+    reason = request.form.get('reason', '').strip()
+    team_name = team.name
+    leader_id = team.leader_id
+    assignment_id = team.major_assignment_id
+    
+    # 获取所有成员ID（用于通知）
+    member_ids = [leader_id]
+    for member in team.members:
+        member_ids.append(member.user_id)
+    
+    # 删除所有团队成员
+    TeamMember.query.filter_by(team_id=team.id).delete()
+    
+    # 删除所有邀请
+    TeamInvitation.query.filter_by(team_id=team.id).delete()
+    
+    # 删除所有解散请求
+    DissolveTeamRequest.query.filter_by(team_id=team.id).delete()
+    
+    # 删除团队
+    db.session.delete(team)
+    db.session.commit()
+    
+    # 通知所有成员
+    for member_id in member_ids:
+        NotificationService.create_notification(
+            sender_id=current_user.id,
+            receiver_id=member_id,
+            title=f'团队已被解散：{team_name}',
+            content=f'{current_user.real_name} 解散了团队「{team_name}」' + 
+                    (f'。原因：{reason}' if reason else ''),
+            notification_type='system'
+        )
+    
+    flash(f'已解散团队「{team_name}」')
+    return redirect(url_for('major_assignment.view_major_assignment_teams', assignment_id=assignment_id))
+
+
+@bp.route('/teams/<int:team_id>/members', methods=['GET'])
+@login_required
+@require_teacher_or_admin
+def get_team_members(team_id):
+    """获取团队成员列表（API）"""
+    from flask import jsonify
+    
+    team = Team.query.get_or_404(team_id)
+    
+    # 检查权限
+    if not team.major_assignment.can_manage(current_user):
+        return jsonify({'success': False, 'message': '没有权限'}), 403
+    
+    members = []
+    for member in team.members:
+        members.append({
+            'id': member.user.id,
+            'real_name': member.user.real_name,
+            'student_id': member.user.student_id
+        })
+    
+    leader = {
+        'id': team.leader.id,
+        'real_name': team.leader.real_name,
+        'student_id': team.leader.student_id
+    }
+    
+    return jsonify({
+        'success': True,
+        'members': members,
+        'leader': leader
+    })
+
+
+@bp.route('/teams/<int:team_id>/members/<int:member_id>/remove', methods=['POST'])
+@login_required
+@require_teacher_or_admin
+def remove_team_member(team_id, member_id):
+    """移除团队成员（API）"""
+    from flask import jsonify
+    
+    team = Team.query.get_or_404(team_id)
+    
+    # 检查权限
+    if not team.major_assignment.can_manage(current_user):
+        return jsonify({'success': False, 'message': '没有权限'}), 403
+    
+    # 不能移除组长
+    if team.leader_id == member_id:
+        return jsonify({'success': False, 'message': '不能移除组长，请先转移组长或解散团队'}), 400
+    
+    # 查找并删除成员
+    member = TeamMember.query.filter_by(team_id=team_id, user_id=member_id).first()
+    if not member:
+        return jsonify({'success': False, 'message': '成员不存在'}), 404
+    
+    member_name = member.user.real_name
+    db.session.delete(member)
+    db.session.commit()
+    
+    # 通知被移除的成员
+    NotificationService.create_notification(
+        sender_id=current_user.id,
+        receiver_id=member_id,
+        title=f'您已被移出团队：{team.name}',
+        content=f'{current_user.real_name} 将您从团队「{team.name}」中移除',
+        notification_type='system'
+    )
+    
+    # 通知组长
+    NotificationService.create_notification(
+        sender_id=current_user.id,
+        receiver_id=team.leader_id,
+        title=f'成员被移除：{member_name}',
+        content=f'{current_user.real_name} 将 {member_name} 从您的团队「{team.name}」中移除',
+        notification_type='system'
+    )
+    
+    return jsonify({'success': True, 'message': '移除成功'})
+
+
+@bp.route('/teams/<int:team_id>/members/add', methods=['POST'])
+@login_required
+@require_teacher_or_admin
+def add_team_member(team_id):
+    """添加团队成员（API）"""
+    from flask import jsonify
+    
+    team = Team.query.get_or_404(team_id)
+    
+    # 检查权限
+    if not team.major_assignment.can_manage(current_user):
+        return jsonify({'success': False, 'message': '没有权限'}), 403
+    
+    data = request.get_json()
+    name = data.get('name', '').strip()
+    number = data.get('number', '').strip()
+    
+    if not name or not number:
+        return jsonify({'success': False, 'message': '请填写姓名和学号'}), 400
+    
+    # 查找学生
+    student = User.query.filter(
+        User.real_name == name,
+        User.username == number,
+        User.role == UserRole.STUDENT
+    ).first()
+    
+    if not student:
+        return jsonify({'success': False, 'message': f'找不到姓名为「{name}」、学号为「{number}」的学生'}), 404
+    
+    # 检查是否在同一班级
+    major_assignment = team.major_assignment
+    class_obj = Class.query.get(major_assignment.class_id)
+    if student not in class_obj.students:
+        return jsonify({'success': False, 'message': f'{student.real_name} 不在该大作业的班级中'}), 400
+    
+    # 检查是否已在其他团队
+    for t in major_assignment.teams:
+        if t.leader_id == student.id:
+            return jsonify({'success': False, 'message': f'{student.real_name} 已经是其他团队的组长'}), 400
+        for m in t.members:
+            if m.user_id == student.id:
+                return jsonify({'success': False, 'message': f'{student.real_name} 已经在其他团队中'}), 400
+    
+    # 检查人数限制
+    current_count = team.get_member_count()
+    if current_count >= major_assignment.max_team_size:
+        return jsonify({'success': False, 'message': f'团队人数已达到上限（{major_assignment.max_team_size}人）'}), 400
+    
+    # 添加成员
+    new_member = TeamMember(team_id=team_id, user_id=student.id)
+    db.session.add(new_member)
+    db.session.commit()
+    
+    # 通知学生
+    NotificationService.create_notification(
+        sender_id=current_user.id,
+        receiver_id=student.id,
+        title=f'您已被添加到团队：{team.name}',
+        content=f'{current_user.real_name} 将您添加到团队「{team.name}」（大作业：{major_assignment.title}）',
+        notification_type='system'
+    )
+    
+    # 通知组长
+    NotificationService.create_notification(
+        sender_id=current_user.id,
+        receiver_id=team.leader_id,
+        title=f'新成员已添加：{student.real_name}',
+        content=f'{current_user.real_name} 将 {student.real_name} 添加到您的团队「{team.name}」',
+        notification_type='system'
+    )
+    
+    return jsonify({'success': True, 'message': '添加成功'})
+
+
+@bp.route('/teams/<int:team_id>/transfer_leader', methods=['POST'])
+@login_required
+@require_teacher_or_admin
+def transfer_team_leader(team_id):
+    """转移组长（API）"""
+    from flask import jsonify
+    
+    team = Team.query.get_or_404(team_id)
+    
+    # 检查权限
+    if not team.major_assignment.can_manage(current_user):
+        return jsonify({'success': False, 'message': '没有权限'}), 403
+    
+    data = request.get_json()
+    new_leader_id = data.get('new_leader_id')
+    
+    if not new_leader_id:
+        return jsonify({'success': False, 'message': '请选择新组长'}), 400
+    
+    new_leader_id = int(new_leader_id)
+    
+    # 检查新组长是否在团队中
+    member = TeamMember.query.filter_by(team_id=team_id, user_id=new_leader_id).first()
+    if not member:
+        return jsonify({'success': False, 'message': '新组长不在团队中'}), 400
+    
+    old_leader_id = team.leader_id
+    old_leader = team.leader
+    new_leader = member.user
+    
+    # 将旧组长添加为普通成员
+    old_leader_member = TeamMember(team_id=team_id, user_id=old_leader_id)
+    db.session.add(old_leader_member)
+    
+    # 删除新组长的成员记录
+    db.session.delete(member)
+    
+    # 更新组长
+    team.leader_id = new_leader_id
+    db.session.commit()
+    
+    # 通知旧组长
+    NotificationService.create_notification(
+        sender_id=current_user.id,
+        receiver_id=old_leader_id,
+        title=f'组长已转移：{team.name}',
+        content=f'{current_user.real_name} 将团队「{team.name}」的组长转移给 {new_leader.real_name}',
+        notification_type='system'
+    )
+    
+    # 通知新组长
+    NotificationService.create_notification(
+        sender_id=current_user.id,
+        receiver_id=new_leader_id,
+        title=f'您已成为组长：{team.name}',
+        content=f'{current_user.real_name} 将您设置为团队「{team.name}」的组长',
+        notification_type='system'
+    )
+    
+    return jsonify({'success': True, 'message': '转移成功'})

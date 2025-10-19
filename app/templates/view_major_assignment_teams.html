@@ -117,7 +117,7 @@
                 
                 {% if team.status == 'pending' %}
                 <div class="card-footer bg-light">
-                    <div class="btn-group w-100">
+                    <div class="d-flex gap-1 flex-wrap">
                         <form action="{{ url_for('major_assignment.confirm_team', team_id=team.id) }}" method="POST" style="display: inline;">
                             <button type="submit" class="btn btn-sm btn-success">
                                 <i class="fas fa-check me-1"></i>确认
@@ -126,12 +126,30 @@
                         <button class="btn btn-sm btn-danger" onclick="rejectTeam({{ team.id }})">
                             <i class="fas fa-times me-1"></i>拒绝
                         </button>
+                        <button class="btn btn-sm btn-warning" onclick="manageTeam({{ team.id }}, '{{ team.name }}')">
+                            <i class="fas fa-cog me-1"></i>管理
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="dissolveTeam({{ team.id }}, '{{ team.name }}')">
+                            <i class="fas fa-trash-alt me-1"></i>解散
+                        </button>
                     </div>
                 </div>
                 {% elif team.status == 'confirmed' %}
-                <div class="card-footer bg-light text-center text-success">
-                    <i class="fas fa-check-circle me-1"></i>
-                    已于 {{ team.confirmed_at|beijing_time }} 确认
+                <div class="card-footer bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-success">
+                            <i class="fas fa-check-circle me-1"></i>
+                            已于 {{ team.confirmed_at|beijing_time }} 确认
+                        </small>
+                        <div>
+                            <button class="btn btn-sm btn-outline-primary" onclick="manageTeam({{ team.id }}, '{{ team.name }}')">
+                                <i class="fas fa-cog me-1"></i>管理
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="dissolveTeam({{ team.id }}, '{{ team.name }}')">
+                                <i class="fas fa-trash-alt me-1"></i>解散
+                            </button>
+                        </div>
+                    </div>
                 </div>
                 {% endif %}
             </div>
@@ -170,6 +188,116 @@
     </div>
 </div>
 
+<!-- 解散团队模态框 -->
+<div class="modal fade" id="dissolveModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle me-2"></i>解散团队
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="dissolveForm" method="POST">
+                <div class="modal-body">
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        <strong>警告：</strong>解散团队后，所有成员关系将被清除，此操作不可恢复！
+                    </div>
+                    <p>确定要解散团队 <strong id="dissolveTeamName"></strong> 吗？</p>
+                    <div class="mb-3">
+                        <label class="form-label">解散原因（可选）</label>
+                        <textarea class="form-control" name="reason" rows="3" 
+                                  placeholder="请说明解散原因..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash-alt me-1"></i>确认解散
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 管理团队模态框 -->
+<div class="modal fade" id="manageModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-cog me-2"></i>管理团队：<span id="manageTeamName"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="currentTeamId">
+                
+                <!-- 移除成员 -->
+                <div class="mb-4">
+                    <h6 class="border-bottom pb-2">
+                        <i class="fas fa-user-minus me-2"></i>移除成员
+                    </h6>
+                    <div id="teamMembersList">
+                        <p class="text-muted">正在加载...</p>
+                    </div>
+                </div>
+                
+                <!-- 添加成员 -->
+                <div class="mb-4">
+                    <h6 class="border-bottom pb-2">
+                        <i class="fas fa-user-plus me-2"></i>添加成员
+                    </h6>
+                    <form id="addMemberForm">
+                        <div class="row">
+                            <div class="col-md-5">
+                                <input type="text" class="form-control" id="newMemberName" 
+                                       placeholder="请输入学生姓名" required>
+                            </div>
+                            <div class="col-md-5">
+                                <input type="text" class="form-control" id="newMemberNumber" 
+                                       placeholder="请输入学生学号" required>
+                            </div>
+                            <div class="col-md-2">
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="fas fa-plus"></i> 添加
+                                </button>
+                            </div>
+                        </div>
+                        <small class="text-muted">输入姓名和学号进行验证</small>
+                    </form>
+                </div>
+                
+                <!-- 转移组长 -->
+                <div class="mb-3">
+                    <h6 class="border-bottom pb-2">
+                        <i class="fas fa-exchange-alt me-2"></i>转移组长
+                    </h6>
+                    <form id="transferLeaderForm">
+                        <div class="row">
+                            <div class="col-md-10">
+                                <select class="form-select" id="newLeaderId" required>
+                                    <option value="">请选择新组长</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <button type="submit" class="btn btn-warning w-100">
+                                    <i class="fas fa-exchange-alt"></i> 转移
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 function rejectTeam(teamId) {
     const form = document.getElementById('rejectForm');
@@ -177,5 +305,173 @@ function rejectTeam(teamId) {
     const modal = new bootstrap.Modal(document.getElementById('rejectModal'));
     modal.show();
 }
+
+function dissolveTeam(teamId, teamName) {
+    const form = document.getElementById('dissolveForm');
+    form.action = `/teams/${teamId}/admin_dissolve`;
+    document.getElementById('dissolveTeamName').textContent = teamName;
+    const modal = new bootstrap.Modal(document.getElementById('dissolveModal'));
+    modal.show();
+}
+
+function manageTeam(teamId, teamName) {
+    document.getElementById('currentTeamId').value = teamId;
+    document.getElementById('manageTeamName').textContent = teamName;
+    
+    // 加载团队成员
+    fetch(`/teams/${teamId}/members`)
+        .then(response => response.json())
+        .then(data => {
+            const membersList = document.getElementById('teamMembersList');
+            const newLeaderSelect = document.getElementById('newLeaderId');
+            
+            if (data.members.length === 0) {
+                membersList.innerHTML = '<p class="text-muted">暂无成员（只有组长）</p>';
+                newLeaderSelect.innerHTML = '<option value="">暂无可转移的成员</option>';
+            } else {
+                // 渲染成员列表
+                let html = '<div class="list-group">';
+                data.members.forEach(member => {
+                    html += `
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>
+                                <i class="fas fa-user me-2"></i>
+                                ${member.real_name} (${member.student_id})
+                            </span>
+                            <button class="btn btn-sm btn-outline-danger" 
+                                    onclick="removeMember(${teamId}, ${member.id}, '${member.real_name}')">
+                                <i class="fas fa-times"></i> 移除
+                            </button>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                membersList.innerHTML = html;
+                
+                // 填充新组长选项
+                newLeaderSelect.innerHTML = '<option value="">请选择新组长</option>';
+                data.members.forEach(member => {
+                    newLeaderSelect.innerHTML += `<option value="${member.id}">${member.real_name} (${member.student_id})</option>`;
+                });
+            }
+            
+            // 显示组长信息
+            if (data.leader) {
+                membersList.insertAdjacentHTML('afterbegin', `
+                    <div class="alert alert-info mb-2">
+                        <i class="fas fa-crown text-warning me-2"></i>
+                        <strong>当前组长：</strong>${data.leader.real_name} (${data.leader.student_id})
+                    </div>
+                `);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('teamMembersList').innerHTML = 
+                '<p class="text-danger">加载失败，请重试</p>';
+        });
+    
+    const modal = new bootstrap.Modal(document.getElementById('manageModal'));
+    modal.show();
+}
+
+function removeMember(teamId, memberId, memberName) {
+    if (!confirm(`确定要移除成员 ${memberName} 吗？`)) {
+        return;
+    }
+    
+    fetch(`/teams/${teamId}/members/${memberId}/remove`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('移除成功！');
+            manageTeam(teamId, document.getElementById('manageTeamName').textContent);
+        } else {
+            alert('移除失败：' + (data.message || '未知错误'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('操作失败，请重试');
+    });
+}
+
+// 添加成员
+ document.getElementById('addMemberForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const teamId = document.getElementById('currentTeamId').value;
+    const name = document.getElementById('newMemberName').value;
+    const number = document.getElementById('newMemberNumber').value;
+    
+    fetch(`/teams/${teamId}/members/add`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            name: name,
+            number: number
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('添加成功！');
+            document.getElementById('newMemberName').value = '';
+            document.getElementById('newMemberNumber').value = '';
+            manageTeam(teamId, document.getElementById('manageTeamName').textContent);
+        } else {
+            alert('添加失败：' + (data.message || '未知错误'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('操作失败，请重试');
+    });
+});
+
+// 转移组长
+document.getElementById('transferLeaderForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const teamId = document.getElementById('currentTeamId').value;
+    const newLeaderId = document.getElementById('newLeaderId').value;
+    
+    if (!newLeaderId) {
+        alert('请选择新组长');
+        return;
+    }
+    
+    if (!confirm('确定要转移组长吗？')) {
+        return;
+    }
+    
+    fetch(`/teams/${teamId}/transfer_leader`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            new_leader_id: newLeaderId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('转移成功！');
+            location.reload();
+        } else {
+            alert('转移失败：' + (data.message || '未知错误'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('操作失败，请重试');
+    });
+});
 </script>
 {% endblock %}
