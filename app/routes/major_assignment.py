@@ -68,11 +68,13 @@ def create_major_assignment():
         due_date = None
         if due_date_str:
             try:
+                # 解析北京时间字符串
                 beijing_dt = datetime.strptime(due_date_str, '%Y-%m-%dT%H:%M')
-                beijing_aware = BEIJING_TZ.localize(beijing_dt)
+                # 将北京时间转换为UTC时间（北京时间-8小时）
+                beijing_aware = beijing_dt.replace(tzinfo=BEIJING_TZ)
                 due_date = beijing_aware.astimezone(timezone.utc).replace(tzinfo=None)
-            except:
-                flash('日期格式错误')
+            except Exception as e:
+                flash(f'日期格式错误: {str(e)}')
                 return redirect(url_for('major_assignment.create_major_assignment'))
         
         major_assignment = MajorAssignment(
@@ -256,10 +258,10 @@ def edit_major_assignment(assignment_id):
         if due_date_str:
             try:
                 beijing_dt = datetime.strptime(due_date_str, '%Y-%m-%dT%H:%M')
-                beijing_aware = BEIJING_TZ.localize(beijing_dt)
+                beijing_aware = beijing_dt.replace(tzinfo=BEIJING_TZ)
                 major_assignment.due_date = beijing_aware.astimezone(timezone.utc).replace(tzinfo=None)
-            except:
-                flash('日期格式错误')
+            except Exception as e:
+                flash(f'日期格式错误: {str(e)}')
                 return redirect(url_for('major_assignment.edit_major_assignment', assignment_id=assignment_id))
         
         db.session.commit()
