@@ -271,26 +271,42 @@
                         <!-- 检查是否已提交 -->
                         {% set submitted = my_submissions|selectattr('assignment_id', 'equalto', assignment.id)|list %}
                         {% if submitted %}
-                            <div class="alert alert-success py-2 mb-2">
-                                <i class="fas fa-check-circle me-1"></i>
-                                已提交 ({{ submitted[0].submitted_at|beijing_short }})
-                            </div>
+                            <!-- 检查是否有教师评分 -->
+                            {% set has_grade = submitted|selectattr('grade', 'ne', None)|list|length > 0 %}
+                            {% if has_grade %}
+                                <div class="alert alert-success py-2 mb-2">
+                                    <i class="fas fa-check-circle me-1"></i>
+                                    已提交 ({{ submitted[0].submitted_at|beijing_short }})
+                                    <span class="badge bg-success ms-2">
+                                        <i class="fas fa-star me-1"></i>已评分
+                                    </span>
+                                </div>
+                            {% else %}
+                                <div class="alert alert-info py-2 mb-2">
+                                    <i class="fas fa-check-circle me-1"></i>
+                                    已提交 ({{ submitted[0].submitted_at|beijing_short }})
+                                    <span class="badge bg-warning ms-2">
+                                        <i class="fas fa-clock me-1"></i>待评分
+                                    </span>
+                                </div>
+                            {% endif %}
                         {% endif %}
                     </div>
                     <div class="card-footer bg-transparent">
                         <div class="d-flex flex-wrap gap-2">
                             {% if not assignment.is_overdue() %}
                                 {% if submitted %}
+                                    {% set has_grade = submitted|selectattr('grade', 'ne', None)|list|length > 0 %}
                                     <a href="{{ url_for('submission.submit_assignment', assignment_id=assignment.id) }}" 
                                        class="btn btn-outline-primary flex-fill">
                                         <i class="fas fa-edit me-2"></i>
                                         重新提交
                                     </a>
                                     <a href="{{ url_for('submission.student_submission_history', assignment_id=assignment.id) }}" 
-                                       class="btn btn-outline-info flex-fill" 
-                                       title="查看提交记录和评分">
-                                        <i class="fas fa-history me-2"></i>
-                                        查看评分
+                                       class="btn {% if has_grade %}btn-success{% else %}btn-outline-info{% endif %} flex-fill" 
+                                       title="{% if has_grade %}查看提交记录和评分{% else %}查看提交记录{% endif %}">
+                                        <i class="fas fa-{% if has_grade %}star{% else %}clock{% endif %} me-2"></i>
+                                        {% if has_grade %}查看评分{% else %}待评分{% endif %}
                                     </a>
                                 {% else %}
                                     <a href="{{ url_for('submission.submit_assignment', assignment_id=assignment.id) }}" 
@@ -301,11 +317,12 @@
                                 {% endif %}
                             {% else %}
                                 {% if submitted %}
+                                    {% set has_grade = submitted|selectattr('grade', 'ne', None)|list|length > 0 %}
                                     <a href="{{ url_for('submission.student_submission_history', assignment_id=assignment.id) }}" 
-                                       class="btn btn-outline-info flex-fill" 
-                                       title="查看提交记录和评分">
-                                        <i class="fas fa-history me-2"></i>
-                                        查看评分
+                                       class="btn {% if has_grade %}btn-success{% else %}btn-outline-info{% endif %} flex-fill" 
+                                       title="{% if has_grade %}查看提交记录和评分{% else %}查看提交记录{% endif %}">
+                                        <i class="fas fa-{% if has_grade %}star{% else %}clock{% endif %} me-2"></i>
+                                        {% if has_grade %}查看评分{% else %}待评分{% endif %}
                                     </a>
                                 {% else %}
                                     <button class="btn btn-secondary flex-fill" disabled>

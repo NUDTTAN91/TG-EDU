@@ -1017,6 +1017,9 @@ def admin_dissolve_team(team_id):
     # 删除所有邀请
     TeamInvitation.query.filter_by(team_id=team.id).delete()
     
+    # 删除所有退组请求
+    LeaveTeamRequest.query.filter_by(team_id=team.id).delete()
+    
     # 删除所有解散请求
     DissolveTeamRequest.query.filter_by(team_id=team.id).delete()
     
