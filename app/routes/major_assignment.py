@@ -120,6 +120,20 @@ def create_major_assignment():
         db.session.add(major_assignment)
         db.session.commit()
         
+        # 发送通知给班级学生
+        class_obj = Class.query.get(class_id)
+        if class_obj:
+            students = class_obj.students
+            for student in students:
+                NotificationService.create_notification(
+                    sender_id=current_user.id,
+                    receiver_id=student.id,
+                    title=f'新大作业：{title}',
+                    content=f'{current_user.real_name} 老师布置了新大作业「{title}」，请组建{min_team_size}-{max_team_size}人团队。' + 
+                            (f' 截止时间：{to_beijing_time(due_date).strftime("%Y-%m-%d %H:%M")}' if due_date else ''),
+                    notification_type='major_assignment'
+                )
+        
         flash('大作业布置成功！')
         return redirect(url_for('major_assignment.major_assignment_dashboard'))
     

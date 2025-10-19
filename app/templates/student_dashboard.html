@@ -201,6 +201,98 @@
     </div>
 {% endif %}
 
+<!-- 大作业列表 -->
+{% if major_assignments %}
+<div class="row mb-4 mt-5">
+    <div class="col-12">
+        <h2 class="fw-bold">
+            <i class="fas fa-project-diagram me-2" style="color: var(--accent-color);"></i>
+            大作业
+        </h2>
+    </div>
+</div>
+
+<div class="row">
+    {% for ma in major_assignments %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card assignment-card h-100 border-primary">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 fw-bold"><i class="fas fa-users me-1"></i>{{ ma.title }}</h6>
+                    {% if ma.due_date %}
+                        <span class="badge bg-warning">进行中</span>
+                    {% else %}
+                        <span class="badge bg-success">无截止时间</span>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    {% if ma.description %}
+                        <p class="card-text text-muted mb-3">
+                            {{ ma.description[:100] }}{% if ma.description|length > 100 %}...{% endif %}
+                        </p>
+                    {% endif %}
+                    
+                    <div class="mb-2">
+                        <small class="text-muted">
+                            <i class="fas fa-school me-1"></i>
+                            <strong>班级:</strong> {{ ma.class_info.name }}
+                        </small>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <small class="text-muted">
+                            <i class="fas fa-users me-1"></i>
+                            <strong>组队人数:</strong> {{ ma.min_team_size }} - {{ ma.max_team_size }} 人
+                        </small>
+                    </div>
+                    
+                    {% if ma.due_date %}
+                        <div class="mb-3">
+                            <small class="text-muted">
+                                <i class="fas fa-clock me-1"></i>
+                                <strong>截止时间:</strong> {{ ma.due_date|beijing_time }}
+                            </small>
+                        </div>
+                    {% endif %}
+                    
+                    <!-- 查找我的团队 -->
+                    {% set my_team = None %}
+                    {% for team in ma.teams %}
+                        {% if team.leader_id == current_user.id %}
+                            {% set my_team = team %}
+                        {% else %}
+                            {% for member in team.members %}
+                                {% if member.user_id == current_user.id %}
+                                    {% set my_team = team %}
+                                {% endif %}
+                            {% endfor %}
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if my_team %}
+                        <div class="alert alert-success py-2 mb-2">
+                            <i class="fas fa-users me-1"></i>
+                            已加入团队: {{ my_team.name }}
+                            {% if my_team.status == 'confirmed' %}
+                                <span class="badge bg-success ms-1">已确认</span>
+                            {% else %}
+                                <span class="badge bg-warning ms-1">待确认</span>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="card-footer bg-transparent">
+                    <a href="{{ url_for('major_assignment.student_major_assignment_detail', assignment_id=ma.id) }}" 
+                       class="btn btn-primary w-100">
+                        <i class="fas fa-arrow-right me-2"></i>
+                        {% if my_team %}查看团队{% else %}组建团队{% endif %}
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+{% endif %}
+
 {% endblock %}
 
 {% block scripts %}

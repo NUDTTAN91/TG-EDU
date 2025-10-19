@@ -3,6 +3,7 @@ from flask import Blueprint, render_template
 from flask_login import login_required, current_user
 from sqlalchemy import or_
 from app.models import Assignment, Submission, UserRole
+from app.models.team import MajorAssignment
 from app.utils import require_role
 
 bp = Blueprint('student', __name__, url_prefix='/student')
@@ -25,12 +26,19 @@ def dashboard():
                 Assignment.class_id.is_(None)
             )
         ).order_by(Assignment.created_at.desc()).limit(100).all()
+        
+        # 获取大作业
+        major_assignments = MajorAssignment.query.filter(
+            MajorAssignment.class_id.in_(class_ids),
+            MajorAssignment.is_active == True
+        ).order_by(MajorAssignment.created_at.desc()).all()
     else:
         # 如果学生没有分配到任何班级，只显示公共作业
         assignments = Assignment.query.filter(
             Assignment.class_id.is_(None),
             Assignment.is_active == True
         ).order_by(Assignment.created_at.desc()).limit(100).all()
+        major_assignments = []
     
     # 获取用户的提交记录（限制最近50条）
     my_submissions = Submission.query.filter_by(
@@ -39,4 +47,5 @@ def dashboard():
     
     return render_template('student_dashboard.html',
                          assignments=assignments,
+                         major_assignments=major_assignments,
                          my_submissions=my_submissions)

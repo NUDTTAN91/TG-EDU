@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from collections import defaultdict
 from app.extensions import db
 from app.models import Assignment, Class, User, UserRole, Submission, AssignmentGrade
-from app.services import FileService
+from app.services import FileService, NotificationService
 from app.utils import require_teacher_or_admin, to_beijing_time
 from sqlalchemy import func
 
@@ -108,6 +108,34 @@ def create_assignment():
         
         db.session.add(assignment)
         db.session.commit()
+        
+        # 发送通知给学生
+        if class_id:
+            # 特定班级的作业，通知该班级的所有学生
+            selected_class = Class.query.get(class_id)
+            students = selected_class.students
+            for student in students:
+                NotificationService.create_notification(
+                    sender_id=current_user.id,
+                    receiver_id=student.id,
+                    title=f'新作业：{title}',
+                    content=f'{current_user.real_name} 老师布置了新作业「{title}」。' + 
+                            (f'截止时间：{to_beijing_time(due_date).strftime("%Y-%m-%d %H:%M")}' if due_date else '无截止时间'),
+                    notification_type='assignment'
+                )
+        else:
+            # 公共作业，通知所有学生
+            all_students = User.query.filter_by(role=UserRole.STUDENT).all()
+            for student in all_students:
+                NotificationService.create_notification(
+                    sender_id=current_user.id,
+                    receiver_id=student.id,
+                    title=f'新作业：{title}',
+                    content=f'{current_user.real_name} 老师布置了新作业「{title}」。' + 
+                            (f'截止时间：{to_beijing_time(due_date).strftime("%Y-%m-%d %H:%M")}' if due_date else '无截止时间'),
+                    notification_type='assignment'
+                )
+        
         flash('作业创建成功')
         
         if current_user.is_super_admin:
