@@ -81,6 +81,28 @@ def register_filters(app):
             return ''
         from markupsafe import Markup
         return Markup(text.replace('\n', '<br>'))
+    
+    @app.template_filter('filesize')
+    def filesize_filter(size_bytes):
+        """智能格式化文件大小"""
+        if not size_bytes or size_bytes == 0:
+            return '0 B'
+        
+        # 定义单位
+        units = ['B', 'KB', 'MB', 'GB', 'TB']
+        unit_index = 0
+        size = float(size_bytes)
+        
+        # 找到合适的单位
+        while size >= 1024 and unit_index < len(units) - 1:
+            size /= 1024
+            unit_index += 1
+        
+        # 格式化：小于1KB显示整数字节，其他显示1位小数
+        if unit_index == 0:
+            return f'{int(size)} {units[unit_index]}'
+        else:
+            return f'{size:.1f} {units[unit_index]}'
 
 
 def register_context_processors(app):

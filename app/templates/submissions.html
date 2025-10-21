@@ -1,7 +1,5 @@
 {% extends "base.html" %}
-
 {% block title %}作业提交列表 - {{ assignment.title }}{% endblock %}
-
 {% block content %}
 <div class="row">
     <div class="col-md-12">
@@ -12,14 +10,12 @@
             </div>
             <a href="{% if current_user.is_super_admin %}{{ url_for('admin.super_admin_dashboard') }}{% else %}{{ url_for('admin.teacher_dashboard') }}{% endif %}" class="btn btn-secondary">返回管理后台</a>
         </div>
-        
         {% if assignment.description %}
             <div class="alert alert-info mb-4">
                 <h6>作业要求:</h6>
                 <p class="mb-0">{{ assignment.description|nl2br|safe }}</p>
             </div>
         {% endif %}
-        
         <!-- 附件信息 -->
         {% if assignment.attachment_file_path %}
             <div class="alert alert-success mb-4">
@@ -32,7 +28,6 @@
                 </a>
             </div>
         {% endif %}
-        
         {% if student_stats %}
             <div class="table-responsive">
                 <table class="table table-striped table-hover">

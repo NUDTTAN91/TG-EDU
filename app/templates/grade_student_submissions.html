@@ -116,7 +116,7 @@
                                 <td>
                                     <small class="text-muted">
                                         {% if submission.file_size %}
-                                            {{ "%.1f"|format(submission.file_size / 1024 / 1024) }} MB
+                                            {{ submission.file_size|filesize }}
                                         {% else %}
                                             未知
                                         {% endif %}
@@ -270,7 +270,7 @@
                             <p><strong>文件名：</strong> {{ submission.original_filename }}</p>
                             <p><strong>文件大小：</strong> 
                                 {% if submission.file_size %}
-                                    {{ "%.1f"|format(submission.file_size / 1024 / 1024) }} MB
+                                    {{ submission.file_size|filesize }}
                                 {% else %}
                                     未知
                                 {% endif %}

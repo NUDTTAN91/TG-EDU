@@ -56,7 +56,7 @@ def submit_assignment(assignment_id):
             student_classes = [c.id for c in current_user.classes]
             if assignment.class_id not in student_classes:
                 flash('很抱歉，您不在此作业的指定班级中，无法提交')
-                return redirect(url_for('student.student_dashboard'))
+                return redirect(url_for('student.dashboard'))
     
     if request.method == 'POST':
         # 再次检查作业是否已过截止时间（防止用户在提交过程中过期）
@@ -64,7 +64,7 @@ def submit_assignment(assignment_id):
             if request.headers.get('Content-Type', '').startswith('multipart/form-data'):
                 return jsonify({'success': False, 'message': '很抱歉，该作业已过截止时间，无法提交'}), 400
             flash('很抱歉，该作业已过截止时间，无法提交')
-            return redirect(url_for('student.student_dashboard') if logged_in_student else url_for('main.index'))
+            return redirect(url_for('student.dashboard') if logged_in_student else url_for('main.index'))
         
         # 优先使用登录用户信息
         if logged_in_student:
@@ -79,7 +79,7 @@ def submit_assignment(assignment_id):
         # 检查是否还能提交
         if logged_in_student and not assignment.can_student_submit(student_user_id):
             flash(f'您已达到该作业的最大提交次数限制 ({assignment.max_submissions}次)')
-            return redirect(url_for('student.student_dashboard'))
+            return redirect(url_for('student.dashboard'))
         
         notes = request.form.get('notes', '')
         
@@ -172,7 +172,7 @@ def submit_assignment(assignment_id):
                     return jsonify({
                         'success': True, 
                         'message': '作业提交成功',
-                        'redirect_url': url_for('student.student_dashboard') if logged_in_student else url_for('main.index')
+                        'redirect_url': url_for('student.dashboard') if logged_in_student else url_for('main.index')
                     })
                 else:
                     # 普通表单提交
@@ -180,7 +180,7 @@ def submit_assignment(assignment_id):
                     
                     # 根据用户状态重定向
                     if logged_in_student:
-                        return redirect(url_for('student.student_dashboard'))
+                        return redirect(url_for('student.dashboard'))
                     else:
                         return redirect(url_for('main.index'))
                         
@@ -228,7 +228,7 @@ def student_submission_history(assignment_id):
         class_obj = Class.query.get(assignment.class_id)
         if current_user not in class_obj.students:
             flash('您没有权限查看此作业')
-            return redirect(url_for('student.student_dashboard'))
+            return redirect(url_for('student.dashboard'))
     
     # 获取学生的所有提交记录，按提交时间降序排列
     submission_history = Submission.query.filter_by(
@@ -270,7 +270,7 @@ def student_submission_history_with_student_id(assignment_id, student_id):
         # 学生只能查看自己的记录
         if current_user.id != student_id:
             flash('您没有权限查看其他学生的提交记录')
-            return redirect(url_for('student.student_dashboard'))
+            return redirect(url_for('student.dashboard'))
     elif not (current_user.is_super_admin or current_user.is_teacher):
         flash('您没有权限查看此内容')
         return redirect(url_for('main.index'))
@@ -304,25 +304,56 @@ def student_submission_history_with_student_id(assignment_id, student_id):
 
 @bp.route('/download/<int:submission_id>')
 @login_required
-@require_teacher_or_admin
 def download_file(submission_id):
     """下载学生提交的作业文件"""
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.warning(f"download_file called: submission_id={submission_id}, user={current_user.username if current_user.is_authenticated else 'anonymous'}")
+    
     submission = Submission.query.get_or_404(submission_id)
     assignment = Assignment.query.get(submission.assignment_id)
     
-    # 权限检查：使用统一的权限检查函数
-    if not can_manage_assignment(current_user, assignment):
-        flash('您没有权限下载此文件')
-        return redirect(url_for('admin.teacher_dashboard' if current_user.is_teacher else 'admin.super_admin_dashboard'))
+    logger.warning(f"Submission found: id={submission.id}, assignment_id={assignment.id}")
+    logger.warning(f"Current user: username={current_user.username}, is_super_admin={current_user.is_super_admin}, is_teacher={current_user.is_teacher}")
     
-    # 检查文件是否存在
-    if not os.path.exists(submission.file_path):
+    # 权限检查：教师/管理员可以下载所有文件，学生只能下载自己的文件
+    can_download = False
+    
+    # 检查是否是教师或管理员
+    if can_manage_assignment(current_user, assignment):
+        can_download = True
+        logger.warning("User can manage assignment - download allowed")
+    # 检查是否是提交文件的学生本人
+    elif current_user.is_student and submission.student_id == current_user.id:
+        can_download = True
+        logger.warning("User is the student who submitted - download allowed")
+    else:
+        logger.warning(f"Download NOT allowed: is_student={current_user.is_student}, submission.student_id={submission.student_id}, current_user.id={current_user.id}")
+    
+    if not can_download:
+        logger.warning("Access denied - redirecting")
+        flash('您没有权限下载此文件')
+        if current_user.is_teacher:
+            return redirect(url_for('admin.teacher_dashboard'))
+        elif current_user.is_super_admin:
+            return redirect(url_for('admin.super_admin_dashboard'))
+        else:
+            return redirect(url_for('student.dashboard'))
+    
+    logger.warning(f"Checking file existence: {submission.file_path}")
+    # 检查文件是否存在（转换为绝对路径）
+    file_path = os.path.abspath(submission.file_path) if not os.path.isabs(submission.file_path) else submission.file_path
+    
+    if not os.path.exists(file_path):
+        logger.warning(f"File NOT found: {file_path}")
         flash('文件不存在或已被删除')
         return redirect(url_for('assignment.view_submissions', assignment_id=assignment.id))
     
-    # 获取文件的目录和文件名
-    file_directory = os.path.dirname(submission.file_path)
-    filename = os.path.basename(submission.file_path)
+    logger.warning(f"File exists at: {file_path}")
+    # 获取文件的目录和文件名（使用绝对路径）
+    file_directory = os.path.dirname(file_path)
+    filename = os.path.basename(file_path)
+    logger.warning(f"File directory: {file_directory}, filename: {filename}")
     
     # 安全处理下载文件名，确保HTTP头兼容性
     try:
@@ -336,40 +367,66 @@ def download_file(submission_id):
             safe_download_name = f"submission_{submission.id}{file_ext}"
         else:
             safe_download_name = submission.original_filename
-    except:
+    except Exception as e:
+        logger.warning(f"Error encoding filename: {e}")
         # 出现任何编码问题时，使用备用文件名
         file_ext = os.path.splitext(submission.original_filename)[1]
         safe_download_name = f"submission_{submission.id}{file_ext}"
     
-    return send_from_directory(
-        file_directory,
-        filename,
-        as_attachment=True,
-        download_name=safe_download_name
-    )
+    logger.warning(f"Sending file: download_name={safe_download_name}")
+    try:
+        response = send_from_directory(
+            file_directory,
+            filename,
+            as_attachment=True,
+            download_name=safe_download_name
+        )
+        logger.warning(f"File sent successfully")
+        return response
+    except Exception as e:
+        logger.error(f"Error sending file: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        flash(f'文件下载失败: {str(e)}')
+        return redirect(url_for('assignment.view_submissions', assignment_id=assignment.id))
 
 
 @bp.route('/preview/<int:submission_id>')
 @login_required
-@require_teacher_or_admin
 def preview_file(submission_id):
     """预览文件（主要用于PDF）"""
     submission = Submission.query.get_or_404(submission_id)
     assignment = Assignment.query.get(submission.assignment_id)
     
-    # 权限检查：使用统一的权限检查函数
-    if not can_manage_assignment(current_user, assignment):
-        flash('您没有权限预览此文件')
-        return redirect(url_for('admin.teacher_dashboard' if current_user.is_teacher else 'admin.super_admin_dashboard'))
+    # 权限检查：教师/管理员可以预览所有文件，学生只能预览自己的文件
+    can_preview = False
     
-    # 检查文件是否存在
-    if not os.path.exists(submission.file_path):
+    # 检查是否是教师或管理员
+    if can_manage_assignment(current_user, assignment):
+        can_preview = True
+    # 检查是否是提交文件的学生本人
+    elif current_user.is_student and submission.student_id == current_user.id:
+        can_preview = True
+    
+    if not can_preview:
+        flash('您没有权限预览此文件')
+        if current_user.is_teacher:
+            return redirect(url_for('admin.teacher_dashboard'))
+        elif current_user.is_super_admin:
+            return redirect(url_for('admin.super_admin_dashboard'))
+        else:
+            return redirect(url_for('student.dashboard'))
+    
+    # 检查文件是否存在（转换为绝对路径）
+    file_path = os.path.abspath(submission.file_path) if not os.path.isabs(submission.file_path) else submission.file_path
+    
+    if not os.path.exists(file_path):
         flash('文件不存在或已被删除')
         return redirect(url_for('assignment.view_submissions', assignment_id=assignment.id))
     
-    # 获取文件的目录和文件名
-    file_directory = os.path.dirname(submission.file_path)
-    filename = os.path.basename(submission.file_path)
+    # 获取文件的目录和文件名（使用绝对路径）
+    file_directory = os.path.dirname(file_path)
+    filename = os.path.basename(file_path)
     
     # 如果是PDF文件，返回适合浏览器预览的格式
     if submission.is_pdf():
