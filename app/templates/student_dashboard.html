@@ -113,11 +113,7 @@
                         <i class="fas fa-users me-1"></i>{{ ma.title }}
                         <span class="badge bg-warning ms-1" style="font-size: 0.7rem;">团队</span>
                     </h6>
-                    {% if ma.due_date %}
-                        <span class="badge bg-light text-dark">进行中</span>
-                    {% else %}
-                        <span class="badge bg-light text-dark">无截止时间</span>
-                    {% endif %}
+                    <span class="badge bg-light text-dark">进行中</span>
                 </div>
                 <div class="card-body">
                     {% if ma.description %}

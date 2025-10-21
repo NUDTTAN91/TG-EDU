@@ -124,6 +124,10 @@
                             {% set all_links = major_assignment.get_all_links() %}
                             
                             {% if all_attachments or all_links %}
+                            <div class="alert alert-info py-2 mb-3">
+                                <i class="fas fa-info-circle me-1"></i>
+                                <strong>提示：</strong>点击“删除”按钮后，文件/链接会在页面上消失，但需要点击底部的“保存修改”按钮才会真正删除。如果点击“返回”，则不会删除。
+                            </div>
                             <!-- 附件列表 -->
                             {% if all_attachments %}
                             <div class="card mb-3">
@@ -151,10 +155,13 @@
                                                 {% endif %}
                                             </div>
                                             {% if not attachment.is_old %}
-                                            <div class="form-check">
-                                                <input type="checkbox" class="form-check-input" 
-                                                       name="delete_attachments" value="{{ attachment.id }}">
-                                                <label class="form-check-label text-danger">删除</label>
+                                            <div>
+                                                <input type="checkbox" class="form-check-input d-none" 
+                                                       name="delete_attachments" value="{{ attachment.id }}" id="delete_att_{{ attachment.id }}">
+                                                <button type="button" class="btn btn-sm btn-danger" 
+                                                        onclick="markForDeletion('delete_att_{{ attachment.id }}', this)">
+                                                    <i class="fas fa-trash-alt me-1"></i>删除此文件
+                                                </button>
                                             </div>
                                             {% endif %}
                                         </div>
@@ -184,10 +191,13 @@
                                                 {% endif %}
                                             </div>
                                             {% if not link.is_old %}
-                                            <div class="form-check">
-                                                <input type="checkbox" class="form-check-input" 
-                                                       name="delete_links" value="{{ link.id }}">
-                                                <label class="form-check-label text-danger">删除</label>
+                                            <div>
+                                                <input type="checkbox" class="form-check-input d-none" 
+                                                       name="delete_links" value="{{ link.id }}" id="delete_link_{{ link.id }}">
+                                                <button type="button" class="btn btn-sm btn-danger" 
+                                                        onclick="markForDeletion('delete_link_{{ link.id }}', this)">
+                                                    <i class="fas fa-trash-alt me-1"></i>删除此链接
+                                                </button>
                                             </div>
                                             {% endif %}
                                         </div>
@@ -363,6 +373,34 @@ function removeLinkInput(id) {
 
 // 全局函数，供按钮调用
 window.removeLinkInput = removeLinkInput;
+
+// 标记删除函数（前端隐藏，后端真实删除）
+function markForDeletion(checkboxId, button) {
+    const checkbox = document.getElementById(checkboxId);
+    const listItem = button.closest('.list-group-item');
+    
+    if (checkbox && listItem) {
+        // 勾选隐藏的checkbox
+        checkbox.checked = true;
+        
+        // 添加删除动画并隐藏
+        listItem.style.opacity = '0.5';
+        listItem.style.transition = 'opacity 0.3s';
+        
+        setTimeout(() => {
+            listItem.style.display = 'none';
+        }, 300);
+        
+        // 改变按钮文字提示
+        button.innerHTML = '<i class="fas fa-undo me-1"></i>已标记删除';
+        button.classList.remove('btn-danger');
+        button.classList.add('btn-secondary');
+        button.disabled = true;
+    }
+}
+
+// 全局函数
+window.markForDeletion = markForDeletion;
 
 if (addLinkBtn) {
     addLinkBtn.addEventListener('click', addLinkInput);

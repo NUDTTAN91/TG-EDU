@@ -660,6 +660,16 @@ def invite_team_members(team_id):
         flash('只有组长才能邀请成员')
         return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=team.major_assignment_id))
     
+    # 检查分组阶段是否已完成
+    team_formation_stage = Stage.query.filter_by(
+        major_assignment_id=team.major_assignment_id,
+        stage_type='team_formation'
+    ).first()
+    
+    if team_formation_stage and team_formation_stage.status == 'completed':
+        flash('当前操作不在阶段，请联系管理员或老师')
+        return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=team.major_assignment_id))
+    
     # 检查团队是否已锁定
     if team.is_locked:
         flash('团队已锁定，无法邀请成员。请联系老师调整')
@@ -1240,6 +1250,16 @@ def request_dissolve_team(team_id):
     # 检查是否是组长
     if team.leader_id != current_user.id:
         flash('只有组长才能申请解散团队')
+        return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=team.major_assignment_id))
+    
+    # 检查分组阶段是否已完成
+    team_formation_stage = Stage.query.filter_by(
+        major_assignment_id=team.major_assignment_id,
+        stage_type='team_formation'
+    ).first()
+    
+    if team_formation_stage and team_formation_stage.status == 'completed':
+        flash('当前操作不在阶段，请联系管理员或老师')
         return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=team.major_assignment_id))
     
     # 检查是否已有待处理的解散请求

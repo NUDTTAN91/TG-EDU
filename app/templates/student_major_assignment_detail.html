@@ -337,10 +337,15 @@
                     <div class="mb-3">
                         <h6>组长操作</h6>
                         
+                        <!-- 检查分组阶段是否已完成 -->
+                        {% set team_formation_stage = all_stages|selectattr('stage_type', 'equalto', 'team_formation')|list|first %}
+                        {% set is_team_formation_completed = team_formation_stage and team_formation_stage.status == 'completed' %}
+                        
                         <!-- 检查是否锁定 -->
                         {% if not my_team.is_locked %}
-                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#inviteModal">
-                            <i class="fas fa-user-plus me-1"></i>邀请成员
+                        <button class="btn btn-primary" {% if is_team_formation_completed %}disabled{% endif %} 
+                                {% if is_team_formation_completed %}onclick="alert('当前操作不在阶段，请联系管理员或老师'); return false;"{% else %}data-bs-toggle="modal" data-bs-target="#inviteModal"{% endif %}>
+                            <i class="fas fa-user-plus me-1"></i>邀请成员{% if is_team_formation_completed %}（已结束）{% endif %}
                         </button>
                         {% else %}
                         <button class="btn btn-secondary" disabled title="团队已锁定，无法邀请成员">
@@ -348,8 +353,9 @@
                         </button>
                         {% endif %}
                         
-                        <button class="btn btn-danger ms-2" data-bs-toggle="modal" data-bs-target="#dissolveModal">
-                            <i class="fas fa-trash-alt me-1"></i>解散团队
+                        <button class="btn btn-danger ms-2" {% if is_team_formation_completed %}disabled{% endif %}
+                                {% if is_team_formation_completed %}onclick="alert('当前操作不在阶段，请联系管理员或老师'); return false;"{% else %}data-bs-toggle="modal" data-bs-target="#dissolveModal"{% endif %}>
+                            <i class="fas fa-trash-alt me-1"></i>解散团队{% if is_team_formation_completed %}（已结束）{% endif %}
                         </button>
                         
                         <button class="btn btn-info ms-2" data-bs-toggle="modal" data-bs-target="#invitationRecordsModal">
