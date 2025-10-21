@@ -108,37 +108,49 @@
                             </div>
                         </div>
 
-                        <!-- 作业要求（文件或链接） -->
+                        <!-- 作业要求（多附件和多链接） -->
                         <div class="mb-3">
                             <label class="form-label">
-                                <i class="fas fa-file-alt me-1"></i>作业要求 <span class="text-danger">*</span>
+                                <i class="fas fa-file-alt me-1"></i>作业要求资料
                             </label>
-                            <div class="mb-2">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="requirement_type" 
-                                           id="req_file" value="file" checked onclick="toggleRequirementType('file')">
-                                    <label class="form-check-label" for="req_file">
-                                        上传文件
-                                    </label>
+                            <small class="text-muted d-block mb-2">可以同时上传多个附件和添加多个链接</small>
+                            
+                            <!-- 附件上传区域 -->
+                            <div class="card mb-3">
+                                <div class="card-header bg-light">
+                                    <strong><i class="fas fa-paperclip me-1"></i>附件文件</strong>
                                 </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="requirement_type" 
-                                           id="req_url" value="url" onclick="toggleRequirementType('url')">
-                                    <label class="form-check-label" for="req_url">
-                                        提供链接
-                                    </label>
+                                <div class="card-body">
+                                    <input type="file" class="form-control mb-2" id="requirement_files" 
+                                           name="requirement_files" multiple>
+                                    <small class="form-text text-muted">
+                                        <i class="fas fa-info-circle"></i> 支持PDF、Word、图片等格式，可以同时选择多个文件
+                                    </small>
+                                    
+                                    <!-- 已选文件列表 -->
+                                    <div id="selected_files_list" class="mt-2" style="display: none;">
+                                        <label class="form-label small text-muted">已选择的文件:</label>
+                                        <ul id="files_preview" class="list-group list-group-flush"></ul>
+                                    </div>
                                 </div>
                             </div>
                             
-                            <div id="file_upload_section">
-                                <input type="file" class="form-control" id="requirement_file" name="requirement_file">
-                                <small class="form-text text-muted">支持PDF、Word、图片等格式</small>
-                            </div>
-                            
-                            <div id="url_input_section" style="display: none;">
-                                <input type="url" class="form-control" id="requirement_url" 
-                                       name="requirement_url" placeholder="https://example.com/assignment">
-                                <small class="form-text text-muted">请输入完整的URL地址</small>
+                            <!-- 链接输入区域 -->
+                            <div class="card">
+                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                    <strong><i class="fas fa-link me-1"></i>参考链接</strong>
+                                    <button type="button" class="btn btn-sm btn-primary" id="add_link_btn">
+                                        <i class="fas fa-plus"></i> 添加链接
+                                    </button>
+                                </div>
+                                <div class="card-body">
+                                    <div id="links_container">
+                                        <!-- 链接输入项将在这里动态添加 -->
+                                    </div>
+                                    <small class="form-text text-muted">
+                                        <i class="fas fa-info-circle"></i> 可以添加多个参考链接，每个链接可以设置标题
+                                    </small>
+                                </div>
                             </div>
                         </div>
 
@@ -245,25 +257,82 @@
 </div>
 
 <script>
-function toggleRequirementType(type) {
-    const fileSection = document.getElementById('file_upload_section');
-    const urlSection = document.getElementById('url_input_section');
-    const fileInput = document.getElementById('requirement_file');
-    const urlInput = document.getElementById('requirement_url');
-    
-    if (type === 'file') {
-        fileSection.style.display = 'block';
-        urlSection.style.display = 'none';
-        fileInput.required = true;
-        urlInput.required = false;
-        urlInput.value = '';
-    } else {
-        fileSection.style.display = 'none';
-        urlSection.style.display = 'block';
-        fileInput.required = false;
-        urlInput.required = true;
-        fileInput.value = '';
+// 文件选择预览
+const fileInput = document.getElementById('requirement_files');
+const filesListDiv = document.getElementById('selected_files_list');
+const filesPreview = document.getElementById('files_preview');
+
+if (fileInput) {
+    fileInput.addEventListener('change', function() {
+        if (this.files.length > 0) {
+            filesListDiv.style.display = 'block';
+            filesPreview.innerHTML = '';
+            
+            Array.from(this.files).forEach((file, index) => {
+                const li = document.createElement('li');
+                li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                
+                const fileSize = file.size < 1024 * 1024 
+                    ? (file.size / 1024).toFixed(1) + ' KB' 
+                    : (file.size / 1024 / 1024).toFixed(1) + ' MB';
+                
+                li.innerHTML = `
+                    <span>
+                        <i class="fas fa-file me-2"></i>${file.name}
+                        <small class="text-muted ms-2">(${fileSize})</small>
+                    </span>
+                `;
+                filesPreview.appendChild(li);
+            });
+        } else {
+            filesListDiv.style.display = 'none';
+        }
+    });
+}
+
+// 链接管理
+let linkCounter = 0;
+const linksContainer = document.getElementById('links_container');
+const addLinkBtn = document.getElementById('add_link_btn');
+
+function addLinkInput() {
+    linkCounter++;
+    const linkDiv = document.createElement('div');
+    linkDiv.className = 'link-input-group mb-3 p-3 border rounded';
+    linkDiv.id = `link_${linkCounter}`;
+    linkDiv.innerHTML = `
+        <div class="d-flex justify-content-between align-items-start mb-2">
+            <strong class="text-muted">链接 ${linkCounter}</strong>
+            <button type="button" class="btn btn-sm btn-danger" onclick="removeLinkInput(${linkCounter})">
+                <i class="fas fa-trash"></i> 删除
+            </button>
+        </div>
+        <div class="mb-2">
+            <label class="form-label small">链接标题</label>
+            <input type="text" class="form-control" name="requirement_url_titles" 
+                   placeholder="例如：项目要求文档">
+        </div>
+        <div>
+            <label class="form-label small">链接地址 <span class="text-danger">*</span></label>
+            <input type="url" class="form-control" name="requirement_urls" 
+                   placeholder="https://example.com" required>
+        </div>
+    `;
+    linksContainer.appendChild(linkDiv);
+}
+
+function removeLinkInput(id) {
+    const linkDiv = document.getElementById(`link_${id}`);
+    if (linkDiv) {
+        linkDiv.remove();
     }
+}
+
+// 全局函数，供按钮调用
+window.removeLinkInput = removeLinkInput;
+
+if (addLinkBtn) {
+    addLinkBtn.addEventListener('click', addLinkInput);
 }
 
 // 教师选择功能

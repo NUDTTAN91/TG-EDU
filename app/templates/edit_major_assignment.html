@@ -114,63 +114,137 @@
                             </div>
                         </div>
 
-                        <!-- 当前作业要求 -->
-                        {% if major_assignment.requirement_file_path or major_assignment.requirement_url %}
-                        <div class="alert alert-info mb-3">
-                            <strong>当前作业要求：</strong><br>
-                            {% if major_assignment.requirement_file_path %}
-                            <i class="fas fa-file me-1"></i>文件：{{ major_assignment.requirement_file_name }}
-                            <a href="{{ url_for('major_assignment.download_major_assignment_requirement', assignment_id=major_assignment.id) }}" 
-                               class="btn btn-sm btn-outline-primary ms-2">
-                                <i class="fas fa-download"></i> 下载
-                            </a>
-                            {% elif major_assignment.requirement_url %}
-                            <i class="fas fa-link me-1"></i>链接：
-                            <a href="{{ major_assignment.requirement_url }}" target="_blank">
-                                {{ major_assignment.requirement_url }}
-                            </a>
-                            {% endif %}
-                        </div>
-                        {% endif %}
-
-                        <!-- 更新作业要求（文件或链接） -->
+                        <!-- 已有附件和链接 -->
                         <div class="mb-3">
                             <label class="form-label">
-                                <i class="fas fa-file-alt me-1"></i>更新作业要求（可选）
+                                <i class="fas fa-paperclip me-1"></i>当前作业资料
                             </label>
-                            <div class="mb-2">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="requirement_type" 
-                                           id="req_file" value="file" checked onclick="toggleRequirementType('file')">
-                                    <label class="form-check-label" for="req_file">
-                                        上传新文件
-                                    </label>
+                            
+                            {% set all_attachments = major_assignment.get_all_attachments() %}
+                            {% set all_links = major_assignment.get_all_links() %}
+                            
+                            {% if all_attachments or all_links %}
+                            <!-- 附件列表 -->
+                            {% if all_attachments %}
+                            <div class="card mb-3">
+                                <div class="card-header bg-light">
+                                    <strong><i class="fas fa-file me-1"></i>附件文件</strong>
                                 </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="requirement_type" 
-                                           id="req_url" value="url" onclick="toggleRequirementType('url')">
-                                    <label class="form-check-label" for="req_url">
-                                        提供新链接
-                                    </label>
+                                <div class="card-body">
+                                    <div class="list-group">
+                                        {% for attachment in all_attachments %}
+                                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <i class="fas fa-file me-2"></i>
+                                                {% if not attachment.is_old %}
+                                                <a href="{{ url_for('major_assignment.download_major_assignment_attachment', attachment_id=attachment.id) }}" target="_blank">
+                                                    {{ attachment.original_filename }}
+                                                </a>
+                                                <small class="text-muted ms-2">
+                                                    ({{ (attachment.file_size / 1024 / 1024)|round(2) }} MB)
+                                                </small>
+                                                {% else %}
+                                                <a href="{{ url_for('major_assignment.download_major_assignment_requirement', assignment_id=major_assignment.id) }}" target="_blank">
+                                                    {{ attachment.original_filename }}
+                                                </a>
+                                                <span class="badge bg-secondary ms-2">旧系统</span>
+                                                {% endif %}
+                                            </div>
+                                            {% if not attachment.is_old %}
+                                            <div class="form-check">
+                                                <input type="checkbox" class="form-check-input" 
+                                                       name="delete_attachments" value="{{ attachment.id }}">
+                                                <label class="form-check-label text-danger">删除</label>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                        {% endfor %}
+                                    </div>
                                 </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="radio" name="requirement_type" 
-                                           id="req_none" value="none" onclick="toggleRequirementType('none')">
-                                    <label class="form-check-label" for="req_none">
-                                        保持不变
-                                    </label>
+                            </div>
+                            {% endif %}
+                            
+                            <!-- 链接列表 -->
+                            {% if all_links %}
+                            <div class="card mb-3">
+                                <div class="card-header bg-light">
+                                    <strong><i class="fas fa-link me-1"></i>参考链接</strong>
+                                </div>
+                                <div class="card-body">
+                                    <div class="list-group">
+                                        {% for link in all_links %}
+                                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <i class="fas fa-external-link-alt me-2"></i>
+                                                <a href="{{ link.url }}" target="_blank">{{ link.title }}</a>
+                                                {% if not link.is_old %}
+                                                <br><small class="text-muted">{{ link.url }}</small>
+                                                {% else %}
+                                                <span class="badge bg-secondary ms-2">旧系统</span>
+                                                {% endif %}
+                                            </div>
+                                            {% if not link.is_old %}
+                                            <div class="form-check">
+                                                <input type="checkbox" class="form-check-input" 
+                                                       name="delete_links" value="{{ link.id }}">
+                                                <label class="form-check-label text-danger">删除</label>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% else %}
+                            <div class="alert alert-warning">
+                                <i class="fas fa-info-circle me-2"></i>还没有上传附件或添加链接
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- 添加新附件和链接 -->
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-plus-circle me-1"></i>添加新资料
+                            </label>
+                            
+                            <!-- 上传新附件 -->
+                            <div class="card mb-3">
+                                <div class="card-header bg-light">
+                                    <strong><i class="fas fa-upload me-1"></i>上传新附件</strong>
+                                </div>
+                                <div class="card-body">
+                                    <input type="file" class="form-control mb-2" id="requirement_files" 
+                                           name="requirement_files" multiple>
+                                    <small class="form-text text-muted">
+                                        <i class="fas fa-info-circle"></i> 支持PDF、Word、图片等格式，可以同时选择多个文件
+                                    </small>
+                                    
+                                    <!-- 已选文件列表 -->
+                                    <div id="selected_files_list" class="mt-2" style="display: none;">
+                                        <label class="form-label small text-muted">已选择的文件:</label>
+                                        <ul id="files_preview" class="list-group list-group-flush"></ul>
+                                    </div>
                                 </div>
                             </div>
                             
-                            <div id="file_upload_section" style="display: none;">
-                                <input type="file" class="form-control" id="requirement_file" name="requirement_file">
-                                <small class="form-text text-muted">支持PDF、Word、图片等格式</small>
-                            </div>
-                            
-                            <div id="url_input_section" style="display: none;">
-                                <input type="url" class="form-control" id="requirement_url" 
-                                       name="requirement_url" placeholder="https://example.com/assignment">
-                                <small class="form-text text-muted">请输入完整的URL地址</small>
+                            <!-- 添加新链接 -->
+                            <div class="card">
+                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                    <strong><i class="fas fa-link me-1"></i>添加新链接</strong>
+                                    <button type="button" class="btn btn-sm btn-primary" id="add_link_btn">
+                                        <i class="fas fa-plus"></i> 添加链接
+                                    </button>
+                                </div>
+                                <div class="card-body">
+                                    <div id="links_container">
+                                        <!-- 链接输入项将在这里动态添加 -->
+                                    </div>
+                                    <small class="form-text text-muted">
+                                        <i class="fas fa-info-circle"></i> 可以添加多个参考链接，每个链接可以设置标题
+                                    </small>
+                                </div>
                             </div>
                         </div>
 
@@ -222,6 +296,84 @@
 </div>
 
 <script>
+// 文件选择预览
+const fileInput = document.getElementById('requirement_files');
+const filesListDiv = document.getElementById('selected_files_list');
+const filesPreview = document.getElementById('files_preview');
+
+if (fileInput) {
+    fileInput.addEventListener('change', function() {
+        if (this.files.length > 0) {
+            filesListDiv.style.display = 'block';
+            filesPreview.innerHTML = '';
+            
+            Array.from(this.files).forEach((file, index) => {
+                const li = document.createElement('li');
+                li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                
+                const fileSize = file.size < 1024 * 1024 
+                    ? (file.size / 1024).toFixed(1) + ' KB' 
+                    : (file.size / 1024 / 1024).toFixed(1) + ' MB';
+                
+                li.innerHTML = `
+                    <span>
+                        <i class="fas fa-file me-2"></i>${file.name}
+                        <small class="text-muted ms-2">(${fileSize})</small>
+                    </span>
+                `;
+                filesPreview.appendChild(li);
+            });
+        } else {
+            filesListDiv.style.display = 'none';
+        }
+    });
+}
+
+// 链接管理
+let linkCounter = 0;
+const linksContainer = document.getElementById('links_container');
+const addLinkBtn = document.getElementById('add_link_btn');
+
+function addLinkInput() {
+    linkCounter++;
+    const linkDiv = document.createElement('div');
+    linkDiv.className = 'link-input-group mb-3 p-3 border rounded';
+    linkDiv.id = `link_${linkCounter}`;
+    linkDiv.innerHTML = `
+        <div class="d-flex justify-content-between align-items-start mb-2">
+            <strong class="text-muted">链接 ${linkCounter}</strong>
+            <button type="button" class="btn btn-sm btn-danger" onclick="removeLinkInput(${linkCounter})">
+                <i class="fas fa-trash"></i> 删除
+            </button>
+        </div>
+        <div class="mb-2">
+            <label class="form-label small">链接标题</label>
+            <input type="text" class="form-control" name="requirement_url_titles" 
+                   placeholder="例如：项目要求文档">
+        </div>
+        <div>
+            <label class="form-label small">链接地址 <span class="text-danger">*</span></label>
+            <input type="url" class="form-control" name="requirement_urls" 
+                   placeholder="https://example.com" required>
+        </div>
+    `;
+    linksContainer.appendChild(linkDiv);
+}
+
+function removeLinkInput(id) {
+    const linkDiv = document.getElementById(`link_${id}`);
+    if (linkDiv) {
+        linkDiv.remove();
+    }
+}
+
+// 全局函数，供按钮调用
+window.removeLinkInput = removeLinkInput;
+
+if (addLinkBtn) {
+    addLinkBtn.addEventListener('click', addLinkInput);
+}
+
 function toggleRequirementType(type) {
     const fileSection = document.getElementById('file_upload_section');
     const urlSection = document.getElementById('url_input_section');
@@ -359,12 +511,6 @@ if (typeof window.allTeachers !== 'undefined') {
     // 全局函数，供标签中的删除按钮调用
     window.removeTeacher = removeTeacher;
 }
-
-// 页面加载时默认选中“保持不变”
-document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('req_none').checked = true;
-    toggleRequirementType('none');
-});
 
 // 验证组队人数
 document.querySelector('form').addEventListener('submit', function(e) {

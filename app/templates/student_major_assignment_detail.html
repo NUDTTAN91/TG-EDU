@@ -19,6 +19,83 @@
                     <p class="mb-3">{{ major_assignment.description }}</p>
                     {% endif %}
                     
+                    <!-- 作业资料（附件和链接） -->
+                    {% set all_attachments = major_assignment.get_all_attachments() %}
+                    {% set all_links = major_assignment.get_all_links() %}
+                    
+                    {% if all_attachments or all_links %}
+                    <div class="alert alert-info mb-3">
+                        <h6 class="alert-heading">
+                            <i class="fas fa-folder-open me-2"></i>作业资料
+                        </h6>
+                        
+                        <!-- 附件列表 -->
+                        {% if all_attachments %}
+                        <div class="mb-2">
+                            <strong><i class="fas fa-paperclip me-1"></i>附件文件：</strong>
+                            <div class="list-group mt-2">
+                                {% for attachment in all_attachments %}
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <i class="fas fa-file me-2 text-primary"></i>
+                                        {% if not attachment.is_old %}
+                                        <a href="{{ url_for('major_assignment.download_major_assignment_attachment', attachment_id=attachment.id) }}" class="text-decoration-none">
+                                            {{ attachment.original_filename }}
+                                        </a>
+                                        {% if attachment.file_size %}
+                                        <small class="text-muted ms-2">
+                                            ({{ (attachment.file_size / 1024 / 1024)|round(2) }} MB)
+                                        </small>
+                                        {% endif %}
+                                        {% else %}
+                                        <a href="{{ url_for('major_assignment.download_major_assignment_requirement', assignment_id=major_assignment.id) }}" class="text-decoration-none">
+                                            {{ attachment.original_filename }}
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        {% if not attachment.is_old %}
+                                        <a href="{{ url_for('major_assignment.download_major_assignment_attachment', attachment_id=attachment.id) }}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-download"></i> 下载
+                                        </a>
+                                        {% else %}
+                                        <a href="{{ url_for('major_assignment.download_major_assignment_requirement', assignment_id=major_assignment.id) }}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-download"></i> 下载
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- 链接列表 -->
+                        {% if all_links %}
+                        <div class="{% if all_attachments %}mt-3{% endif %}">
+                            <strong><i class="fas fa-link me-1"></i>参考链接：</strong>
+                            <div class="list-group mt-2">
+                                {% for link in all_links %}
+                                <a href="{{ link.url }}" target="_blank" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <i class="fas fa-external-link-alt me-2 text-success"></i>
+                                        <strong>{{ link.title }}</strong>
+                                        <br>
+                                        <small class="text-muted">{{ link.url }}</small>
+                                    </div>
+                                    <div>
+                                        <i class="fas fa-arrow-right"></i>
+                                    </div>
+                                </a>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    
                     <div class="row">
                         <div class="col-md-6">
                             <p class="mb-2">
@@ -51,17 +128,6 @@
                             {% endif %}
                         </div>
                     </div>
-                    
-                    {% if major_assignment.requirement_file_path %}
-                    <a href="{{ url_for('major_assignment.download_major_assignment_requirement', assignment_id=major_assignment.id) }}" 
-                       class="btn btn-sm btn-outline-primary">
-                        <i class="fas fa-download me-1"></i>下载作业要求文件
-                    </a>
-                    {% elif major_assignment.requirement_url %}
-                    <a href="{{ major_assignment.requirement_url }}" target="_blank" class="btn btn-sm btn-outline-primary">
-                        <i class="fas fa-external-link-alt me-1"></i>查看作业要求
-                    </a>
-                    {% endif %}
                 </div>
             </div>
 

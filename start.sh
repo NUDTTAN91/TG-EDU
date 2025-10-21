@@ -24,6 +24,9 @@ python3 migrate_task_stage.py
 # 运行任务阶段stage_id可空迁移
 python3 migrate_task_stage_nullable.py
 
+# 运行大作业附件系统迁移
+python3 migrate_major_assignment_attachments.py
+
 # 然后初始化管理员账户
 python3 -c "
 import os

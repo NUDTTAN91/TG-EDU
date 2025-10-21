@@ -9,6 +9,7 @@ from sqlalchemy import or_
 from app.extensions import db
 from app.models import User, Class, UserRole
 from app.models.team import MajorAssignment, Team, TeamMember, TeamInvitation, LeaveTeamRequest, DissolveTeamRequest
+from app.models.team import MajorAssignmentAttachment, MajorAssignmentLink
 from app.utils import safe_chinese_filename, to_beijing_time, BEIJING_TZ
 from app.utils.decorators import require_teacher_or_admin, require_role
 from app.services import NotificationService
@@ -131,6 +132,52 @@ def create_major_assignment():
         if not major_assignment.teachers and not current_user.is_super_admin:
             major_assignment.teachers.append(current_user)
         
+        db.session.add(major_assignment)
+        db.session.flush()  # 先flush获取ID
+        
+        # 处理多个附件
+        requirement_files = request.files.getlist('requirement_files')  # 支持多个文件
+        if requirement_files:
+            from flask import current_app
+            for req_file in requirement_files:
+                if req_file and req_file.filename:
+                    original_filename = req_file.filename
+                    safe_filename_str = safe_chinese_filename(original_filename)
+                    filename = f"major_req_{uuid.uuid4().hex}_{safe_filename_str}"
+                    file_path = os.path.join(current_app.config['APPENDIX_FOLDER'], filename)
+                    req_file.save(file_path)
+                    
+                    # 获取文件大小
+                    file_size = os.path.getsize(file_path)
+                    
+                    # 创建附件记录
+                    attachment = MajorAssignmentAttachment(
+                        major_assignment_id=major_assignment.id,
+                        file_path=file_path,
+                        original_filename=original_filename,
+                        file_size=file_size,
+                        uploaded_by=current_user.id
+                    )
+                    db.session.add(attachment)
+        
+        # 处理多个链接
+        requirement_urls = request.form.getlist('requirement_urls')  # 支持多个链接
+        requirement_url_titles = request.form.getlist('requirement_url_titles')  # 链接标题
+        
+        for i, req_url in enumerate(requirement_urls):
+            if req_url and req_url.strip():
+                url_title = requirement_url_titles[i] if i < len(requirement_url_titles) else ''
+                
+                # 创建链接记录
+                link = MajorAssignmentLink(
+                    major_assignment_id=major_assignment.id,
+                    url=req_url.strip(),
+                    title=url_title.strip() if url_title else f'链接{i+1}',
+                    created_by=current_user.id
+                )
+                db.session.add(link)
+        
+        # 兼容旧系统：如果使用旧的单文件/单链接方式
         if requirement_type == 'file':
             req_file = request.files.get('requirement_file')
             if req_file and req_file.filename:
@@ -146,9 +193,6 @@ def create_major_assignment():
             req_url = request.form.get('requirement_url')
             if req_url:
                 major_assignment.requirement_url = req_url
-        
-        db.session.add(major_assignment)
-        db.session.commit()
         
         # 创建预设阶段
         from app.models.team import Stage
@@ -415,7 +459,7 @@ def create_team(assignment_id):
 @bp.route('/major_assignments/<int:assignment_id>/requirement')
 @login_required
 def download_major_assignment_requirement(assignment_id):
-    """下载大作业要求文件"""
+    """下载大作业要求文件（旧系统，兼容保留）"""
     major_assignment = MajorAssignment.query.get_or_404(assignment_id)
     
     if not major_assignment.requirement_file_path:
@@ -431,6 +475,24 @@ def download_major_assignment_requirement(assignment_id):
         path=os.path.basename(major_assignment.requirement_file_path),
         as_attachment=True,
         download_name=major_assignment.requirement_file_name
+    )
+
+
+@bp.route('/major_assignments/attachment/<int:attachment_id>/download')
+@login_required
+def download_major_assignment_attachment(attachment_id):
+    """下载大作业附件（新系统）"""
+    attachment = MajorAssignmentAttachment.query.get_or_404(attachment_id)
+    
+    if not os.path.exists(attachment.file_path):
+        flash('附件文件不存在')
+        return redirect(url_for('major_assignment.major_assignment_dashboard'))
+    
+    return send_from_directory(
+        directory=os.path.dirname(attachment.file_path),
+        path=os.path.basename(attachment.file_path),
+        as_attachment=True,
+        download_name=attachment.original_filename
     )
 
 
@@ -515,6 +577,70 @@ def edit_major_assignment(assignment_id):
                 creator = User.query.get(major_assignment.creator_id)
                 if creator:
                     major_assignment.teachers.append(creator)
+        
+        # 处理多个新附件
+        requirement_files = request.files.getlist('requirement_files')
+        if requirement_files:
+            from flask import current_app
+            for req_file in requirement_files:
+                if req_file and req_file.filename:
+                    original_filename = req_file.filename
+                    safe_filename_str = safe_chinese_filename(original_filename)
+                    filename = f"major_req_{uuid.uuid4().hex}_{safe_filename_str}"
+                    file_path = os.path.join(current_app.config['APPENDIX_FOLDER'], filename)
+                    req_file.save(file_path)
+                    
+                    # 获取文件大小
+                    file_size = os.path.getsize(file_path)
+                    
+                    # 创建附件记录
+                    attachment = MajorAssignmentAttachment(
+                        major_assignment_id=major_assignment.id,
+                        file_path=file_path,
+                        original_filename=original_filename,
+                        file_size=file_size,
+                        uploaded_by=current_user.id
+                    )
+                    db.session.add(attachment)
+        
+        # 处理多个新链接
+        requirement_urls = request.form.getlist('requirement_urls')
+        requirement_url_titles = request.form.getlist('requirement_url_titles')
+        
+        for i, req_url in enumerate(requirement_urls):
+            if req_url and req_url.strip():
+                url_title = requirement_url_titles[i] if i < len(requirement_url_titles) else ''
+                
+                # 创建链接记录
+                link = MajorAssignmentLink(
+                    major_assignment_id=major_assignment.id,
+                    url=req_url.strip(),
+                    title=url_title.strip() if url_title else f'链接{i+1}',
+                    created_by=current_user.id
+                )
+                db.session.add(link)
+        
+        # 处理删除附件
+        delete_attachment_ids = request.form.getlist('delete_attachments')
+        if delete_attachment_ids:
+            for att_id in delete_attachment_ids:
+                attachment = MajorAssignmentAttachment.query.get(int(att_id))
+                if attachment and attachment.major_assignment_id == major_assignment.id:
+                    # 删除文件
+                    if os.path.exists(attachment.file_path):
+                        try:
+                            os.remove(attachment.file_path)
+                        except Exception as e:
+                            print(f"删除附件文件失败: {e}")
+                    db.session.delete(attachment)
+        
+        # 处理删除链接
+        delete_link_ids = request.form.getlist('delete_links')
+        if delete_link_ids:
+            for link_id in delete_link_ids:
+                link = MajorAssignmentLink.query.get(int(link_id))
+                if link and link.major_assignment_id == major_assignment.id:
+                    db.session.delete(link)
         
         db.session.commit()
         flash('大作业修改成功！')

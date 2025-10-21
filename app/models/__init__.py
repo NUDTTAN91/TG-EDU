@@ -8,7 +8,8 @@ from app.models.team import (
     MajorAssignment, Team, TeamMember,
     TeamInvitation, LeaveTeamRequest,
     Stage, DivisionRole, TeamDivision,
-    TeamTask, TaskProgress
+    TeamTask, TaskProgress,
+    MajorAssignmentAttachment, MajorAssignmentLink
 )
 
 __all__ = [
@@ -20,5 +21,6 @@ __all__ = [
     'MajorAssignment', 'Team', 'TeamMember',
     'TeamInvitation', 'LeaveTeamRequest',
     'Stage', 'DivisionRole', 'TeamDivision',
-    'TeamTask', 'TaskProgress'
+    'TeamTask', 'TaskProgress',
+    'MajorAssignmentAttachment', 'MajorAssignmentLink'
 ]

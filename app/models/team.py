@@ -16,9 +16,9 @@ class MajorAssignment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text)
-    requirement_file_path = db.Column(db.String(500))
-    requirement_file_name = db.Column(db.String(255))
-    requirement_url = db.Column(db.String(500))
+    requirement_file_path = db.Column(db.String(500))  # 保留旧字段兼容
+    requirement_file_name = db.Column(db.String(255))  # 保留旧字段兼容
+    requirement_url = db.Column(db.String(500))  # 保留旧字段兼容
     start_date = db.Column(db.DateTime)  # 新增：开始日期
     end_date = db.Column(db.DateTime)    # 新增：结束日期
     due_date = db.Column(db.DateTime)    # 保留旧字段兼容
@@ -44,6 +44,41 @@ class MajorAssignment(db.Model):
         if user in self.teachers:
             return True
         return False
+    
+    def get_all_attachments(self):
+        """获取所有附件（包括新旧系统）"""
+        attachments = list(self.attachments)  # 新系统的附件
+        # 兼容旧系统：如果有旧的单个附件，也加入列表
+        if self.requirement_file_path and self.requirement_file_name:
+            # 检查是否已经在新系统中
+            old_file_exists = any(att.file_path == self.requirement_file_path for att in attachments)
+            if not old_file_exists:
+                # 创建一个临时对象来表示旧附件
+                class OldAttachment:
+                    def __init__(self, file_path, file_name):
+                        self.file_path = file_path
+                        self.original_filename = file_name
+                        self.file_type = 'file'
+                        self.is_old = True
+                attachments.insert(0, OldAttachment(self.requirement_file_path, self.requirement_file_name))
+        return attachments
+    
+    def get_all_links(self):
+        """获取所有链接（包括新旧系统）"""
+        links = list(self.links)  # 新系统的链接
+        # 兼容旧系统：如果有旧的单个链接，也加入列表
+        if self.requirement_url:
+            # 检查是否已经在新系统中
+            old_link_exists = any(link.url == self.requirement_url for link in links)
+            if not old_link_exists:
+                # 创建一个临时对象来表示旧链接
+                class OldLink:
+                    def __init__(self, url):
+                        self.url = url
+                        self.title = '要求链接'
+                        self.is_old = True
+                links.insert(0, OldLink(self.requirement_url))
+        return links
     
     def __repr__(self):
         return f'<MajorAssignment {self.title}>'
@@ -300,3 +335,40 @@ class TaskProgress(db.Model):
     
     def __repr__(self):
         return f'<TaskProgress Task{self.task_id} {self.progress}%>'
+
+
+class MajorAssignmentAttachment(db.Model):
+    """大作业附件模型（支持多个附件）"""
+    id = db.Column(db.Integer, primary_key=True)
+    major_assignment_id = db.Column(db.Integer, db.ForeignKey('major_assignment.id'), nullable=False)
+    file_path = db.Column(db.String(500), nullable=False)
+    original_filename = db.Column(db.String(255), nullable=False)
+    file_size = db.Column(db.Integer)
+    file_type = db.Column(db.String(50), default='file')  # file 类型
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+    uploaded_by = db.Column(db.Integer, db.ForeignKey('user.id'))
+    
+    # 关系
+    major_assignment = db.relationship('MajorAssignment', backref='attachments')
+    uploader = db.relationship('User', foreign_keys=[uploaded_by])
+    
+    def __repr__(self):
+        return f'<MajorAssignmentAttachment {self.original_filename}>'
+
+
+class MajorAssignmentLink(db.Model):
+    """大作业链接模型（支持多个链接）"""
+    id = db.Column(db.Integer, primary_key=True)
+    major_assignment_id = db.Column(db.Integer, db.ForeignKey('major_assignment.id'), nullable=False)
+    url = db.Column(db.String(500), nullable=False)
+    title = db.Column(db.String(200))  # 链接标题
+    description = db.Column(db.Text)  # 链接描述
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id'))
+    
+    # 关系
+    major_assignment = db.relationship('MajorAssignment', backref='links')
+    creator = db.relationship('User', foreign_keys=[created_by])
+    
+    def __repr__(self):
+        return f'<MajorAssignmentLink {self.title or self.url}>'
