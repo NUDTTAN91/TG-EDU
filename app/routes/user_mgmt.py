@@ -18,9 +18,10 @@ def manage_users():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 10, type=int)
     
-    # 获取筛选参数
+    # 获取筛选和搜索参数
     role_filter = request.args.get('role', '')
     class_filter = request.args.get('class', '', type=str)
+    search_query = request.args.get('search', '').strip()
     
     # 限制每页数量范围
     if per_page not in [10, 20, 50, 100]:
@@ -34,6 +35,16 @@ def manage_users():
         # 角色筛选
         if role_filter:
             query = query.filter_by(role=role_filter)
+        
+        # 搜索功能：搜索用户名、真实姓名、学号
+        if search_query:
+            query = query.filter(
+                or_(
+                    User.username.like(f'%{search_query}%'),
+                    User.real_name.like(f'%{search_query}%'),
+                    User.student_id.like(f'%{search_query}%')
+                )
+            )
         
         # 班级筛选
         if class_filter:
@@ -50,6 +61,7 @@ def manage_users():
             except ValueError:
                 pass
         
+        # 先构建完整查询，再分页
         pagination = query.order_by(User.created_at.asc()).paginate(
             page=page, per_page=per_page, error_out=False
         )
@@ -69,6 +81,17 @@ def manage_users():
         else:
             query = query.filter_by(created_by=current_user.id)
         
+        # 搜索功能：搜索用户名、真实姓名、学号
+        if search_query:
+            query = query.filter(
+                or_(
+                    User.username.like(f'%{search_query}%'),
+                    User.real_name.like(f'%{search_query}%'),
+                    User.student_id.like(f'%{search_query}%')
+                )
+            )
+        
+        # 班级筛选
         if class_filter and teacher_class_ids:
             try:
                 class_id = int(class_filter)
@@ -77,6 +100,7 @@ def manage_users():
             except ValueError:
                 pass
         
+        # 先构建完整查询，再分页
         query = query.order_by(User.created_at.asc()).distinct()
         all_students = query.all()
         total = len(all_students)
