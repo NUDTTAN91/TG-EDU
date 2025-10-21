@@ -43,7 +43,7 @@
                 <div class="card-body">
                     <h5 class="card-title"><i class="fas fa-calendar-alt me-2"></i>大作业时间范围</h5>
                     <div class="row">
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <p class="mb-0">
                                 <i class="fas fa-play-circle me-2 text-success"></i>
                                 <strong>开始时间：</strong>
@@ -54,23 +54,12 @@
                                 {% endif %}
                             </p>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <p class="mb-0">
                                 <i class="fas fa-stop-circle me-2 text-danger"></i>
                                 <strong>结束时间：</strong>
                                 {% if major_assignment.end_date %}
                                 {{ major_assignment.end_date|beijing_time }}
-                                {% else %}
-                                <span class="text-muted">未设置</span>
-                                {% endif %}
-                            </p>
-                        </div>
-                        <div class="col-md-4">
-                            <p class="mb-0">
-                                <i class="fas fa-calendar-check me-2 text-warning"></i>
-                                <strong>截止时间：</strong>
-                                {% if major_assignment.due_date %}
-                                {{ major_assignment.due_date|beijing_time }}
                                 {% else %}
                                 <span class="text-muted">未设置</span>
                                 {% endif %}

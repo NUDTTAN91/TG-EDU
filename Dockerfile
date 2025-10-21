@@ -45,6 +45,8 @@ COPY migrate_team_division_free_roles.py .
 COPY migrate_task_stage.py .
 COPY migrate_task_stage_nullable.py .
 COPY migrate_major_assignment_attachments.py .
+COPY migrate_team_confirmation_reason.py .
+COPY migrate_remove_due_date.py .
 COPY update_stage_status.py .
 COPY start.sh .
 COPY app/ ./app/

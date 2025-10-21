@@ -277,9 +277,19 @@
                     {% endfor %}
                     {% endif %}
                     
-                    {% if team.size_exception_reason %}
+                    {% if team.size_exception_reason or team.confirmation_request_reason %}
                     <div class="alert alert-warning small mb-2">
-                        <strong>人数异常说明：</strong>{{ team.size_exception_reason }}
+                        <i class="fas fa-exclamation-circle me-1"></i>
+                        <strong>人数异常说明：</strong>
+                        {{ team.confirmation_request_reason or team.size_exception_reason }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if team.status == 'rejected' and team.reject_reason %}
+                    <div class="alert alert-danger small mb-2">
+                        <i class="fas fa-times-circle me-1"></i>
+                        <strong>拒绝理由：</strong>
+                        {{ team.reject_reason }}
                     </div>
                     {% endif %}
                     
@@ -350,19 +360,34 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title">拒绝团队</h5>
+                <h5 class="modal-title">
+                    <i class="fas fa-times-circle me-2"></i>拒绝团队
+                </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form id="rejectForm" method="POST">
                 <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-info-circle me-2"></i>
+                        拒绝后，组长可以调整团队后重新申请确认。
+                    </div>
+                    
                     <div class="mb-3">
-                        <label class="form-label">拒绝原因</label>
-                        <textarea class="form-control" name="reject_reason" rows="3" required></textarea>
+                        <label class="form-label">
+                            <i class="fas fa-comment me-1"></i>拒绝理由 <span class="text-muted">(建议填写)</span>
+                        </label>
+                        <textarea class="form-control" name="reject_reason" rows="3" 
+                                  placeholder="请说明拒绝的原因，例如：人数仍然不足、理由不充分等..."></textarea>
+                        <small class="form-text text-muted">
+                            <i class="fas fa-lightbulb"></i> 填写详细的拒绝理由可以帮助学生更好地调整团队
+                        </small>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="submit" class="btn btn-danger">确认拒绝</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-times me-1"></i>确认拒绝
+                    </button>
                 </div>
             </form>
         </div>

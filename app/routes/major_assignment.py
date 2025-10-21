@@ -57,9 +57,8 @@ def create_major_assignment():
         class_id = request.form.get('class_id')
         min_team_size = request.form.get('min_team_size', 2, type=int)
         max_team_size = request.form.get('max_team_size', 5, type=int)
-        start_date_str = request.form.get('start_date')  # 新增
-        end_date_str = request.form.get('end_date')  # 新增
-        due_date_str = request.form.get('due_date')
+        start_date_str = request.form.get('start_date')
+        end_date_str = request.form.get('end_date')
         requirement_type = request.form.get('requirement_type', 'file')
         teacher_ids = request.form.getlist('teacher_ids')  # 获取多个教师ID
         
@@ -98,17 +97,6 @@ def create_major_assignment():
             flash('开始日期必须早于结束日期')
             return redirect(url_for('major_assignment.create_major_assignment'))
         
-        # 处理截止时间
-        due_date = None
-        if due_date_str:
-            try:
-                beijing_dt = datetime.strptime(due_date_str, '%Y-%m-%dT%H:%M')
-                beijing_aware = beijing_dt.replace(tzinfo=BEIJING_TZ)
-                due_date = beijing_aware.astimezone(timezone.utc).replace(tzinfo=None)
-            except Exception as e:
-                flash(f'截止日期格式错误: {str(e)}')
-                return redirect(url_for('major_assignment.create_major_assignment'))
-        
         major_assignment = MajorAssignment(
             title=title,
             description=description,
@@ -116,9 +104,8 @@ def create_major_assignment():
             creator_id=current_user.id,
             min_team_size=min_team_size,
             max_team_size=max_team_size,
-            start_date=start_date,  # 新增
-            end_date=end_date,  # 新增
-            due_date=due_date
+            start_date=start_date,
+            end_date=end_date
         )
         
         # 添加管理教师
@@ -267,13 +254,17 @@ def create_major_assignment():
         class_obj = Class.query.get(class_id)
         if class_obj:
             students = class_obj.students
+            # 构建时间提示
+            time_info = ''
+            if start_date and end_date:
+                time_info = f' 作业时间：{to_beijing_time(start_date).strftime("%Y-%m-%d")} 至 {to_beijing_time(end_date).strftime("%Y-%m-%d")}'
+            
             for student in students:
                 NotificationService.create_notification(
                     sender_id=current_user.id,
                     receiver_id=student.id,
                     title=f'新大作业：{title}',
-                    content=f'{current_user.real_name} 老师布置了新大作业「{title}」，请组建{min_team_size}-{max_team_size}人团队。' + 
-                            (f' 截止时间：{to_beijing_time(due_date).strftime("%Y-%m-%d %H:%M")}' if due_date else ''),
+                    content=f'{current_user.real_name} 老师布置了新大作业「{title}」，请组建{min_team_size}-{max_team_size}人团队。{time_info}',
                     notification_type='major_assignment'
                 )
         
@@ -547,19 +538,6 @@ def edit_major_assignment(assignment_id):
                 flash('开始日期必须早于结束日期')
                 return redirect(url_for('major_assignment.edit_major_assignment', assignment_id=assignment_id))
         
-        # 处理截止日期
-        due_date_str = request.form.get('due_date')
-        if due_date_str:
-            try:
-                beijing_dt = datetime.strptime(due_date_str, '%Y-%m-%dT%H:%M')
-                beijing_aware = beijing_dt.replace(tzinfo=BEIJING_TZ)
-                major_assignment.due_date = beijing_aware.astimezone(timezone.utc).replace(tzinfo=None)
-            except Exception as e:
-                flash(f'截止日期格式错误: {str(e)}')
-                return redirect(url_for('major_assignment.edit_major_assignment', assignment_id=assignment_id))
-        else:
-            major_assignment.due_date = None
-        
         # 更新管理教师（只有超级管理员和创建者可以修改）
         if current_user.is_super_admin or current_user.id == major_assignment.creator_id:
             # 清空现有管理教师
@@ -655,13 +633,9 @@ def edit_major_assignment(assignment_id):
         # 普通教师只能选择自己
         teachers = [current_user]
     
-    # 将截止时间转换为北京时间（用于表单显示）
-    due_date_beijing = None
+    # 将日期转换为北京时间（用于表单显示）
     start_date_beijing = None
     end_date_beijing = None
-    
-    if major_assignment.due_date:
-        due_date_beijing = to_beijing_time(major_assignment.due_date)
     
     if major_assignment.start_date:
         start_date_beijing = to_beijing_time(major_assignment.start_date)
@@ -672,7 +646,6 @@ def edit_major_assignment(assignment_id):
     return render_template('edit_major_assignment.html', 
                          major_assignment=major_assignment,
                          teachers=teachers,
-                         due_date_beijing=due_date_beijing,
                          start_date_beijing=start_date_beijing,
                          end_date_beijing=end_date_beijing)
 
@@ -782,9 +755,18 @@ def request_team_confirmation(team_id):
         return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=team.major_assignment_id))
     
     # 检查人数是否符合要求
-    if not team.is_size_valid():
-        flash(f'团队人数不符合要求（需要{team.major_assignment.min_team_size}-{team.major_assignment.max_team_size}人）')
-        return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=team.major_assignment_id))
+    is_size_valid = team.is_size_valid()
+    confirmation_reason = request.form.get('confirmation_reason', '').strip()
+    
+    if not is_size_valid:
+        # 人数不符合要求，必须填写理由
+        if not confirmation_reason:
+            flash(f'团队人数不符合要求（需要{team.major_assignment.min_team_size}-{team.major_assignment.max_team_size}人，当前{team.get_member_count()}人），请填写申请理由')
+            return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=team.major_assignment_id))
+        
+        # 保存申请理由
+        team.confirmation_request_reason = confirmation_reason
+        team.size_exception_reason = confirmation_reason  # 兼容旧字段
     
     # 记录请求确认时间
     team.confirmation_requested_at = datetime.utcnow()
@@ -794,12 +776,18 @@ def request_team_confirmation(team_id):
     # 通知所有管理该大作业的老师
     major_assignment = team.major_assignment
     
+    # 构建通知内容
+    if is_size_valid:
+        notification_content = f'{current_user.real_name} 请求确认团队「{team.name}」（大作业：{major_assignment.title}）'
+    else:
+        notification_content = f'{current_user.real_name} 请求确认团队「{team.name}」（大作业：{major_assignment.title}）\n注意：团队人数不符合要求（当前{team.get_member_count()}人，要求{team.major_assignment.min_team_size}-{team.major_assignment.max_team_size}人）\n申请理由：{confirmation_reason}'
+    
     # 通知创建者
     NotificationService.create_notification(
         sender_id=current_user.id,
         receiver_id=major_assignment.creator_id,
         title=f'团队确认请求：{team.name}',
-        content=f'{current_user.real_name} 请求确认团队「{team.name}」（大作业：{major_assignment.title}）',
+        content=notification_content,
         notification_type='team_confirmation'
     )
     
@@ -810,7 +798,7 @@ def request_team_confirmation(team_id):
                 sender_id=current_user.id,
                 receiver_id=teacher.id,
                 title=f'团队确认请求：{team.name}',
-                content=f'{current_user.real_name} 请求确认团队「{team.name}」（大作业：{major_assignment.title}）',
+                content=notification_content,
                 notification_type='team_confirmation'
             )
     
@@ -870,16 +858,25 @@ def reject_team(team_id):
         flash('您没有权限拒绝此团队')
         return redirect(url_for('major_assignment.major_assignment_dashboard'))
     
-    reject_reason = request.form.get('reject_reason', '')
+    reject_reason = request.form.get('reject_reason', '').strip()
     
+    # 保存拒绝理由
     team.status = 'rejected'
+    team.reject_reason = reject_reason if reject_reason else '未填写拒绝理由'
+    team.confirmation_requested_at = None  # 清除请求确认时间，允许重新请求
     db.session.commit()
+    
+    # 构建通知内容
+    notification_content = f'您的团队「{team.name}」被 {current_user.real_name} 拒绝。'
+    if reject_reason:
+        notification_content += f'\n拒绝理由：{reject_reason}'
+    notification_content += '\n您可以调整团队后重新申请确认。'
     
     NotificationService.create_notification(
         sender_id=current_user.id,
         receiver_id=team.leader_id,
         title='团队被拒绝',
-        content=f'您的团队「{team.name}」被拒绝。原因：{reject_reason}',
+        content=notification_content,
         notification_type='system'
     )
     
@@ -2299,13 +2296,34 @@ def delete_major_assignment(assignment_id):
             # 删除团队
             db.session.delete(team)
         
-        # 3. 删除作业要求文件（如果有）
+        # 3. 删除附件和链接
+        # 删除新系统的附件
+        attachments = MajorAssignmentAttachment.query.filter_by(
+            major_assignment_id=assignment_id
+        ).all()
+        for attachment in attachments:
+            # 删除物理文件
+            if os.path.exists(attachment.file_path):
+                try:
+                    os.remove(attachment.file_path)
+                except Exception as e:
+                    print(f'删除附件文件失败: {str(e)}')
+            db.session.delete(attachment)
+        
+        # 删除新系统的链接
+        links = MajorAssignmentLink.query.filter_by(
+            major_assignment_id=assignment_id
+        ).all()
+        for link in links:
+            db.session.delete(link)
+        
+        # 删除旧系统的作业要求文件（兼容）
         if major_assignment.requirement_file_path:
             if os.path.exists(major_assignment.requirement_file_path):
                 try:
                     os.remove(major_assignment.requirement_file_path)
                 except Exception as e:
-                    print(f'删除文件失败: {str(e)}')
+                    print(f'删除旧系统文件失败: {str(e)}')
         
         # 4. 清空管理教师关联
         major_assignment.teachers = []

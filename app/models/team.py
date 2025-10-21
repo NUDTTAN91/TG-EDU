@@ -19,9 +19,8 @@ class MajorAssignment(db.Model):
     requirement_file_path = db.Column(db.String(500))  # 保留旧字段兼容
     requirement_file_name = db.Column(db.String(255))  # 保留旧字段兼容
     requirement_url = db.Column(db.String(500))  # 保留旧字段兼容
-    start_date = db.Column(db.DateTime)  # 新增：开始日期
-    end_date = db.Column(db.DateTime)    # 新增：结束日期
-    due_date = db.Column(db.DateTime)    # 保留旧字段兼容
+    start_date = db.Column(db.DateTime)  # 开始日期
+    end_date = db.Column(db.DateTime)    # 结束日期
     min_team_size = db.Column(db.Integer, default=2)
     max_team_size = db.Column(db.Integer, default=5)
     class_id = db.Column(db.Integer, db.ForeignKey('class.id'), nullable=False)
@@ -92,6 +91,8 @@ class Team(db.Model):
     leader_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     status = db.Column(db.String(50), default='pending')  # pending/confirmed/rejected
     size_exception_reason = db.Column(db.Text)
+    confirmation_request_reason = db.Column(db.Text)  # 请求确认时的理由（人数不符合时必填）
+    reject_reason = db.Column(db.Text)  # 拒绝理由
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     confirmed_at = db.Column(db.DateTime)  # 老师确认时间
     confirmed_by = db.Column(db.Integer, db.ForeignKey('user.id'))  # 确认人

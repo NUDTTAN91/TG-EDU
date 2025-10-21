@@ -27,6 +27,12 @@ python3 migrate_task_stage_nullable.py
 # 运行大作业附件系统迁移
 python3 migrate_major_assignment_attachments.py
 
+# 运行团队确认理由字段迁移
+python3 migrate_team_confirmation_reason.py
+
+# 运行删除due_date字段迁移
+python3 migrate_remove_due_date.py
+
 # 然后初始化管理员账户
 python3 -c "
 import os
@@ -263,6 +269,8 @@ with app.app_context():
 "
 
 echo "启动Web服务器..."
+# 清理旧的调度器锁文件
+rm -f /tmp/tg_edu_scheduler_flask.lock
 # 优化配置：
 # - workers: 根据CPU核心数设置 (2 * CPU核心数 + 1)
 # - worker-class: 使用gevent异步worker提高并发能力

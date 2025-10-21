@@ -255,27 +255,21 @@
                             </label>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label for="start_date" class="form-label">开始日期</label>
+                                    <label for="start_date" class="form-label">开始日期 <span class="text-danger">*</span></label>
                                     <input type="datetime-local" class="form-control" id="start_date" name="start_date"
-                                           value="{% if start_date_beijing %}{{ start_date_beijing.strftime('%Y-%m-%dT%H:%M') }}{% endif %}">
+                                           value="{% if start_date_beijing %}{{ start_date_beijing.strftime('%Y-%m-%dT%H:%M') }}{% endif %}" required>
                                     <small class="form-text text-muted">作业开始时间</small>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="end_date" class="form-label">结束日期</label>
+                                    <label for="end_date" class="form-label">结束日期 <span class="text-danger">*</span></label>
                                     <input type="datetime-local" class="form-control" id="end_date" name="end_date"
-                                           value="{% if end_date_beijing %}{{ end_date_beijing.strftime('%Y-%m-%dT%H:%M') }}{% endif %}">
+                                           value="{% if end_date_beijing %}{{ end_date_beijing.strftime('%Y-%m-%dT%H:%M') }}{% endif %}" required>
                                     <small class="form-text text-muted">作业结束时间</small>
-                                </div>
-                                <div class="col-md-12">
-                                    <label for="due_date" class="form-label">截止时间</label>
-                                    <input type="datetime-local" class="form-control" id="due_date" name="due_date"
-                                           value="{% if due_date_beijing %}{{ due_date_beijing.strftime('%Y-%m-%dT%H:%M') }}{% endif %}">
-                                    <small class="form-text text-muted">留空表示无截止时间</small>
                                 </div>
                             </div>
                             <div class="alert alert-info py-2 small mt-2">
                                 <i class="fas fa-info-circle me-1"></i>
-                                <strong>说明：</strong>开始日期必须早于结束日期，所有阶段必须在开始和结束日期之间
+                                <strong>说明：</strong>开始日期必须早于结束日期，所有阶段的日期必须在作业的开始和结束日期之间
                             </div>
                         </div>
 

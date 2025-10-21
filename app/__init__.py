@@ -37,6 +37,9 @@ def create_app(config_name='default'):
     # 注册蓝图
     register_blueprints(app)
     
+    # 初始化定时任务调度器
+    init_scheduler(app)
+    
     return app
 
 
@@ -138,3 +141,9 @@ def register_blueprints(app):
     app.register_blueprint(advanced.bp)
     app.register_blueprint(import_export.bp)
     app.register_blueprint(major_assignment.bp)
+
+
+def init_scheduler(app):
+    """初始化定时任务调度器"""
+    from app.services.scheduler_service import init_scheduler as _init_scheduler
+    _init_scheduler(app)

@@ -900,7 +900,7 @@
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form action="{{ url_for('major_assignment.request_team_confirmation', team_id=my_team.id) }}" method="POST">
+            <form action="{{ url_for('major_assignment.request_team_confirmation', team_id=my_team.id) }}" method="POST" id="confirmationForm">
                 <div class="modal-body">
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-2"></i>
@@ -922,6 +922,18 @@
                             <i class="fas fa-exclamation-triangle me-1"></i>
                             人数不符合要求！需要 {{ major_assignment.min_team_size }}-{{ major_assignment.max_team_size }} 人，当前 {{ my_team.get_member_count() }} 人
                         </div>
+                        
+                        <div class="mb-3">
+                            <label for="confirmation_reason" class="form-label">
+                                <i class="fas fa-comment me-1"></i>申请理由 <span class="text-danger">*</span>
+                            </label>
+                            <textarea class="form-control" id="confirmation_reason" name="confirmation_reason" 
+                                      rows="3" required 
+                                      placeholder="人数不符合要求时必须填写申请理由，例如：班级人数限制、无法找到更多成员等"></textarea>
+                            <small class="form-text text-muted">
+                                <i class="fas fa-info-circle"></i> 请详细说明为什么团队人数不符合要求
+                            </small>
+                        </div>
                         {% endif %}
                     </div>
                     
@@ -929,7 +941,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="submit" class="btn btn-success" {% if not my_team.is_size_valid() %}disabled{% endif %}>
+                    <button type="submit" class="btn btn-success">
                         <i class="fas fa-paper-plane me-1"></i>发送请求
                     </button>
                 </div>
