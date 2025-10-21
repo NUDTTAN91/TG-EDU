@@ -162,29 +162,81 @@ def download_assignment(assignment_id):
 def download_assignment_attachment(assignment_id):
     """下载作业附件"""
     from flask import send_from_directory
+    import logging
     
+    logger = logging.getLogger(__name__)
     assignment = Assignment.query.get_or_404(assignment_id)
+    
+    logger.warning(f"download_assignment_attachment called: assignment_id={assignment_id}, user={current_user.username}")
+    logger.warning(f"attachment_file_path: {assignment.attachment_file_path}")
+    logger.warning(f"attachment_filename: {assignment.attachment_filename}")
+    logger.warning(f"attachment_original_filename: {assignment.attachment_original_filename}")
     
     # 权限检查
     if not can_manage_assignment(current_user, assignment):
+        logger.warning("Permission denied")
         flash('您没有权限下载此作业附件')
         return redirect(url_for('admin.teacher_dashboard' if current_user.is_teacher else 'admin.super_admin_dashboard'))
     
     # 检查是否有附件
-    if not assignment.attachment_file_path or not os.path.exists(assignment.attachment_file_path):
+    if not assignment.attachment_file_path:
+        logger.warning("No attachment_file_path set")
         flash('附件不存在')
         return redirect(url_for('assignment.view_submissions', assignment_id=assignment_id))
     
-    # 获取文件的目录和文件名
-    file_directory = os.path.dirname(assignment.attachment_file_path)
-    filename = os.path.basename(assignment.attachment_file_path)
+    # 转换为绝对路径（如果是相对路径）
+    file_path = os.path.abspath(assignment.attachment_file_path) if not os.path.isabs(assignment.attachment_file_path) else assignment.attachment_file_path
+    logger.warning(f"Absolute path: {file_path}")
     
-    return send_from_directory(
-        file_directory,
-        filename,
-        as_attachment=True,
-        download_name=assignment.attachment_original_filename
-    )
+    # 兼容旧路径：如果文件不存在，尝试修正路径（/app/appendix/ -> /app/storage/appendix/）
+    if not os.path.exists(file_path):
+        logger.warning(f"File NOT found at: {file_path}")
+        
+        # 尝试路径修正：/app/appendix/ -> /app/storage/appendix/
+        if '/app/appendix/' in file_path:
+            corrected_path = file_path.replace('/app/appendix/', '/app/storage/appendix/')
+            logger.warning(f"Trying corrected path: {corrected_path}")
+            
+            if os.path.exists(corrected_path):
+                logger.warning(f"File found at corrected path!")
+                file_path = corrected_path
+            else:
+                logger.warning(f"File NOT found at corrected path either")
+                # 列出目录内容帮助调试
+                appendix_dir = '/app/storage/appendix'
+                if os.path.exists(appendix_dir):
+                    files = os.listdir(appendix_dir)
+                    logger.warning(f"Files in {appendix_dir}: {files[:10]}")
+                flash('附件不存在')
+                return redirect(url_for('assignment.view_submissions', assignment_id=assignment_id))
+        else:
+            logger.warning(f"Path does not contain '/app/appendix/', cannot auto-correct")
+            flash('附件不存在')
+            return redirect(url_for('assignment.view_submissions', assignment_id=assignment_id))
+    else:
+        logger.warning(f"File exists at: {file_path}")
+    
+    # 获取文件的目录和文件名（使用绝对路径）
+    file_directory = os.path.dirname(file_path)
+    filename = os.path.basename(file_path)
+    
+    logger.warning(f"Sending attachment: directory={file_directory}, filename={filename}, download_name={assignment.attachment_original_filename}")
+    
+    try:
+        response = send_from_directory(
+            file_directory,
+            filename,
+            as_attachment=True,
+            download_name=assignment.attachment_original_filename
+        )
+        logger.warning("Attachment sent successfully")
+        return response
+    except Exception as e:
+        logger.error(f"Error sending attachment: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        flash(f'附件下载失败: {str(e)}')
+        return redirect(url_for('assignment.view_submissions', assignment_id=assignment_id))
 
 
 @bp.route('/assignments/batch_download_status')
