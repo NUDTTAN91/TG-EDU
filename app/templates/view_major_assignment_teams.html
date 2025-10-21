@@ -34,51 +34,94 @@
             
             {% if all_attachments or all_links %}
             <div class="card mt-3 shadow-sm">
-                <div class="card-header bg-light">
+                <div class="card-header bg-primary text-white">
                     <h6 class="mb-0">
                         <i class="fas fa-folder-open me-2"></i>作业资料
                     </h6>
                 </div>
-                <div class="card-body">
+                <div class="card-body bg-light">
                     <div class="row">
                         <!-- 附件列表 -->
                         {% if all_attachments %}
-                        <div class="col-md-6">
-                            <strong><i class="fas fa-paperclip me-1"></i>附件文件：</strong>
-                            <ul class="list-unstyled mt-2">
+                        <div class="col-md-{% if all_links %}6{% else %}12{% endif %} mb-3">
+                            <div class="border-start border-primary border-3 ps-3">
+                                <h6 class="text-primary mb-3">
+                                    <i class="fas fa-paperclip me-2"></i>附件文件
+                                </h6>
                                 {% for attachment in all_attachments %}
-                                <li class="mb-2">
-                                    <i class="fas fa-file me-2 text-primary"></i>
-                                    {% if not attachment.is_old %}
-                                    <a href="{{ url_for('major_assignment.download_major_assignment_attachment', attachment_id=attachment.id) }}">
-                                        {{ attachment.original_filename }}
-                                    </a>
-                                    {% if attachment.file_size %}
-                                    <small class="text-muted">({{ (attachment.file_size / 1024 / 1024)|round(2) }} MB)</small>
-                                    {% endif %}
-                                    {% else %}
-                                    <a href="{{ url_for('major_assignment.download_major_assignment_requirement', assignment_id=major_assignment.id) }}">
-                                        {{ attachment.original_filename }}
-                                    </a>
-                                    {% endif %}
-                                </li>
+                                <div class="card mb-2 border-0 shadow-sm bg-white">
+                                    <div class="card-body p-3">
+                                        <div class="d-flex align-items-center">
+                                            <div class="flex-shrink-0">
+                                                <i class="fas fa-file-alt fa-2x text-primary"></i>
+                                            </div>
+                                            <div class="flex-grow-1 ms-3">
+                                                {% if not attachment.is_old %}
+                                                <div class="fw-bold mb-1">
+                                                    <a href="{{ url_for('major_assignment.download_major_assignment_attachment', attachment_id=attachment.id) }}" 
+                                                       class="text-decoration-none">
+                                                        {{ attachment.original_filename }}
+                                                    </a>
+                                                </div>
+                                                {% if attachment.file_size %}
+                                                <small class="text-muted">
+                                                    <i class="fas fa-hdd me-1"></i>{{ attachment.file_size|filesize }}
+                                                </small>
+                                                {% endif %}
+                                                {% else %}
+                                                <div class="fw-bold mb-1">
+                                                    <a href="{{ url_for('major_assignment.download_major_assignment_requirement', assignment_id=major_assignment.id) }}" 
+                                                       class="text-decoration-none">
+                                                        {{ attachment.original_filename }}
+                                                    </a>
+                                                    <span class="badge bg-secondary ms-2">旧系统</span>
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="flex-shrink-0 ms-2">
+                                                <a href="{% if not attachment.is_old %}{{ url_for('major_assignment.download_major_assignment_attachment', attachment_id=attachment.id) }}{% else %}{{ url_for('major_assignment.download_major_assignment_requirement', assignment_id=major_assignment.id) }}{% endif %}" 
+                                                   class="btn btn-sm btn-primary">
+                                                    <i class="fas fa-download"></i>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                                 {% endfor %}
-                            </ul>
+                            </div>
                         </div>
                         {% endif %}
                         
                         <!-- 链接列表 -->
                         {% if all_links %}
-                        <div class="col-md-6">
-                            <strong><i class="fas fa-link me-1"></i>参考链接：</strong>
-                            <ul class="list-unstyled mt-2">
+                        <div class="col-md-{% if all_attachments %}6{% else %}12{% endif %} mb-3">
+                            <div class="border-start border-success border-3 ps-3">
+                                <h6 class="text-success mb-3">
+                                    <i class="fas fa-link me-2"></i>参考链接
+                                </h6>
                                 {% for link in all_links %}
-                                <li class="mb-2">
-                                    <i class="fas fa-external-link-alt me-2 text-success"></i>
-                                    <a href="{{ link.url }}" target="_blank">{{ link.title }}</a>
-                                </li>
+                                <a href="{{ link.url }}" target="_blank" class="text-decoration-none">
+                                    <div class="card mb-2 border-0 shadow-sm bg-white hover-shadow">
+                                        <div class="card-body p-3">
+                                            <div class="d-flex align-items-center">
+                                                <div class="flex-shrink-0">
+                                                    <i class="fas fa-external-link-alt fa-2x text-success"></i>
+                                                </div>
+                                                <div class="flex-grow-1 ms-3">
+                                                    <div class="fw-bold mb-1">{{ link.title }}</div>
+                                                    <small class="text-muted text-truncate d-block" style="max-width: 250px;">
+                                                        <i class="fas fa-globe me-1"></i>{{ link.url }}
+                                                    </small>
+                                                </div>
+                                                <div class="flex-shrink-0 ms-2">
+                                                    <i class="fas fa-arrow-right text-muted"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
                                 {% endfor %}
-                            </ul>
+                            </div>
                         </div>
                         {% endif %}
                     </div>
