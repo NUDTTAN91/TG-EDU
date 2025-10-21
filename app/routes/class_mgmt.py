@@ -1,10 +1,13 @@
 """班级管理路由"""
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file
 from flask_login import login_required, current_user
 import os
+from io import BytesIO
+from datetime import datetime
+import pandas as pd
 from app.extensions import db
 from app.models import User, UserRole, Class, Assignment
-from app.utils import require_teacher_or_admin, require_role
+from app.utils import require_teacher_or_admin, require_role, to_beijing_time
 
 bp = Blueprint('class_mgmt', __name__, url_prefix='/admin/classes')
 
@@ -243,10 +246,11 @@ def class_grades(class_id):
             'student': student,
             'grades': {},
             'graded_count': 0,
+            'total_score': 0,  # 新增：总分
             'average': 0
         }
         
-        total_average = 0
+        total_score = 0  # 所有已评分作业的总分
         graded_assignments = 0
         
         for assignment in assignments:
@@ -255,7 +259,7 @@ def class_grades(class_id):
             
             if avg_grade is not None:
                 student_data['grades'][assignment.id] = avg_grade
-                total_average += avg_grade
+                total_score += avg_grade
                 graded_assignments += 1
             else:
                 # 尝试从旧系统获取
@@ -268,13 +272,19 @@ def class_grades(class_id):
                 
                 if submission and submission.grade is not None:
                     student_data['grades'][assignment.id] = submission.grade
-                    total_average += submission.grade
+                    total_score += submission.grade
                     graded_assignments += 1
         
-        # 计算平均分
-        if graded_assignments > 0:
-            student_data['average'] = round(total_average / graded_assignments, 2)
-            student_data['graded_count'] = graded_assignments
+        # 设置总分
+        student_data['total_score'] = round(total_score, 2)
+        student_data['graded_count'] = graded_assignments
+        
+        # 计算平均分：总分除以作业总次数（包括未评分的作业）
+        total_assignments = len(assignments)
+        if total_assignments > 0:
+            student_data['average'] = round(total_score / total_assignments, 2)
+        else:
+            student_data['average'] = 0
         
         grade_stats.append(student_data)
     
@@ -302,3 +312,147 @@ def get_student_assignment_average_grade(assignment_id, student_id):
     ).scalar()
     
     return round(avg_grade, 2) if avg_grade is not None else None
+
+
+@bp.route('/<int:class_id>/export_grades')
+@login_required
+@require_teacher_or_admin
+def export_class_grades(class_id):
+    """导出班级成绩为Excel"""
+    class_obj = Class.query.get_or_404(class_id)
+    
+    # 权限检查
+    if not current_user.is_super_admin:
+        if current_user not in class_obj.teachers:
+            flash('您没有权限导出此班级成绩')
+            return redirect(url_for('class_mgmt.manage_classes'))
+    
+    # 获取班级所有作业
+    assignments = Assignment.query.filter_by(class_id=class_id).order_by(Assignment.created_at).all()
+    
+    # 获取班级所有学生
+    students = class_obj.students
+    
+    if not students or not assignments:
+        flash('班级暂无学生或作业，无法导出')
+        return redirect(url_for('class_mgmt.class_grades', class_id=class_id))
+    
+    # 构建成绩数据
+    from app.models import Submission, AssignmentGrade
+    
+    # 准备数据
+    data = []
+    for student in students:
+        row = {
+            '排名': 0,  # 稍后填充
+            '姓名': student.real_name,
+            '学号': student.student_id or student.username,
+        }
+        
+        total_score = 0
+        graded_count = 0
+        
+        # 每个作业的成绩
+        for assignment in assignments:
+            avg_grade = get_student_assignment_average_grade(assignment.id, student.id)
+            
+            if avg_grade is not None:
+                row[assignment.title] = avg_grade
+                total_score += avg_grade
+                graded_count += 1
+            else:
+                # 尝试从旧系统获取
+                submission = Submission.query.filter_by(
+                    assignment_id=assignment.id,
+                    student_id=student.id
+                ).filter(Submission.grade.isnot(None)).order_by(
+                    Submission.graded_at.desc()
+                ).first()
+                
+                if submission and submission.grade is not None:
+                    row[assignment.title] = submission.grade
+                    total_score += submission.grade
+                    graded_count += 1
+                else:
+                    row[assignment.title] = '未评分'
+        
+        # 总分和平均分
+        row['总分'] = round(total_score, 2)
+        total_assignments = len(assignments)
+        row['平均分'] = round(total_score / total_assignments, 2) if total_assignments > 0 else 0
+        row['评分进度'] = f'{graded_count}/{total_assignments}'
+        
+        data.append(row)
+    
+    # 按平均分排序
+    data.sort(key=lambda x: x['平均分'], reverse=True)
+    
+    # 填充排名
+    for rank, row in enumerate(data, 1):
+        row['排名'] = rank
+    
+    # 创建DataFrame
+    df = pd.DataFrame(data)
+    
+    # 调整列顺序
+    columns = ['排名', '姓名', '学号'] + [a.title for a in assignments] + ['总分', '平均分', '评分进度']
+    df = df[columns]
+    
+    # 创建Excel文件
+    output = BytesIO()
+    
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, sheet_name='成绩统计', index=False)
+        
+        # 获取worksheet进行格式调整
+        workbook = writer.book
+        worksheet = writer.sheets['成绩统计']
+        
+        # 设置列宽
+        worksheet.column_dimensions['A'].width = 8   # 排名
+        worksheet.column_dimensions['B'].width = 12  # 姓名
+        worksheet.column_dimensions['C'].width = 15  # 学号
+        
+        # 作业列宽
+        for i, assignment in enumerate(assignments, start=4):
+            col_letter = chr(64 + i)  # D, E, F...
+            worksheet.column_dimensions[col_letter].width = 15
+        
+        # 总分、平均分、评分进度列宽
+        last_col_index = 4 + len(assignments)
+        worksheet.column_dimensions[chr(64 + last_col_index)].width = 12      # 总分
+        worksheet.column_dimensions[chr(64 + last_col_index + 1)].width = 12  # 平均分
+        worksheet.column_dimensions[chr(64 + last_col_index + 2)].width = 15  # 评分进度
+        
+        # 设置表头样式
+        from openpyxl.styles import Font, Alignment, PatternFill
+        
+        header_fill = PatternFill(start_color='4472C4', end_color='4472C4', fill_type='solid')
+        header_font = Font(bold=True, color='FFFFFF', size=12)
+        
+        for cell in worksheet[1]:
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+        
+        # 设置数据居中
+        for row in worksheet.iter_rows(min_row=2, max_row=worksheet.max_row):
+            for cell in row:
+                cell.alignment = Alignment(horizontal='center', vertical='center')
+        
+        # 冻结第一行
+        worksheet.freeze_panes = 'A2'
+    
+    output.seek(0)
+    
+    # 生成文件名
+    beijing_time = to_beijing_time(datetime.utcnow())
+    timestamp = beijing_time.strftime('%Y%m%d_%H%M%S')
+    filename = f'{class_obj.name}_成绩统计_{timestamp}.xlsx'
+    
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=filename
+    )

@@ -22,12 +22,10 @@
                     <i class="fas fa-users me-1"></i>
                     学生管理
                 </a>
-                {# 导出Excel功能待实现
                 <a href="{{ url_for('class_mgmt.export_class_grades', class_id=class_obj.id) }}" class="btn btn-success">
                     <i class="fas fa-file-excel me-1"></i>
                     导出Excel
                 </a>
-                #}
             </div>
         </div>
     </div>
@@ -72,10 +70,9 @@
                         <div class="shortcut-glow warning-glow"></div>
                     </div>
                     <h4 class="stat-number warning-text">
-                        {% set total_avg = grade_stats|selectattr('graded_count')|list|sum(attribute='average') %}
-                        {% set graded_students = grade_stats|selectattr('graded_count')|list|length %}
-                        {% if graded_students > 0 %}
-                            {{ "%.1f"|format(total_avg / graded_students) }}
+                        {% if grade_stats|length > 0 and assignments|length > 0 %}
+                            {% set total_avg = grade_stats|sum(attribute='average') %}
+                            {{ "%.2f"|format(total_avg / grade_stats|length) }}
                         {% else %}
                             -
                         {% endif %}
@@ -121,13 +118,14 @@
                     <thead>
                         <tr>
                             <th width="6%">排名</th>
-                            <th width="12%">姓名</th>
-                            <th width="12%">学号</th>
+                            <th width="10%">姓名</th>
+                            <th width="10%">学号</th>
                             {% for assignment in assignments %}
-                            <th width="{{ 58 // assignments|length if assignments|length > 0 else 58 }}%">
+                            <th width="{{ 50 // assignments|length if assignments|length > 0 else 50 }}%">
                                 {{ assignment.title[:10] }}{% if assignment.title|length > 10 %}...{% endif %}
                             </th>
                             {% endfor %}
+                            <th width="8%">总分</th>
                             <th width="8%">平均分</th>
                             <th width="8%">操作</th>
                         </tr>
@@ -182,8 +180,17 @@
                             </td>
                             {% endfor %}
                             <td>
+                                {% if student_data.total_score > 0 %}
+                                    <strong class="text-primary">{{ student_data.total_score }}</strong>
+                                {% else %}
+                                    <span class="text-muted">0</span>
+                                {% endif %}
+                            </td>
+                            <td>
                                 {% if student_data.average > 0 %}
                                     <strong class="text-success">{{ student_data.average }}</strong>
+                                    <br>
+                                    <small class="text-muted">({{ student_data.graded_count }}/{{ assignments|length }})</small>
                                 {% else %}
                                     <span class="text-muted">-</span>
                                 {% endif %}
@@ -230,12 +237,10 @@
             返回班级列表
         </a>
         {% if assignments %}
-        {# 导出Excel功能待实现
         <a href="{{ url_for('class_mgmt.export_class_grades', class_id=class_obj.id) }}" class="btn btn-success">
             <i class="fas fa-download me-2"></i>
             下载成绩单
         </a>
-        #}
         {% endif %}
     </div>
 </div>
