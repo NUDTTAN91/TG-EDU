@@ -36,5 +36,31 @@ class Notification(db.Model):
         
         return invitation
     
+    def get_leave_request(self):
+        """获取关联的退组请求"""
+        if self.notification_type != 'leave_request':
+            return None
+        
+        from app.models.team import LeaveTeamRequest
+        # 查找发送者提交的最近一次退组请求
+        leave_request = LeaveTeamRequest.query.filter_by(
+            member_id=self.sender_id
+        ).order_by(LeaveTeamRequest.created_at.desc()).first()
+        
+        return leave_request
+    
+    def get_dissolve_request(self):
+        """获取关联的解散请求"""
+        if self.notification_type != 'dissolve_request':
+            return None
+        
+        from app.models.team import DissolveTeamRequest
+        # 查找组长提交的最近一次解散请求
+        dissolve_request = DissolveTeamRequest.query.filter_by(
+            leader_id=self.sender_id
+        ).order_by(DissolveTeamRequest.created_at.desc()).first()
+        
+        return dissolve_request
+    
     def __repr__(self):
         return f'<Notification {self.title}>'

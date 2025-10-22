@@ -6,7 +6,7 @@ services:
     # image: nudttan91/tg-edu
     container_name: tg-edu-system
     ports:
-      - "80:5000"
+      - "20001:5000"
     environment:
       # 管理员账户配置（可以修改这些值）
       - ADMIN_USERNAME=root

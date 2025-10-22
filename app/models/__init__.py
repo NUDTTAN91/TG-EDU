@@ -6,7 +6,7 @@ from app.models.submission import Submission
 from app.models.notification import Notification
 from app.models.team import (
     MajorAssignment, Team, TeamMember,
-    TeamInvitation, LeaveTeamRequest,
+    TeamInvitation, LeaveTeamRequest, DissolveTeamRequest,
     Stage, DivisionRole, TeamDivision,
     TeamTask, TaskProgress,
     MajorAssignmentAttachment, MajorAssignmentLink
@@ -19,7 +19,7 @@ __all__ = [
     'Submission',
     'Notification',
     'MajorAssignment', 'Team', 'TeamMember',
-    'TeamInvitation', 'LeaveTeamRequest',
+    'TeamInvitation', 'LeaveTeamRequest', 'DissolveTeamRequest',
     'Stage', 'DivisionRole', 'TeamDivision',
     'TeamTask', 'TaskProgress',
     'MajorAssignmentAttachment', 'MajorAssignmentLink'

@@ -3,7 +3,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from sqlalchemy import or_
 from app.extensions import db
-from app.models import User, UserRole, Class
+from app.models import User, UserRole, Class, Notification
 from app.utils import require_teacher_or_admin, require_role
 
 bp = Blueprint('user_mgmt', __name__, url_prefix='/admin/users')
@@ -388,6 +388,13 @@ def delete_user(user_id):
         return redirect(url_for('user_mgmt.manage_users'))
     
     real_name = user.real_name
+    
+    # 删除用户相关的通知（作为发送者或接收者）
+    Notification.query.filter(
+        (Notification.sender_id == user.id) | (Notification.receiver_id == user.id)
+    ).delete(synchronize_session=False)
+    
+    # 删除用户
     db.session.delete(user)
     db.session.commit()
     

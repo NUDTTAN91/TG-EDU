@@ -9,7 +9,7 @@ from sqlalchemy import or_
 from app.extensions import db
 from app.models import User, Class, UserRole
 from app.models.team import MajorAssignment, Team, TeamMember, TeamInvitation, LeaveTeamRequest, DissolveTeamRequest
-from app.models.team import MajorAssignmentAttachment, MajorAssignmentLink
+from app.models.team import MajorAssignmentAttachment, MajorAssignmentLink, Stage
 from app.utils import safe_chinese_filename, to_beijing_time, BEIJING_TZ
 from app.utils.decorators import require_teacher_or_admin, require_role
 from app.services import NotificationService
@@ -1332,22 +1332,22 @@ def approve_dissolve_request(request_id):
         flash('该请求已处理')
         return redirect(url_for('notification.notifications'))
     
-    # 批准解散
-    dissolve_request.status = 'approved'
-    dissolve_request.responded_at = datetime.utcnow()
-    dissolve_request.reviewer_id = current_user.id
-    
-    # 删除所有团队成员
-    TeamMember.query.filter_by(team_id=team.id).delete()
-    
-    # 删除所有邀请
-    TeamInvitation.query.filter_by(team_id=team.id).delete()
-    
-    # 删除团队
+    # 保存团队信息（在删除前）
     team_name = team.name
     leader_id = team.leader_id
     assignment_id = team.major_assignment_id
+    team_id = team.id
     
+    # 删除所有团队成员
+    TeamMember.query.filter_by(team_id=team_id).delete()
+    
+    # 删除所有邀请
+    TeamInvitation.query.filter_by(team_id=team_id).delete()
+    
+    # 删除所有解散请求（包括当前请求）
+    DissolveTeamRequest.query.filter_by(team_id=team_id).delete()
+    
+    # 删除团队
     db.session.delete(team)
     db.session.commit()
     

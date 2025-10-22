@@ -10,7 +10,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from app import create_app
 from app.extensions import db
-from app.models import User, Assignment, Notification, MajorAssignment, Team, TeamMember, TeamInvitation, LeaveTeamRequest
+from app.models import User, Assignment, Notification, MajorAssignment, Team, TeamMember, TeamInvitation, LeaveTeamRequest, DissolveTeamRequest
 
 def init_database():
     """初始化数据库"""

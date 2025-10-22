@@ -298,12 +298,24 @@ function startBatchDownload() {
 
     batchDownloadStartTime = Date.now();
     
-    // 显示进度模态框
-    resetBatchProgressModal();
-    new bootstrap.Modal(document.getElementById('batchDownloadProgressModal')).show();
-    
-    // 开始批量下载并监控进度
-    startBatchDownloadProcess(downloadType);
+    // 先清理旧的进度和错误状态
+    fetch('/admin/assignments/batch_download_clear', {
+        method: 'POST'
+    }).then(() => {
+        console.log('[调试] 已清理旧的下载状态');
+        // 显示进度模态框
+        resetBatchProgressModal();
+        new bootstrap.Modal(document.getElementById('batchDownloadProgressModal')).show();
+        
+        // 开始批量下载并监控进度
+        startBatchDownloadProcess(downloadType);
+    }).catch(error => {
+        console.warn('[调试] 清理旧状态失败，继续执行:', error);
+        // 即使清理失败也继续
+        resetBatchProgressModal();
+        new bootstrap.Modal(document.getElementById('batchDownloadProgressModal')).show();
+        startBatchDownloadProcess(downloadType);
+    });
 }
 
 // 重置批量下载进度模态框
@@ -325,82 +337,42 @@ function resetBatchProgressModal() {
 function startBatchDownloadProcess(downloadType) {
     const classId = document.getElementById('class_id').value;
     
-    // 先调用启动接口
+    // 构建表单数据
     const formData = new FormData();
     formData.append('download_type', downloadType);
     if (classId) {
         formData.append('class_id', classId);
     }
     
-    fetch('/admin/assignments/batch_download_start', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            console.log('[调试] 批量下载启动成功');
-            // 开始监控进度
-            batchDownloadIntervalId = setInterval(() => {
-                checkBatchDownloadProgress();
-            }, 1000); // 每1秒检查一次进度
-            
-            // 延迟2秒后触发实际下载
-            setTimeout(() => {
-                triggerActualBatchDownload(downloadType, classId);
-            }, 2000);
-        } else {
-            showBatchDownloadError('启动批量下载失败');
-        }
-    })
-    .catch(error => {
-        console.error('[调试] 启动批量下载失败:', error);
-        showBatchDownloadError('启动批量下载失败: ' + error.message);
-    });
-}
-
-// 触发实际的批量下载
-function triggerActualBatchDownload(downloadType, classId) {
-    // 触发实际批量下载（通过隐藏的iframe）
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
+    console.log('[调试] 开始批量下载，先启动进度监控');
     
-    // 构建请求URL
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = '/admin/assignments/batch_download';
-    form.target = iframe.name = 'download_iframe_' + Date.now();
+    // 先启动进度监控，稍后再发起实际下载请求
+    batchDownloadIntervalId = setInterval(() => {
+        checkBatchDownloadProgress();
+    }, 500); // 每0.5秒检查一次进度
     
-    // 添加表单数据
-    const downloadTypeInput = document.createElement('input');
-    downloadTypeInput.type = 'hidden';
-    downloadTypeInput.name = 'download_type';
-    downloadTypeInput.value = downloadType;
-    form.appendChild(downloadTypeInput);
-    
-    if (classId) {
-        const classIdInput = document.createElement('input');
-        classIdInput.type = 'hidden';
-        classIdInput.name = 'class_id';
-        classIdInput.value = classId;
-        form.appendChild(classIdInput);
-    }
-    
-    document.body.appendChild(iframe);
-    document.body.appendChild(form);
-    form.submit();
-    
-    console.log('[调试] 实际下载请求已提交');
-    
-    // 清理临时表单
+    // 延迟100ms后发起下载请求，让轮询先运行一次
     setTimeout(() => {
-        if (form.parentNode) {
-            form.parentNode.removeChild(form);
-        }
-        if (iframe.parentNode) {
-            iframe.parentNode.removeChild(iframe);
-        }
-    }, 10000);
+        console.log('[调试] 发起批量下载请求');
+        // 直接调用批量下载接口
+        fetch('/admin/assignments/batch_download', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('[调试] 批量下载响应:', data);
+            // 响应已经处理，进度轮询会自动检测到completed状态
+        })
+        .catch(error => {
+            console.error('[调试] 批量下载失败:', error);
+            showBatchDownloadError('批量下载失败: ' + error.message);
+            if (batchDownloadIntervalId) {
+                clearInterval(batchDownloadIntervalId);
+                batchDownloadIntervalId = null;
+            }
+        });
+    }, 100);
 }
 
 // 检查批量下载进度
@@ -420,6 +392,12 @@ function checkBatchDownloadProgress() {
                 
                 // 在显示成功消息后清理进度记录
                 if (data.status === 'completed') {
+                    // 如果下载就绪，触发文件下载
+                    if (data.download_ready) {
+                        console.log('[调试] 检测到下载就绪，触发下载');
+                        showBatchDownloadSuccess();
+                    }
+                    
                     setTimeout(() => {
                         // 清理服务器端的进度记录
                         fetch('/admin/assignments/batch_download_clear', {
@@ -433,8 +411,6 @@ function checkBatchDownloadProgress() {
                 // 如果是超时检测到的完成状态，显示特殊提示
                 if (data.timeout) {
                     showBatchDownloadSuccess('下载可能已完成（检测到超时，文件已自动下载）');
-                } else if (data.status === 'completed') {
-                    showBatchDownloadSuccess();
                 }
             }
         })
@@ -519,6 +495,10 @@ function showBatchDownloadSuccess(customMessage) {
             successMessage.textContent = customMessage;
         }
     }
+    
+    // 触发实际下载
+    console.log('[调试] 开始触发实际文件下载');
+    window.location.href = '/admin/assignments/batch_download_file';
     
     // 3秒后自动关闭模态框
     setTimeout(() => {

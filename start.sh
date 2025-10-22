@@ -33,12 +33,15 @@ python3 migrate_team_confirmation_reason.py
 # 运行删除due_date字段迁移
 python3 migrate_remove_due_date.py
 
+# 运行解散团队请求表迁移
+python3 migrate_dissolve_team_request.py
+
 # 然后初始化管理员账户
 python3 -c "
 import os
 from app import create_app
 from app.extensions import db
-from app.models import User, UserRole, Notification, MajorAssignment, Team, TeamMember, TeamInvitation, LeaveTeamRequest
+from app.models import User, UserRole, Notification, MajorAssignment, Team, TeamMember, TeamInvitation, LeaveTeamRequest, DissolveTeamRequest
 import sqlite3
 
 app = create_app('production')

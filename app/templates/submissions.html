@@ -8,7 +8,20 @@
                 <h1>{{ assignment.title }} - 提交列表</h1>
                 <p class="text-muted">共 {{ student_stats|length }} 名学生提交，总计 {{ student_stats|sum(attribute='submission_count') }} 份提交</p>
             </div>
-            <a href="{% if current_user.is_super_admin %}{{ url_for('admin.super_admin_dashboard') }}{% else %}{{ url_for('admin.teacher_dashboard') }}{% endif %}" class="btn btn-secondary">返回管理后台</a>
+            <div>
+                {% if student_stats %}
+                <div class="btn-group me-2" role="group">
+                    <a href="{{ url_for('grading.export_grading_template', assignment_id=assignment.id) }}" 
+                       class="btn btn-success">
+                        <i class="fas fa-file-excel me-1"></i>下载评分模板
+                    </a>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#importGradeModal">
+                        <i class="fas fa-file-upload me-1"></i>导入评分
+                    </button>
+                </div>
+                {% endif %}
+                <a href="{% if current_user.is_super_admin %}{{ url_for('admin.super_admin_dashboard') }}{% else %}{{ url_for('admin.teacher_dashboard') }}{% endif %}" class="btn btn-secondary">返回管理后台</a>
+            </div>
         </div>
         {% if assignment.description %}
             <div class="alert alert-info mb-4">
@@ -103,4 +116,110 @@
         {% endif %}
     </div>
 </div>
+
+<!-- 导入评分模态框 -->
+<div class="modal fade" id="importGradeModal" tabindex="-1" aria-labelledby="importGradeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="importGradeModalLabel">
+                    <i class="fas fa-file-upload me-2"></i>批量导入评分
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <h6 class="alert-heading"><i class="fas fa-info-circle me-1"></i>使用说明</h6>
+                    <ol class="mb-0">
+                        <li>点击「下载评分模板」获取Excel文件</li>
+                        <li>模板中仅包含已提交作业的学生</li>
+                        <li>在「分数」和「评语」列中填写评分信息</li>
+                        <li>分数范围：0-100，可为空</li>
+                        <li>请勿修改学号和姓名</li>
+                        <li>保存并上传填写好的Excel文件</li>
+                    </ol>
+                </div>
+                <form id="importGradeForm" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="gradeFile" class="form-label">选择Excel文件</label>
+                        <input type="file" class="form-control" id="gradeFile" name="file" accept=".xlsx,.xls" required>
+                        <div class="form-text">支持.xlsx和.xls格式</div>
+                    </div>
+                    <div id="importProgress" class="progress mb-3" style="display:none;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%">正在导入...</div>
+                    </div>
+                    <div id="importResult" class="alert" style="display:none;"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="uploadGradeBtn">
+                    <i class="fas fa-upload me-1"></i>开始导入
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 批量导入评分
+document.getElementById('uploadGradeBtn').addEventListener('click', function() {
+    const form = document.getElementById('importGradeForm');
+    const fileInput = document.getElementById('gradeFile');
+    const uploadBtn = this;
+    const progress = document.getElementById('importProgress');
+    const result = document.getElementById('importResult');
+    
+    if (!fileInput.files.length) {
+        alert('请选择Excel文件');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    
+    // 禁用按钮并显示进度
+    uploadBtn.disabled = true;
+    progress.style.display = 'block';
+    result.style.display = 'none';
+    
+    fetch('{{ url_for("grading.import_grades", assignment_id=assignment.id) }}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        uploadBtn.disabled = false;
+        progress.style.display = 'none';
+        result.style.display = 'block';
+        
+        if (data.success) {
+            result.className = 'alert alert-success';
+            result.innerHTML = '<i class="fas fa-check-circle me-2"></i>' + data.message;
+            
+            // 3秒后刷新页面
+            setTimeout(function() {
+                location.reload();
+            }, 3000);
+        } else {
+            result.className = 'alert alert-danger';
+            result.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>' + data.message;
+        }
+    })
+    .catch(error => {
+        uploadBtn.disabled = false;
+        progress.style.display = 'none';
+        result.style.display = 'block';
+        result.className = 'alert alert-danger';
+        result.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>导入失败：' + error.message;
+    });
+});
+
+// 清理模态框状态
+document.getElementById('importGradeModal').addEventListener('hidden.bs.modal', function() {
+    document.getElementById('importGradeForm').reset();
+    document.getElementById('importProgress').style.display = 'none';
+    document.getElementById('importResult').style.display = 'none';
+});
+</script>
 {% endblock %}
