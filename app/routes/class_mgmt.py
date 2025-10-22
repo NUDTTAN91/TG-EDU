@@ -250,36 +250,52 @@ def class_grades(class_id):
             'average': 0
         }
         
-        total_score = 0  # 所有已评分作业的总分
+        total_score = 0  # 所有作业的总分（未交作业计0分）
         graded_assignments = 0
         
         for assignment in assignments:
-            # 使用新的评分系统获取平均分
-            avg_grade = get_student_assignment_average_grade(assignment.id, student.id)
+            # 检查学生是否提交了作业
+            has_submission = Submission.query.filter_by(
+                assignment_id=assignment.id,
+                student_id=student.id
+            ).first()
             
-            if avg_grade is not None:
-                student_data['grades'][assignment.id] = avg_grade
-                total_score += avg_grade
-                graded_assignments += 1
+            if not has_submission:
+                # 未提交作业：记为0分并标记"未交"
+                student_data['grades'][assignment.id] = {'grade': 0, 'status': 'not_submitted'}
+                total_score += 0  # 未交作业计0分
             else:
-                # 尝试从旧系统获取
-                submission = Submission.query.filter_by(
-                    assignment_id=assignment.id,
-                    student_id=student.id
-                ).filter(Submission.grade.isnot(None)).order_by(
-                    Submission.graded_at.desc()
-                ).first()
+                # 已提交作业：获取评分
+                # 使用新的评分系统获取平均分
+                avg_grade = get_student_assignment_average_grade(assignment.id, student.id)
                 
-                if submission and submission.grade is not None:
-                    student_data['grades'][assignment.id] = submission.grade
-                    total_score += submission.grade
+                if avg_grade is not None:
+                    student_data['grades'][assignment.id] = {'grade': avg_grade, 'status': 'graded'}
+                    total_score += avg_grade
                     graded_assignments += 1
+                else:
+                    # 尝试从旧系统获取
+                    submission = Submission.query.filter_by(
+                        assignment_id=assignment.id,
+                        student_id=student.id
+                    ).filter(Submission.grade.isnot(None)).order_by(
+                        Submission.graded_at.desc()
+                    ).first()
+                    
+                    if submission and submission.grade is not None:
+                        student_data['grades'][assignment.id] = {'grade': submission.grade, 'status': 'graded'}
+                        total_score += submission.grade
+                        graded_assignments += 1
+                    else:
+                        # 已提交但未评分
+                        student_data['grades'][assignment.id] = {'grade': 0, 'status': 'submitted_not_graded'}
+                        total_score += 0
         
         # 设置总分
         student_data['total_score'] = round(total_score, 2)
         student_data['graded_count'] = graded_assignments
         
-        # 计算平均分：总分除以作业总次数（包括未评分的作业）
+        # 计算平均分：总分除以作业总次数（包括未交作业）
         total_assignments = len(assignments)
         if total_assignments > 0:
             student_data['average'] = round(total_score / total_assignments, 2)
@@ -354,27 +370,41 @@ def export_class_grades(class_id):
         
         # 每个作业的成绩
         for assignment in assignments:
-            avg_grade = get_student_assignment_average_grade(assignment.id, student.id)
+            # 检查学生是否提交了作业
+            has_submission = Submission.query.filter_by(
+                assignment_id=assignment.id,
+                student_id=student.id
+            ).first()
             
-            if avg_grade is not None:
-                row[assignment.title] = avg_grade
-                total_score += avg_grade
-                graded_count += 1
+            if not has_submission:
+                # 未提交作业：记为0分并标记"未交"
+                row[assignment.title] = '0分(未交)'
+                total_score += 0
             else:
-                # 尝试从旧系统获取
-                submission = Submission.query.filter_by(
-                    assignment_id=assignment.id,
-                    student_id=student.id
-                ).filter(Submission.grade.isnot(None)).order_by(
-                    Submission.graded_at.desc()
-                ).first()
+                # 已提交作业：获取评分
+                avg_grade = get_student_assignment_average_grade(assignment.id, student.id)
                 
-                if submission and submission.grade is not None:
-                    row[assignment.title] = submission.grade
-                    total_score += submission.grade
+                if avg_grade is not None:
+                    row[assignment.title] = avg_grade
+                    total_score += avg_grade
                     graded_count += 1
                 else:
-                    row[assignment.title] = '未评分'
+                    # 尝试从旧系统获取
+                    submission = Submission.query.filter_by(
+                        assignment_id=assignment.id,
+                        student_id=student.id
+                    ).filter(Submission.grade.isnot(None)).order_by(
+                        Submission.graded_at.desc()
+                    ).first()
+                    
+                    if submission and submission.grade is not None:
+                        row[assignment.title] = submission.grade
+                        total_score += submission.grade
+                        graded_count += 1
+                    else:
+                        # 已提交但未评分
+                        row[assignment.title] = '未评分'
+                        total_score += 0
         
         # 总分和平均分
         row['总分'] = round(total_score, 2)

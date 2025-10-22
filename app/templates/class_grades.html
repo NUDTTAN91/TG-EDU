@@ -161,18 +161,46 @@
                             <td>{{ student_data.student.student_id or student_data.student.username }}</td>
                             {% for assignment in assignments %}
                             <td>
-                                {% set grade = student_data.grades.get(assignment.id) %}
-                                {% if grade is not none %}
-                                    {% if grade >= 90 %}
-                                        <span class="badge bg-success">{{ grade }}分</span>
-                                    {% elif grade >= 80 %}
-                                        <span class="badge bg-info">{{ grade }}分</span>
-                                    {% elif grade >= 70 %}
-                                        <span class="badge bg-warning">{{ grade }}分</span>
-                                    {% elif grade >= 60 %}
-                                        <span class="badge bg-secondary">{{ grade }}分</span>
+                                {% set grade_info = student_data.grades.get(assignment.id) %}
+                                {% if grade_info is not none %}
+                                    {% if grade_info is mapping %}
+                                        {# 新的格式：字典包含grade和status #}
+                                        {% if grade_info.status == 'not_submitted' %}
+                                            <span class="badge bg-danger" title="未提交作业">
+                                                <i class="fas fa-times-circle me-1"></i>0分(未交)
+                                            </span>
+                                        {% elif grade_info.status == 'submitted_not_graded' %}
+                                            <span class="text-muted" title="已提交但未评分">
+                                                <i class="fas fa-clock me-1"></i>未评分
+                                            </span>
+                                        {% elif grade_info.status == 'graded' %}
+                                            {% set grade = grade_info.grade %}
+                                            {% if grade >= 90 %}
+                                                <span class="badge bg-success">{{ grade }}分</span>
+                                            {% elif grade >= 80 %}
+                                                <span class="badge bg-info">{{ grade }}分</span>
+                                            {% elif grade >= 70 %}
+                                                <span class="badge bg-warning">{{ grade }}分</span>
+                                            {% elif grade >= 60 %}
+                                                <span class="badge bg-secondary">{{ grade }}分</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">{{ grade }}分</span>
+                                            {% endif %}
+                                        {% endif %}
                                     {% else %}
-                                        <span class="badge bg-danger">{{ grade }}分</span>
+                                        {# 旧的格式：直接是分数 #}
+                                        {% set grade = grade_info %}
+                                        {% if grade >= 90 %}
+                                            <span class="badge bg-success">{{ grade }}分</span>
+                                        {% elif grade >= 80 %}
+                                            <span class="badge bg-info">{{ grade }}分</span>
+                                        {% elif grade >= 70 %}
+                                            <span class="badge bg-warning">{{ grade }}分</span>
+                                        {% elif grade >= 60 %}
+                                            <span class="badge bg-secondary">{{ grade }}分</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">{{ grade }}分</span>
+                                        {% endif %}
                                     {% endif %}
                                 {% else %}
                                     <span class="text-muted">未评分</span>
