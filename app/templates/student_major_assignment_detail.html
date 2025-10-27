@@ -217,7 +217,7 @@
                                         <span class="text-muted small">已结束</span>
                                         {% endif %}
                                         {% elif stage.stage_type == 'division' %}
-                                        {% if my_team and my_team.leader_id == current_user.id and not my_team.is_locked %}
+                                        {% if my_team and my_team.leader_id == current_user.id %}
                                         <a href="{{ url_for('major_assignment.team_assign_divisions', team_id=my_team.id, stage_id=stage.id) }}" 
                                            class="btn btn-sm btn-info">
                                             <i class="fas fa-edit me-1"></i>分配
@@ -372,6 +372,21 @@
                         </button>
                         {% endif %}
                         
+                        <!-- 分工管理快捷入口 -->
+                        {% if division_stages|length > 0 %}
+                        <div class="mt-3">
+                            <h6 class="text-info">
+                                <i class="fas fa-user-tag me-2"></i>分工管理
+                            </h6>
+                            {% for stage in division_stages %}
+                            <button class="btn btn-info me-2 mb-2" 
+                                    onclick="window.location.href='{{ url_for('major_assignment.team_assign_divisions', team_id=my_team.id, stage_id=stage.id) }}'">
+                                <i class="fas fa-edit me-1"></i>{{ stage.name }} - 分配角色
+                            </button>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        
                         <!-- 任务管理快捷入口 -->
                         <div class="mt-3">
                             <h6 class="text-success">
@@ -411,7 +426,7 @@
                                 {{ stage.name }}
                                 <span class="badge bg-info ms-2">{{ stage.status }}</span>
                             </h6>
-                            {% if my_team.leader_id == current_user.id and not my_team.is_locked %}
+                            {% if my_team.leader_id == current_user.id %}
                             <button class="btn btn-sm btn-primary" 
                                     onclick="window.location.href='{{ url_for('major_assignment.team_assign_divisions', team_id=my_team.id, stage_id=stage.id) }}'">
                                 <i class="fas fa-edit me-1"></i>分配角色

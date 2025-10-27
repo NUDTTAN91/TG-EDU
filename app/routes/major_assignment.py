@@ -2147,10 +2147,8 @@ def team_assign_divisions(team_id, stage_id):
         flash('只有组长才能分配分工')
         return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=team.major_assignment_id))
     
-    # 检查团队是否锁定
-    if team.is_locked:
-        flash('团队已锁定，无法修改分工')
-        return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=team.major_assignment_id))
+    # 注意：团队锁定只限制成员增减，不限制分工分配
+    # 因此这里不检查 is_locked 状态
     
     # 检查阶段类型
     if stage.stage_type != 'division':
@@ -2200,10 +2198,8 @@ def save_team_divisions(team_id, stage_id):
         flash('只有组长才能分配分工')
         return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=team.major_assignment_id))
     
-    # 检查团队是否锁定
-    if team.is_locked:
-        flash('团队已锁定，无法修改分工')
-        return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=team.major_assignment_id))
+    # 注意：团队锁定只限制成员增减，不限制分工分配
+    # 因此这里不检查 is_locked 状态
     
     # 删除该团队在该阶段的所有旧分工
     TeamDivision.query.filter_by(team_id=team_id, stage_id=stage_id).delete()
