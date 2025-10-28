@@ -152,11 +152,91 @@ def manage_users():
                     return True
         return False
     
+    # 计算全局统计数据（不受分页影响）
+    if current_user.is_super_admin:
+        # 使用与分页相同的筛选条件构建统计查询
+        stats_query = User.query
+        
+        # 应用相同的筛选条件
+        if role_filter:
+            stats_query = stats_query.filter_by(role=role_filter)
+        if search_query:
+            stats_query = stats_query.filter(
+                or_(
+                    User.username.like(f'%{search_query}%'),
+                    User.real_name.like(f'%{search_query}%'),
+                    User.student_id.like(f'%{search_query}%')
+                )
+            )
+        if class_filter:
+            try:
+                class_id = int(class_filter)
+                if role_filter == UserRole.TEACHER:
+                    stats_query = stats_query.join(User.teaching_classes).filter(Class.id == class_id)
+                elif role_filter == UserRole.STUDENT:
+                    stats_query = stats_query.join(User.classes).filter(Class.id == class_id)
+                else:
+                    teachers_in_class = User.query.join(User.teaching_classes).filter(Class.id == class_id)
+                    students_in_class = User.query.join(User.classes).filter(Class.id == class_id)
+                    stats_query = teachers_in_class.union(students_in_class)
+            except ValueError:
+                pass
+        
+        # 统计各角色数量
+        all_filtered_users = stats_query.all()
+        total_super_admins = len([u for u in all_filtered_users if u.role == UserRole.SUPER_ADMIN])
+        total_teachers = len([u for u in all_filtered_users if u.role == UserRole.TEACHER])
+        total_students = len([u for u in all_filtered_users if u.role == UserRole.STUDENT])
+        total_users = len(all_filtered_users)
+    else:
+        # 教师只统计自己可见的学生
+        teacher_class_ids = [c.id for c in current_user.teaching_classes]
+        stats_query = User.query.filter_by(role=UserRole.STUDENT)
+        
+        if teacher_class_ids:
+            stats_query = stats_query.filter(
+                or_(
+                    User.created_by == current_user.id,
+                    User.classes.any(Class.id.in_(teacher_class_ids))
+                )
+            )
+        else:
+            stats_query = stats_query.filter_by(created_by=current_user.id)
+        
+        # 应用搜索条件
+        if search_query:
+            stats_query = stats_query.filter(
+                or_(
+                    User.username.like(f'%{search_query}%'),
+                    User.real_name.like(f'%{search_query}%'),
+                    User.student_id.like(f'%{search_query}%')
+                )
+            )
+        
+        # 应用班级筛选
+        if class_filter and teacher_class_ids:
+            try:
+                class_id = int(class_filter)
+                if class_id in teacher_class_ids:
+                    stats_query = stats_query.filter(User.classes.any(Class.id == class_id))
+            except ValueError:
+                pass
+        
+        all_filtered_students = stats_query.distinct().all()
+        total_super_admins = 0  # 教师看不到管理员
+        total_teachers = 0  # 教师看不到其他教师
+        total_students = len(all_filtered_students)
+        total_users = total_students
+    
     return render_template('manage_users.html',
                          users=users,
                          pagination=pagination,
                          all_classes=all_classes,
-                         can_teacher_manage_student=can_teacher_manage_student)
+                         can_teacher_manage_student=can_teacher_manage_student,
+                         total_super_admins=total_super_admins,
+                         total_teachers=total_teachers,
+                         total_students=total_students,
+                         total_users=total_users)
 
 
 @bp.route('/add', methods=['GET', 'POST'])

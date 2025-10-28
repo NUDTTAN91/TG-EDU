@@ -41,7 +41,7 @@
                         <div class="shortcut-glow danger-glow"></div>
                     </div>
                     <h4 class="stat-number danger-text">
-                        {{ users|selectattr('role', 'equalto', 'super_admin')|list|length }}
+                        {{ total_super_admins }}
                     </h4>
                     <p class="stat-label mb-0">超级管理员</p>
                 </div>
@@ -57,7 +57,7 @@
                         <div class="shortcut-glow warning-glow"></div>
                     </div>
                     <h4 class="stat-number warning-text">
-                        {{ users|selectattr('role', 'equalto', 'teacher')|list|length }}
+                        {{ total_teachers }}
                     </h4>
                     <p class="stat-label mb-0">教师</p>
                 </div>
@@ -74,7 +74,7 @@
                     <div class="shortcut-glow success-glow"></div>
                 </div>
                 <h4 class="stat-number success-text">
-                    {{ users|selectattr('role', 'equalto', 'student')|list|length }}
+                    {{ total_students }}
                 </h4>
                 <p class="stat-label mb-0">学生</p>
             </div>
@@ -89,7 +89,7 @@
                     </div>
                     <div class="shortcut-glow info-glow"></div>
                 </div>
-                <h4 class="stat-number info-text">{{ users|length }}</h4>
+                <h4 class="stat-number info-text">{{ total_users }}</h4>
                 <p class="stat-label mb-0">总用户数</p>
             </div>
         </div>
