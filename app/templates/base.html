@@ -565,6 +565,52 @@
     function showSystemReset() {
         window.location.href = "{{ url_for('advanced.reset_system') }}";
     }
+    
+    // ========================
+    // 全局滚动位置保持功能
+    // ========================
+    
+    // 保存滚动位置
+    function saveScrollPosition() {
+        sessionStorage.setItem('scrollPosition', window.scrollY);
+    }
+    
+    // 恢复滚动位置
+    function restoreScrollPosition() {
+        const savedPosition = sessionStorage.getItem('scrollPosition');
+        if (savedPosition !== null) {
+            window.scrollTo(0, parseInt(savedPosition));
+            // 清除保存的位置，避免影响其他页面
+            sessionStorage.removeItem('scrollPosition');
+        }
+    }
+    
+    // 页面加载时恢复滚动位置
+    window.addEventListener('DOMContentLoaded', function() {
+        restoreScrollPosition();
+    });
+    
+    // 为所有带有 href 的链接添加点击事件，保存滚动位置
+    document.addEventListener('click', function(e) {
+        const target = e.target.closest('a[href]');
+        if (target && target.href && !target.hasAttribute('target')) {
+            // 排除附件下载和外部链接
+            const url = new URL(target.href);
+            if (url.hostname === window.location.hostname && 
+                !target.href.includes('/download/') && 
+                !target.href.includes('/attachment/')) {
+                saveScrollPosition();
+            }
+        }
+    });
+    
+    // 为表单提交添加事件
+    document.addEventListener('submit', function(e) {
+        // 如果是GET请求，保存滚动位置
+        if (e.target.method.toLowerCase() === 'get') {
+            saveScrollPosition();
+        }
+    });
     </script>
     
     {% block scripts %}{% endblock %}

@@ -496,6 +496,14 @@ function showLoadingIndicator(element) {
     document.body.appendChild(loadingDiv);
 }
 
+// 保存滚动位置并跳转
+function saveScrollAndNavigate(url) {
+    // 保存当前滚动位置
+    sessionStorage.setItem('scrollPosition', window.scrollY);
+    // 跳转到新URL
+    window.location.href = url;
+}
+
 // 每页数量选择功能
 document.getElementById('perPageSelect').addEventListener('change', function() {
     const perPage = this.value;
@@ -504,7 +512,7 @@ document.getElementById('perPageSelect').addEventListener('change', function() {
     url.searchParams.set('page', '1');
     
     showLoadingIndicator(this);
-    window.location.href = url.toString();
+    saveScrollAndNavigate(url.toString());
 });
 
 // 角色筛选功能
@@ -522,7 +530,7 @@ if (roleFilter) {
         url.searchParams.set('page', '1');
         
         showLoadingIndicator(this);
-        window.location.href = url.toString();
+        saveScrollAndNavigate(url.toString());
     });
 }
 
@@ -541,7 +549,7 @@ if (classFilter) {
         url.searchParams.set('page', '1');
         
         showLoadingIndicator(this);
-        window.location.href = url.toString();
+        saveScrollAndNavigate(url.toString());
     });
 }
 
@@ -556,7 +564,7 @@ if (resetFilters) {
         url.searchParams.set('page', '1');
         
         showLoadingIndicator(this);
-        window.location.href = url.toString();
+        saveScrollAndNavigate(url.toString());
     });
 }
 
@@ -577,7 +585,7 @@ if (searchForm) {
         url.searchParams.set('page', '1');
         
         showLoadingIndicator(searchInput);
-        window.location.href = url.toString();
+        saveScrollAndNavigate(url.toString());
     });
 }
 
@@ -590,7 +598,7 @@ if (clearSearch) {
         url.searchParams.set('page', '1');
         
         showLoadingIndicator(this);
-        window.location.href = url.toString();
+        saveScrollAndNavigate(url.toString());
     });
 }
 
@@ -608,8 +616,27 @@ function resetPassword(userId, userName) {
     new bootstrap.Modal(document.getElementById('resetPasswordModal')).show();
 }
 
-// 页面加载动画
+// 为所有分页链接添加滚动位置保存
 document.addEventListener('DOMContentLoaded', function() {
+    // 为所有分页链接添加点击事件
+    const paginationLinks = document.querySelectorAll('.pagination .page-link');
+    paginationLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            if (!this.parentElement.classList.contains('disabled') && 
+                !this.parentElement.classList.contains('active')) {
+                saveScrollPosition();
+            }
+        });
+    });
+    
+    // 为所有编辑用户链接添加点击事件
+    const editLinks = document.querySelectorAll('a[href*="edit_user"]');
+    editLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            saveScrollPosition();
+        });
+    });
+    
     const cards = document.querySelectorAll('.stat-card');
     cards.forEach((card, index) => {
         setTimeout(() => {

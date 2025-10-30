@@ -185,32 +185,38 @@
                         </div>
                         <div class="col-md-10">
                             <div class="d-flex flex-wrap gap-2">
-                                <a href="{{ url_for('admin.super_admin_dashboard') }}" 
-                                   class="btn btn-sm {% if not selected_class_id %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                                <button type="button" 
+                                        onclick="filterAssignmentsByClass(null)" 
+                                        class="btn btn-sm class-filter-btn {% if not selected_class_id %}btn-primary{% else %}btn-outline-primary{% endif %}" 
+                                        data-class-id="">
                                     <i class="fas fa-globe me-1"></i>
                                     全部作业
                                     <span class="badge bg-light text-dark ms-1">{{ total_assignments }}</span>
-                                </a>
+                                </button>
                                 {% for class_obj in all_classes %}
-                                    <a href="{{ url_for('admin.super_admin_dashboard', class_id=class_obj.id) }}" 
-                                       class="btn btn-sm {% if selected_class_id == class_obj.id %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                                    <button type="button" 
+                                            onclick="filterAssignmentsByClass({{ class_obj.id }})" 
+                                            class="btn btn-sm class-filter-btn {% if selected_class_id == class_obj.id %}btn-primary{% else %}btn-outline-primary{% endif %}" 
+                                            data-class-id="{{ class_obj.id }}">
                                         <i class="fas fa-school me-1"></i>
                                         {{ class_obj.name }}
                                         <span class="badge bg-light text-dark ms-1">
                                             {% set class_assignment_count = assignments|selectattr('class_id', 'equalto', class_obj.id)|list|length if not selected_class_id else assignments|length %}
                                             {{ class_assignment_count }}
                                         </span>
-                                    </a>
+                                    </button>
                                 {% endfor %}
-                                <a href="{{ url_for('admin.super_admin_dashboard', class_id=0) }}" 
-                                   class="btn btn-sm {% if selected_class_id == 0 %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                                <button type="button" 
+                                        onclick="filterAssignmentsByClass(0)" 
+                                        class="btn btn-sm class-filter-btn {% if selected_class_id == 0 %}btn-primary{% else %}btn-outline-primary{% endif %}" 
+                                        data-class-id="0">
                                     <i class="fas fa-globe-americas me-1"></i>
                                     公共作业
                                     <span class="badge bg-light text-dark ms-1">
                                         {% set public_assignment_count = assignments|selectattr('class_id', 'none')|list|length if not selected_class_id else (assignments|length if selected_class_id == 0 else 0) %}
                                         {{ public_assignment_count }}
                                     </span>
-                                </a>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -220,7 +226,7 @@
                 {% if assignments %}
                     <div class="assignment-grid">
                         {% for assignment in assignments %}
-                            <div class="assignment-card">
+                            <div class="assignment-card" data-class-id="{{ assignment.class_id if assignment.class_id else '0' }}">
                                 <div class="assignment-header">
                                     <div class="assignment-icon">
                                         <i class="fas fa-file-text"></i>
@@ -889,6 +895,88 @@ let downloadStartTime = Date.now();
 // 显示批量下载页面
 function showBatchDownloadPage() {
     window.location.href = '{{ url_for("download.batch_download_assignments") }}';
+}
+
+// 班级筛选功能（无刷新）
+function filterAssignmentsByClass(classId) {
+    // 更新按钮状态
+    document.querySelectorAll('.class-filter-btn').forEach(btn => {
+        btn.classList.remove('btn-primary');
+        btn.classList.add('btn-outline-primary');
+    });
+    
+    // 高亮当前选中的按钮
+    event.target.closest('button').classList.remove('btn-outline-primary');
+    event.target.closest('button').classList.add('btn-primary');
+    
+    // 筛选作业卡片
+    const assignmentCards = document.querySelectorAll('.assignment-card');
+    
+    assignmentCards.forEach(card => {
+        const cardClassId = card.getAttribute('data-class-id');
+        
+        if (classId === null || classId === '') {
+            // 显示所有作业
+            card.style.display = '';
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            setTimeout(() => {
+                card.style.transition = 'all 0.3s ease';
+                card.style.opacity = '1';
+                card.style.transform = 'translateY(0)';
+            }, 50);
+        } else if (classId === 0) {
+            // 筛选公共作业（class_id 为 '0'）
+            if (cardClassId === '0') {
+                card.style.display = '';
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    card.style.transition = 'all 0.3s ease';
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, 50);
+            } else {
+                card.style.display = 'none';
+            }
+        } else if (cardClassId === String(classId)) {
+            // 显示指定班级的作业
+            card.style.display = '';
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            setTimeout(() => {
+                card.style.transition = 'all 0.3s ease';
+                card.style.opacity = '1';
+                card.style.transform = 'translateY(0)';
+            }, 50);
+        } else {
+            card.style.display = 'none';
+        }
+    });
+    
+    // 检查是否有可见的作业
+    const visibleCards = Array.from(assignmentCards).filter(card => card.style.display !== 'none');
+    const emptyState = document.querySelector('.empty-state');
+    const assignmentGrid = document.querySelector('.assignment-grid');
+    
+    if (visibleCards.length === 0) {
+        if (assignmentGrid) assignmentGrid.style.display = 'none';
+        if (!emptyState) {
+            const emptyDiv = document.createElement('div');
+            emptyDiv.className = 'empty-state';
+            emptyDiv.innerHTML = `
+                <div class="empty-icon">
+                    <i class="fas fa-clipboard"></i>
+                </div>
+                <h3 class="empty-title">该筛选条件下暂无作业</h3>
+                <p class="empty-desc">当前筛选条件下没有找到任何作业</p>
+            `;
+            document.querySelector('.card-body').appendChild(emptyDiv);
+        }
+    } else {
+        if (assignmentGrid) assignmentGrid.style.display = '';
+        if (emptyState) emptyState.remove();
+    }
 }
 </script>
 
