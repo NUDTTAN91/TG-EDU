@@ -101,6 +101,44 @@
     <!-- 作业列表区域 -->
     <div class="assignments-section">
         <div class="content-body">
+            <!-- 班级筛选区域 -->
+            {% if current_user.teaching_classes|length > 0 %}
+            <div class="class-filter-section mb-4">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-md-3">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-filter me-2"></i>
+                                    班级筛选
+                                </h6>
+                            </div>
+                            <div class="col-md-9">
+                                <div class="d-flex flex-wrap gap-2">
+                                    <a href="{{ url_for('admin.teacher_dashboard') }}" 
+                                       class="btn btn-sm {% if not selected_class_id %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                                        <i class="fas fa-globe me-1"></i>
+                                        全部作业
+                                    </a>
+                                    {% for class_obj in teacher_classes %}
+                                        <a href="{{ url_for('admin.teacher_dashboard', class_id=class_obj.id) }}" 
+                                           class="btn btn-sm {% if selected_class_id == class_obj.id %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                                            <i class="fas fa-school me-1"></i>
+                                            {{ class_obj.name }}
+                                            <span class="badge bg-light text-dark ms-1">
+                                                {% set class_assignment_count = assignments|selectattr('class_id', 'equalto', class_obj.id)|list|length %}
+                                                {{ class_assignment_count }}
+                                            </span>
+                                        </a>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
             {% if assignments %}
                 <div class="assignment-grid">
                     {% for assignment in assignments %}
@@ -886,6 +924,15 @@ function showBatchDownloadPage() {
     .page-title {
         font-size: 1.5rem;
     }
+    
+    .class-filter-section .d-flex {
+        flex-direction: column;
+    }
+    
+    .class-filter-section .btn {
+        width: 100%;
+        justify-content: space-between;
+    }
 }
 
 @media (max-width: 480px) {
@@ -904,6 +951,62 @@ function showBatchDownloadPage() {
         height: 50px;
         font-size: 1.5rem;
     }
+}
+
+/* 班级筛选样式 */
+.class-filter-section .card {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 2px solid #667eea;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+}
+
+.class-filter-section h6 {
+    color: #495057;
+    font-weight: 600;
+}
+
+.class-filter-section .btn-outline-primary {
+    border-color: #667eea;
+    color: #495057;
+    background: white;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.class-filter-section .btn-outline-primary:hover {
+    background: #667eea;
+    border-color: #667eea;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(102, 126, 234, 0.3);
+}
+
+.class-filter-section .btn-primary {
+    background: #667eea;
+    border-color: #667eea;
+    color: white;
+    font-weight: 600;
+    box-shadow: 0 4px 10px rgba(102, 126, 234, 0.4);
+}
+
+.class-filter-section .btn-primary:hover {
+    background: #5568d3;
+    border-color: #5568d3;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(102, 126, 234, 0.5);
+}
+
+.class-filter-section .badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    background: #e9ecef !important;
+    color: #495057 !important;
+    font-weight: 600;
+}
+
+.class-filter-section .btn-primary .badge {
+    background: rgba(255, 255, 255, 0.3) !important;
+    color: white !important;
 }
 </style>
 {% endblock %}
