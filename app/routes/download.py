@@ -100,12 +100,30 @@ def download_assignment(assignment_id):
             existing_files = []
             for s in submissions:
                 if os.path.isabs(s.file_path):
+                    # 已经是绝对路径，直接使用
                     file_path = s.file_path
                 else:
-                    file_path = os.path.join('/app/storage', s.file_path)
+                    # 相对路径，需要转换为绝对路径
+                    # 检查是否已经包含storage前缀
+                    if s.file_path.startswith('storage/'):
+                        # 已包含storage前缀，直接加/app前缀
+                        file_path = os.path.join('/app', s.file_path)
+                    else:
+                        # 不包含storage前缀，加/app/storage前缀
+                        file_path = os.path.join('/app/storage', s.file_path)
+                
+                logger.warning(f"[单个作业下载] 检查文件: {s.student_name} - {s.original_filename}")
+                logger.warning(f"[单个作业下载] 原始路径: {s.file_path}")
+                logger.warning(f"[单个作业下载] 转换路径: {file_path}")
+                logger.warning(f"[单个作业下载] 文件存在: {os.path.exists(file_path)}")
+                
                 if os.path.exists(file_path):
                     existing_files.append((s, file_path))
+                else:
+                    logger.warning(f"[单个作业下载] 文件不存在，跳过: {file_path}")
+            
             total_files = len(existing_files)
+            logger.warning(f"[单个作业下载] 实际存在的文件数: {total_files}/{len(submissions)}")
             
             for i, (submission, file_path) in enumerate(existing_files):
                     # 更新进度（使用进度跟踪器）
