@@ -9,5 +9,5 @@ gunicorn==21.2.0
 pandas==2.0.3
 openpyxl==3.1.2
 gevent==23.9.1
-gevent==23.9.1
 psutil==5.9.8
+chardet>=5.0.0
