@@ -51,6 +51,20 @@ def major_assignment_dashboard():
 @require_teacher_or_admin
 def create_major_assignment():
     """创建大作业"""
+    # 普通教师权限检查：必须有班级或导入过学生才能创建大作业
+    if current_user.is_teacher and not current_user.is_super_admin:
+        # 检查是否有负责的班级
+        has_classes = len(current_user.teaching_classes) > 0
+        # 检查是否导入过学生
+        has_created_students = User.query.filter_by(
+            role=UserRole.STUDENT, 
+            created_by=current_user.id
+        ).first() is not None
+        
+        if not has_classes and not has_created_students:
+            flash('您还没有班级或学生，无法创建大作业。请先在"学生管理"中导入学生，或联系管理员为您分配班级。')
+            return redirect(url_for('major_assignment.major_assignment_dashboard'))
+    
     if request.method == 'POST':
         title = request.form.get('title')
         description = request.form.get('description', '')

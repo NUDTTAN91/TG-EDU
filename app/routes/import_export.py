@@ -7,16 +7,16 @@ from flask_login import login_required, current_user
 
 from app.extensions import db
 from app.models import User, Class, UserRole
-from app.utils.decorators import require_role
+from app.utils.decorators import require_role, require_teacher_or_admin
 
 bp = Blueprint('import_export', __name__, url_prefix='/admin')
 
 
 @bp.route('/users/batch-import', methods=['POST'])
 @login_required
-@require_role(UserRole.SUPER_ADMIN)
+@require_teacher_or_admin
 def batch_import_users():
-    """批量导入用户（CSV/TSV/TXT格式）"""
+    """批量导入用户（CSV/TSV/TXT格式）。超级管理员可导入所有类型用户，普通教师只能导入学生"""
     if 'file' not in request.files:
         return jsonify({'success': False, 'message': '没有上传文件'})
     
@@ -120,6 +120,12 @@ def batch_import_users():
                             error_count += 1
                             continue
                         
+                        # 普通教师只能导入学生
+                        if not current_user.is_super_admin and role != 'student':
+                            errors.append(f'第{row_num}行: 普通教师只能导入学生，无法导入教师')
+                            error_count += 1
+                            continue
+                        
                         # 检查用户名是否已存在（通过用户名）
                         if User.query.filter_by(username=real_name).first():
                             errors.append(f'第{row_num}行: 用户名 "{real_name}" 已存在')
@@ -190,6 +196,12 @@ def batch_import_users():
                                     
                                     user.classes.append(class_obj)
                                     current_app.logger.info(f"将学生 {real_name} 分配到班级 {class_name}")
+                                
+                                # 如果是普通教师导入的学生，自动将该班级划归教师管理
+                                if not current_user.is_super_admin:
+                                    if class_obj not in current_user.teaching_classes:
+                                        current_user.teaching_classes.append(class_obj)
+                                        current_app.logger.info(f"自动将班级 {class_name} 划归教师 {current_user.real_name} 管理")
                             elif role == 'teacher':
                                 # 检查是否已经在班级中（教师用teaching_classes关系）
                                 if class_obj not in user.teaching_classes:
