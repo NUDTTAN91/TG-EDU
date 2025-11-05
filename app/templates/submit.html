@@ -1,0 +1,1085 @@
+{% extends "base.html" %}
+
+{% block title %}提交作业 - {{ assignment.title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <!-- 作业信息头部 -->
+        <div class="text-center mb-4">
+            <div class="assignment-icon mb-3">
+                <i class="fas fa-file-upload" style="font-size: 3.5rem; color: var(--accent-color);"></i>
+            </div>
+            <h2 class="fw-bold">
+                <i class="fas fa-tasks me-2"></i>
+                {{ assignment.title }}
+            </h2>
+            <p class="text-muted">请仔细阅读作业要求，然后提交您的作业文件</p>
+        </div>
+
+        <!-- 作业要求 -->
+        {% if assignment.description %}
+            <div class="card mb-4 requirement-card">
+                <div class="card-header bg-gradient">
+                    <h5 class="mb-0">
+                        <i class="fas fa-clipboard-list me-2"></i>
+                        作业要求
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="requirement-content">
+                        <i class="fas fa-quote-left quote-icon"></i>
+                        <p class="mb-0">{{ assignment.description }}</p>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- 截止时间提醒 -->
+        {% if assignment.due_date %}
+            {% if assignment.is_overdue() %}
+                <div class="alert alert-danger border-0 mb-4">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <i class="fas fa-times-circle fa-2x"></i>
+                        </div>
+                        <div class="col">
+                            <h6 class="alert-heading mb-1">
+                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                作业已过期
+                            </h6>
+                            <p class="mb-0">
+                                <strong>截止时间:</strong> 
+                                <span class="deadline-time">{{ assignment.due_date|beijing_time }}</span>
+                            </p>
+                            <small class="text-danger">
+                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                很抱歉，该作业已过截止时间，无法提交
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="alert alert-warning border-0 mb-4">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <i class="fas fa-clock fa-2x"></i>
+                        </div>
+                        <div class="col">
+                            <h6 class="alert-heading mb-1">
+                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                截止时间提醒
+                            </h6>
+                            <p class="mb-0">
+                                <strong>截止时间:</strong> 
+                                <span class="deadline-time">{{ assignment.due_date|beijing_time }}</span>
+                            </p>
+                            <small class="countdown-timer" data-deadline="{{ assignment.due_date.strftime('%Y-%m-%d %H:%M:%S') }}"></small>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        {% endif %}
+        
+        <!-- 文件要求信息 -->
+        <div class="card mb-4 file-requirements-card">
+            <div class="card-header bg-gradient">
+                <h5 class="mb-0">
+                    <i class="fas fa-file-check me-2"></i>
+                    文件提交要求
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <h6 class="text-primary mb-2">
+                            <i class="fas fa-check-circle me-1"></i>
+                            允许的文件类型
+                        </h6>
+                        <div class="allowed-types mb-3">
+                            {% for ext in assignment.get_allowed_extensions() %}
+                                <span class="badge bg-primary me-1 mb-1">.{{ ext }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <h6 class="text-info mb-2">
+                            <i class="fas fa-weight-hanging me-1"></i>
+                            文件大小限制
+                        </h6>
+                        <p class="mb-0">
+                            <span class="badge bg-info">最大 {{ (assignment.max_file_size / 1024 / 1024)|round(1) }} MB</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 提交表单 -->
+        <div class="card submit-card">
+            <div class="card-header bg-gradient">
+                <h5 class="mb-0">
+                    <i class="fas fa-upload me-2"></i>
+                    提交作业
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate id="submitForm">
+                    {% if not logged_in_student %}
+                        <div class="row">
+                            <div class="col-md-6 mb-4">
+                                <label for="student_name" class="form-label">
+                                    <i class="fas fa-user me-2"></i>
+                                    学生姓名 <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="student_name" 
+                                       name="student_name" 
+                                       placeholder="请输入您的姓名"
+                                       required>
+                                <div class="invalid-feedback">
+                                    请输入学生姓名
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-4">
+                                <label for="student_id" class="form-label">
+                                    <i class="fas fa-id-card me-2"></i>
+                                    学号 <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="student_id" 
+                                       name="student_id" 
+                                       placeholder="请输入您的学号"
+                                       required>
+                                <div class="invalid-feedback">
+                                    请输入学号
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info border-0 mb-4">
+                            <div class="row align-items-center">
+                                <div class="col-auto">
+                                    <i class="fas fa-user-check fa-2x"></i>
+                                </div>
+                                <div class="col">
+                                    <h6 class="alert-heading mb-1">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        已登录用户
+                                    </h6>
+                                    <p class="mb-0">
+                                        <strong>姓名:</strong> {{ logged_in_student.real_name }} &nbsp;
+                                        <strong>学号:</strong> {{ logged_in_student.student_id or logged_in_student.username }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                    
+                    <div class="mb-4">
+                        <label for="file" class="form-label">
+                            <i class="fas fa-file me-2"></i>
+                            作业文件 <span class="text-danger">*</span>
+                        </label>
+                        <div class="file-upload-area" id="fileUploadArea">
+                            <input type="file" 
+                                   class="form-control" 
+                                   id="file" 
+                                   name="file" 
+                                   required
+                                   style="display: none;">
+                            <div class="upload-placeholder">
+                                <i class="fas fa-cloud-upload-alt fa-3x mb-3"></i>
+                                <h5>点击或拖拽文件到此处</h5>
+                                <p class="text-muted mb-2">允许的文件类型：</p>
+                                <div class="supported-formats">
+                                    {% for ext in assignment.get_allowed_extensions() %}
+                                        <span class="badge bg-primary me-1">.{{ ext|upper }}</span>
+                                    {% endfor %}
+                                </div>
+                                <small class="text-muted d-block mt-2">最大文件大小: {{ (assignment.max_file_size / 1024 / 1024)|round(1) }} MB</small>
+                            </div>
+                            <div class="file-info" style="display: none;">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-file-alt fa-2x me-3 text-success"></i>
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1 file-name"></h6>
+                                        <small class="text-muted file-size"></small>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" id="removeFile">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                <div class="progress mt-2" style="height: 5px;">
+                                    <div class="progress-bar bg-success" style="width: 100%;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="invalid-feedback">
+                            请选择要提交的作业文件
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="notes" class="form-label">
+                            <i class="fas fa-sticky-note me-2"></i>
+                            备注说明
+                        </label>
+                        <textarea class="form-control" 
+                                  id="notes" 
+                                  name="notes" 
+                                  rows="4" 
+                                  placeholder="请输入任何备注或说明（可选）..."></textarea>
+                        <div class="form-text">
+                            <i class="fas fa-info-circle me-1"></i>
+                            您可以在这里添加任何相关说明或备注
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-3 justify-content-end">
+                        <a href="{{ url_for('main.index') }}" class="btn btn-secondary btn-lg">
+                            <i class="fas fa-arrow-left me-2"></i>
+                            返回列表
+                        </a>
+                        <button type="submit" class="btn btn-success btn-lg submit-btn" id="submitBtn">
+                            <i class="fas fa-paper-plane me-2"></i>
+                            提交作业
+                        </button>
+                    </div>
+                </form>
+                
+                <!-- 上传进度模态框 -->
+                <div class="modal fade" id="uploadProgressModal" tabindex="-1" aria-labelledby="uploadProgressModalLabel" aria-hidden="true" data-bs-backdrop="false" data-bs-keyboard="false">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header bg-primary text-white">
+                                <h5 class="modal-title" id="uploadProgressModalLabel">
+                                    <i class="fas fa-cloud-upload-alt me-2"></i>
+                                    正在上传作业文件
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" id="uploadCloseHeaderBtn" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="text-center mb-4">
+                                    <h6 id="uploadTitle" class="mb-3">正在上传文件...</h6>
+                                    <div class="spinner-border text-primary mb-3" role="status" id="uploadSpinner">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- 进度条 -->
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="text-muted">上传进度</span>
+                                        <span id="uploadProgressPercent" class="fw-bold">0%</span>
+                                    </div>
+                                    <div class="progress" style="height: 15px;">
+                                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                             role="progressbar" 
+                                             id="uploadProgressBar" 
+                                             style="width: 0%" 
+                                             aria-valuenow="0" 
+                                             aria-valuemin="0" 
+                                             aria-valuemax="100"></div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 详细信息 -->
+                                <div class="row text-center">
+                                    <div class="col-4">
+                                        <div class="border rounded p-2">
+                                            <div class="h6 mb-1" id="uploadedSize">0 MB</div>
+                                            <small class="text-muted">已上传</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="border rounded p-2">
+                                            <div class="h6 mb-1" id="totalSize">0 MB</div>
+                                            <small class="text-muted">文件大小</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="border rounded p-2">
+                                            <div class="h6 mb-1" id="uploadSpeed">0 KB/s</div>
+                                            <small class="text-muted">上传速度</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 成功状态 -->
+                                <div id="uploadSuccess" style="display: none;" class="text-center">
+                                    <div class="text-success mb-3">
+                                        <i class="fas fa-check-circle" style="font-size: 3rem;"></i>
+                                    </div>
+                                    <h5 class="text-success">作业提交成功！</h5>
+                                    <p class="text-muted">您的作业文件已成功上传并提交。</p>
+                                </div>
+                                
+                                <!-- 错误状态 -->
+                                <div id="uploadError" style="display: none;" class="text-center">
+                                    <div class="text-danger mb-3">
+                                        <i class="fas fa-exclamation-triangle" style="font-size: 3rem;"></i>
+                                    </div>
+                                    <h5 class="text-danger">上传失败</h5>
+                                    <p id="uploadErrorMessage" class="text-muted"></p>
+                                </div>
+                            </div>
+                            <div class="modal-footer d-flex justify-content-between">
+                                <button type="button" class="btn btn-outline-danger" id="uploadCancelBtn" style="z-index: 1060;">
+                                    <i class="fas fa-times me-2"></i>
+                                    取消上传
+                                </button>
+                                <button type="button" class="btn btn-success" id="uploadCloseBtn" style="display: none; z-index: 1060;">
+                                    <i class="fas fa-check me-2"></i>
+                                    完成
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 我的提交历史记录（仅登录学生可见） -->
+{% if logged_in_student and submission_history %}
+<div class="row justify-content-center mt-5">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header bg-gradient">
+                <h5 class="mb-0">
+                    <i class="fas fa-history me-2"></i>
+                    我的提交记录
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>提交时间</th>
+                                <th>文件名</th>
+                                <th>文件大小</th>
+                                <th>状态</th>
+                                {% if submission_history|selectattr('grade')|list %}
+                                <th>评分</th>
+                                <th>反馈</th>
+                                {% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for submission in submission_history %}
+                                <tr>
+                                    <td>
+                                        <small class="text-muted">
+                                            <i class="fas fa-clock me-1"></i>
+                                            {{ submission.submitted_at|beijing_time }}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <span class="fw-bold">{{ submission.original_filename }}</span>
+                                        {% if submission.notes %}
+                                            <br><small class="text-muted">{{ submission.notes }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">
+                                            {% if submission.file_size %}
+                                                {{ submission.file_size|filesize }}
+                                            {% else %}
+                                                未知
+                                            {% endif %}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check me-1"></i>
+                                            已提交
+                                        </span>
+                                    </td>
+                                    {% if submission_history|selectattr('grade')|list %}
+                                    <td>
+                                        {% if submission.grade is not none %}
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-star me-1"></i>
+                                                {{ submission.grade }}分
+                                            </span>
+                                            {% if submission.graded_at %}
+                                                <br><small class="text-muted">
+                                                    <i class="fas fa-clock me-1"></i>
+                                                    {{ submission.graded_at|beijing_time }}
+                                                </small>
+                                            {% endif %}
+                                            {% if submission.grader %}
+                                                <br><small class="text-info">
+                                                    <i class="fas fa-user me-1"></i>
+                                                    {{ submission.grader.real_name }}老师
+                                                </small>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="badge bg-secondary">
+                                                <i class="fas fa-hourglass-half me-1"></i>
+                                                未评分
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if submission.feedback %}
+                                            <button class="btn btn-sm btn-outline-info" 
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#feedbackModal{{ submission.id }}">
+                                                <i class="fas fa-comment me-1"></i>
+                                                查看反馈
+                                            </button>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    {% endif %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                {% if assignment.max_submissions > 0 %}
+                <div class="card-footer text-muted">
+                    <small>
+                        <i class="fas fa-info-circle me-1"></i>
+                        您已提交 {{ submission_history|length }} 次，最多允许提交 {{ assignment.max_submissions }} 次
+                    </small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- 反馈模态框 -->
+{% if submission_history %}
+    {% for submission in submission_history %}
+        {% if submission.feedback %}
+        <div class="modal fade" id="feedbackModal{{ submission.id }}" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-comment me-2"></i>
+                            教师反馈
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p><strong>提交时间：</strong> {{ submission.submitted_at|beijing_time }}</p>
+                        <p><strong>文件名：</strong> {{ submission.original_filename }}</p>
+                        {% if submission.grade is not none %}
+                        <p><strong>评分：</strong> <span class="badge bg-success">{{ submission.grade }}分</span></p>
+                        {% endif %}
+                        {% if submission.graded_at %}
+                        <p><strong>评分时间：</strong> {{ submission.graded_at|beijing_time }}</p>
+                        {% endif %}
+                        {% if submission.grader %}
+                        <p><strong>评分教师：</strong> <span class="badge bg-info">{{ submission.grader.real_name }}老师</span></p>
+                        {% endif %}
+                        <hr>
+                        <h6>反馈内容：</h6>
+                        <div class="alert alert-light">
+                            {{ submission.feedback|nl2br }}
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    {% endfor %}
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 文件上传功能
+    const fileUploadArea = document.getElementById('fileUploadArea');
+    const fileInput = document.getElementById('file');
+    const uploadPlaceholder = fileUploadArea.querySelector('.upload-placeholder');
+    const fileInfo = fileUploadArea.querySelector('.file-info');
+    const fileName = fileInfo.querySelector('.file-name');
+    const fileSize = fileInfo.querySelector('.file-size');
+    const removeFileBtn = document.getElementById('removeFile');
+    
+    // 点击上传区域
+    fileUploadArea.addEventListener('click', () => {
+        if (!fileInfo.style.display || fileInfo.style.display === 'none') {
+            fileInput.click();
+        }
+    });
+    
+    // 文件选择
+    fileInput.addEventListener('change', handleFileSelect);
+    
+    // 获取允许的文件类型
+    const allowedTypes = [{% for ext in assignment.get_allowed_extensions() %}'{{ ext }}'{% if not loop.last %}, {% endif %}{% endfor %}];
+    const maxFileSize = {{ assignment.max_file_size }}; // 字节
+    
+    // 拖拽功能
+    fileUploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        fileUploadArea.classList.add('drag-over');
+    });
+    
+    fileUploadArea.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        fileUploadArea.classList.remove('drag-over');
+    });
+    
+    fileUploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        fileUploadArea.classList.remove('drag-over');
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            fileInput.files = files;
+            handleFileSelect();
+        }
+    });
+    
+    // 处理文件选择
+    function handleFileSelect() {
+        const file = fileInput.files[0];
+        if (file) {
+            // 验证文件类型
+            const fileExt = file.name.split('.').pop().toLowerCase();
+            if (!allowedTypes.includes(fileExt)) {
+                alert(`不允许的文件类型。允许的类型：${allowedTypes.map(t => '.' + t).join(', ')}`);
+                fileInput.value = '';
+                return;
+            }
+            
+            // 验证文件大小
+            if (file.size > maxFileSize) {
+                const maxSizeMB = (maxFileSize / 1024 / 1024).toFixed(1);
+                alert(`文件大小超出限制。最大允许：${maxSizeMB} MB`);
+                fileInput.value = '';
+                return;
+            }
+            
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            uploadPlaceholder.style.display = 'none';
+            fileInfo.style.display = 'block';
+            fileUploadArea.classList.add('file-selected');
+        }
+    }
+    
+    // 删除文件
+    removeFileBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        fileInput.value = '';
+        uploadPlaceholder.style.display = 'block';
+        fileInfo.style.display = 'none';
+        fileUploadArea.classList.remove('file-selected');
+    });
+    
+    // 格式化文件大小
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+    
+    // 表单提交处理
+    const submitForm = document.getElementById('submitForm');
+    const submitBtn = document.getElementById('submitBtn');
+    let uploadXHR = null; // 用于取消上传
+    
+    submitForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // 验证表单
+        if (!submitForm.checkValidity()) {
+            submitForm.classList.add('was-validated');
+            return;
+        }
+        
+        // 检查文件
+        const file = fileInput.files[0];
+        if (!file) {
+            alert('请选择要上传的文件');
+            return;
+        }
+        
+        // 开始上传
+        startUpload();
+    });
+    
+    // 开始上传
+    function startUpload() {
+        const file = fileInput.files[0];
+        const formData = new FormData(submitForm);
+        
+        console.log('[调试] 开始上传文件:', file.name, '大小:', formatFileSize(file.size));
+        
+        // 显示进度模态框（禁用背景）
+        const modalElement = document.getElementById('uploadProgressModal');
+        const modal = new bootstrap.Modal(modalElement, {
+            backdrop: false,
+            keyboard: false
+        });
+        modal.show();
+        
+        // 添加自定义背景
+        modalElement.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+        modalElement.style.display = 'block';
+        modalElement.classList.add('show');
+        
+        console.log('[调试] 模态框已显示');
+        
+        // 初始化进度显示
+        resetUploadProgress();
+        updateFileInfo(file);
+        
+        // 创建XMLHttpRequest
+        uploadXHR = new XMLHttpRequest();
+        
+        // 设置进度监听
+        uploadXHR.upload.addEventListener('progress', handleUploadProgress);
+        
+        // 设置状态改变监听
+        uploadXHR.addEventListener('readystatechange', handleUploadStateChange);
+        
+        // 发送请求
+        uploadXHR.open('POST', submitForm.action);
+        uploadXHR.send(formData);
+        
+        // 开始计算上传速度
+        startSpeedCalculation();
+    }
+    
+    // 重置上传进度
+    function resetUploadProgress() {
+        document.getElementById('uploadProgressBar').style.width = '0%';
+        document.getElementById('uploadProgressBar').setAttribute('aria-valuenow', '0');
+        document.getElementById('uploadProgressPercent').textContent = '0%';
+        document.getElementById('uploadedSize').textContent = '0 MB';
+        document.getElementById('uploadSpeed').textContent = '0 KB/s';
+        document.getElementById('uploadSpinner').style.display = 'block';
+        document.getElementById('uploadSuccess').style.display = 'none';
+        document.getElementById('uploadError').style.display = 'none';
+        document.getElementById('uploadCancelBtn').style.display = 'inline-block';
+        document.getElementById('uploadCloseBtn').style.display = 'none';
+    }
+    
+    // 更新文件信息
+    function updateFileInfo(file) {
+        document.getElementById('totalSize').textContent = formatFileSize(file.size);
+        document.getElementById('uploadTitle').textContent = `正在上传: ${file.name}`;
+    }
+    
+    // 上传进度处理
+    let startTime = 0;
+    let lastLoaded = 0;
+    let lastTime = 0;
+    
+    function handleUploadProgress(event) {
+        if (event.lengthComputable) {
+            const percentComplete = Math.round((event.loaded / event.total) * 100);
+            const uploadedMB = (event.loaded / (1024 * 1024)).toFixed(2);
+            
+            // 更新进度条
+            document.getElementById('uploadProgressBar').style.width = percentComplete + '%';
+            document.getElementById('uploadProgressBar').setAttribute('aria-valuenow', percentComplete);
+            document.getElementById('uploadProgressPercent').textContent = percentComplete + '%';
+            document.getElementById('uploadedSize').textContent = uploadedMB + ' MB';
+            
+            // 计算上传速度
+            const currentTime = Date.now();
+            if (lastTime > 0) {
+                const timeDiff = (currentTime - lastTime) / 1000; // 秒
+                const dataDiff = event.loaded - lastLoaded; // 字节
+                const speed = dataDiff / timeDiff; // 字节/秒
+                
+                let speedText;
+                if (speed < 1024) {
+                    speedText = Math.round(speed) + ' B/s';
+                } else if (speed < 1024 * 1024) {
+                    speedText = Math.round(speed / 1024) + ' KB/s';
+                } else {
+                    speedText = (speed / (1024 * 1024)).toFixed(2) + ' MB/s';
+                }
+                
+                document.getElementById('uploadSpeed').textContent = speedText;
+            }
+            
+            lastLoaded = event.loaded;
+            lastTime = currentTime;
+        }
+    }
+    
+    // 开始速度计算
+    function startSpeedCalculation() {
+        startTime = Date.now();
+        lastTime = startTime;
+        lastLoaded = 0;
+    }
+    
+    // 上传状态改变处理
+    function handleUploadStateChange() {
+        if (uploadXHR.readyState === XMLHttpRequest.DONE) {
+            if (uploadXHR.status === 200) {
+                // 上传成功
+                showUploadSuccess();
+                
+                // 3秒后自动跳转
+                setTimeout(() => {
+                    // 检查是否是登录用户
+                    {% if logged_in_student %}
+                        window.location.href = '{{ url_for("student.dashboard") }}';
+                    {% else %}
+                        window.location.href = '{{ url_for("main.index") }}';
+                    {% endif %}
+                }, 3000);
+            } else {
+                // 上传失败
+                let errorMessage = '上传失败，请重试';
+                try {
+                    const response = JSON.parse(uploadXHR.responseText);
+                    if (response.message) {
+                        errorMessage = response.message;
+                    }
+                } catch (e) {
+                    // 如果不是JSON格式，使用默认错误消息
+                }
+                showUploadError(errorMessage);
+            }
+        }
+    }
+    
+    // 显示上传成功
+    function showUploadSuccess() {
+        document.getElementById('uploadSpinner').style.display = 'none';
+        document.getElementById('uploadSuccess').style.display = 'block';
+        document.getElementById('uploadCancelBtn').style.display = 'none';
+        document.getElementById('uploadCloseBtn').style.display = 'inline-block';
+        
+        // 停止进度条动画
+        const progressBar = document.getElementById('uploadProgressBar');
+        progressBar.classList.remove('progress-bar-animated');
+    }
+    
+    // 显示上传错误
+    function showUploadError(message) {
+        document.getElementById('uploadSpinner').style.display = 'none';
+        document.getElementById('uploadError').style.display = 'block';
+        document.getElementById('uploadErrorMessage').textContent = message;
+        document.getElementById('uploadCancelBtn').style.display = 'none';
+        document.getElementById('uploadCloseBtn').style.display = 'inline-block';
+        
+        // 停止进度条动画
+        const progressBar = document.getElementById('uploadProgressBar');
+        progressBar.classList.remove('progress-bar-animated');
+        progressBar.classList.add('bg-danger');
+    }
+    
+    // 取消上传
+    document.getElementById('uploadCancelBtn').addEventListener('click', function() {
+        cancelUpload();
+    });
+    
+    // 标题栏关闭按钮
+    document.getElementById('uploadCloseHeaderBtn').addEventListener('click', function() {
+        cancelUpload();
+    });
+    
+    // 监听模态框关闭事件（点击背景或ESC键）
+    document.getElementById('uploadProgressModal').addEventListener('hide.bs.modal', function(event) {
+        // 如果上传正在进行中，取消上传
+        if (uploadXHR && uploadXHR.readyState !== XMLHttpRequest.DONE) {
+            cancelUpload();
+        }
+    });
+    
+    // 取消上传函数
+    function cancelUpload() {
+        console.log('[调试] 取消上传被调用');
+        if (uploadXHR && uploadXHR.readyState !== XMLHttpRequest.DONE) {
+            uploadXHR.abort();
+            uploadXHR = null;
+            console.log('[调试] 上传已取消');
+        } else {
+            console.log('[调试] 没有正在进行的上传');
+        }
+        
+        // 清理自定义背景并关闭模态框
+        const modalElement = document.getElementById('uploadProgressModal');
+        modalElement.style.backgroundColor = '';
+        modalElement.style.display = '';
+        modalElement.classList.remove('show');
+        
+        const modal = bootstrap.Modal.getInstance(modalElement);
+        if (modal) {
+            modal.hide();
+            console.log('[调试] 模态框已关闭');
+        }
+    }
+    
+    // 完成按钮
+    document.getElementById('uploadCloseBtn').addEventListener('click', function() {
+        // 关闭模态框
+        const modal = bootstrap.Modal.getInstance(document.getElementById('uploadProgressModal'));
+        if (modal) {
+            modal.hide();
+        }
+        
+        // 如果是成功状态，跳转页面
+        if (document.getElementById('uploadSuccess').style.display === 'block') {
+            {% if logged_in_student %}
+                window.location.href = '{{ url_for("student.dashboard") }}';
+            {% else %}
+                window.location.href = '{{ url_for("main.index") }}';
+            {% endif %}
+        }
+    });
+    
+    // 倒计时功能
+    const countdownTimer = document.querySelector('.countdown-timer');
+    if (countdownTimer) {
+        const deadlineStr = countdownTimer.dataset.deadline;
+        // 服务器传来的是UTC时间，直接解析
+        const deadline = new Date(deadlineStr.replace(' ', 'T') + 'Z'); // Z表示UTC
+        
+        function updateCountdown() {
+            const now = new Date().getTime();
+            const distance = deadline.getTime() - now;
+            
+            if (distance > 0) {
+                const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                
+                countdownTimer.innerHTML = `<i class="fas fa-hourglass-half me-1"></i>距离截止还有: ${days}天 ${hours}小时 ${minutes}分钟 ${seconds}秒`;
+            } else {
+                countdownTimer.innerHTML = '<i class="fas fa-exclamation-triangle me-1 text-danger"></i>已超过截止时间';
+                countdownTimer.classList.add('text-danger');
+                
+                // 禁用提交表单和按钮
+                const submitForm = document.getElementById('submitForm');
+                const submitBtn = document.getElementById('submitBtn');
+                const fileInput = document.getElementById('file');
+                
+                if (submitForm) {
+                    submitForm.style.pointerEvents = 'none';
+                    submitForm.style.opacity = '0.6';
+                }
+                
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<i class="fas fa-times me-2"></i>已截止，无法提交';
+                    submitBtn.className = 'btn btn-secondary btn-lg';
+                }
+                
+                if (fileInput) {
+                    fileInput.disabled = true;
+                }
+                
+                // 显示截止提示
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-danger mt-3';
+                alertDiv.innerHTML = `
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>作业已截止！</strong> 您可以查看作业要求，但无法提交新的文件。
+                `;
+                
+                const submitCard = document.querySelector('.submit-card .card-body');
+                if (submitCard) {
+                    submitCard.appendChild(alertDiv);
+                }
+            }
+        }
+        
+        updateCountdown();
+        setInterval(updateCountdown, 1000);
+        
+        // 每5分钟检查一次作业信息更新（防止教师修改截止时间）
+        setInterval(() => {
+            fetch(`/api/assignment/{{ assignment.id }}/info`)
+                .then(response => response.json())
+                .then(data => {
+                    // 检查截止时间是否有更新（使用UTC时间比较）
+                    const currentDeadlineStr = deadlineStr; // 当前页面的UTC时间
+                    if (data.due_date && data.due_date !== currentDeadlineStr) {
+                        // 截止时间有更新，刷新页面
+                        console.log(`作业截止时间已更新：${currentDeadlineStr} -> ${data.due_date}，正在刷新页面...`);
+                        location.reload();
+                    }
+                })
+                .catch(error => {
+                    console.log('检查作业更新失败:', error);
+                });
+        }, 2 * 60 * 1000); // 2分钟检查一次，更频繁
+    }
+});
+</script>
+
+<style>
+.assignment-icon {
+    animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-10px);
+    }
+    60% {
+        transform: translateY(-5px);
+    }
+}
+
+.requirement-card {
+    border-left: 4px solid var(--accent-color);
+}
+
+.requirement-content {
+    position: relative;
+    padding-left: 2rem;
+}
+
+.quote-icon {
+    position: absolute;
+    left: 0;
+    top: 0;
+    color: var(--accent-color);
+    opacity: 0.3;
+    font-size: 1.5rem;
+}
+
+.file-upload-area {
+    border: 2px dashed var(--border-color);
+    border-radius: 15px;
+    padding: 2rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    background: var(--bg-glass);
+    backdrop-filter: blur(10px);
+}
+
+.file-upload-area:hover {
+    border-color: var(--accent-color);
+    background: var(--bg-card);
+    transform: translateY(-2px);
+}
+
+.file-upload-area.drag-over {
+    border-color: var(--success-color);
+    background: rgba(72, 187, 120, 0.1);
+    transform: scale(1.02);
+}
+
+.file-upload-area.file-selected {
+    border-style: solid;
+    border-color: var(--success-color);
+    background: rgba(72, 187, 120, 0.05);
+}
+
+/* 确保模态框按钮可点击 */
+.modal-footer .btn {
+    position: relative;
+    z-index: 1060;
+    pointer-events: auto;
+}
+
+/* 修复模态框背景层级 */
+.modal-backdrop {
+    z-index: 1050;
+}
+
+.modal {
+    z-index: 1055;
+}
+
+.modal-dialog {
+    z-index: 1056;
+}
+
+/* 上传进度模态框特殊样式 */
+#uploadProgressModal {
+    z-index: 9999 !important;
+}
+
+#uploadProgressModal .modal-dialog {
+    z-index: 10000 !important;
+}
+
+#uploadProgressModal .modal-content {
+    z-index: 10001 !important;
+}
+
+/* 无背景模态框样式 */
+#uploadProgressModal.show {
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+/* 确保所有按钮都可点击 */
+#uploadProgressModal button {
+    position: relative;
+    z-index: 10002 !important;
+    pointer-events: auto !important;
+}
+
+.supported-formats .badge {
+    margin: 0.2rem;
+}
+
+.submit-card {
+    border: 1px solid var(--border-color);
+    box-shadow: 0 10px 40px var(--shadow-color);
+}
+
+.deadline-time {
+    color: var(--warning-color);
+    font-weight: 600;
+}
+
+.countdown-timer {
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.submit-btn {
+    background: var(--success-color) !important;
+    border: none !important;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    position: relative;
+    overflow: hidden;
+}
+
+.submit-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.submit-btn:hover::before {
+    left: 100%;
+}
+</style>
+{% endblock %}

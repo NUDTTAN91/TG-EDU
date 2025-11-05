@@ -1,0 +1,411 @@
+{% extends "base.html" %}
+
+{% block title %}添加用户 - TG作业系统{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <!-- 页面头部 -->
+        <div class="text-center mb-4">
+            <div class="user-add-icon mb-3">
+                <i class="fas fa-user-plus" style="font-size: 3.5rem; color: var(--accent-color);"></i>
+            </div>
+            <h2 class="fw-bold">
+                <i class="fas fa-user-plus me-2"></i>
+                添加新用户
+            </h2>
+            <p class="text-muted">创建新的用户账户</p>
+        </div>
+
+        <!-- 表单卡片 -->
+        <div class="card form-card">
+            <div class="card-header bg-gradient">
+                <h5 class="mb-0">
+                    <i class="fas fa-form me-2"></i>
+                    用户信息
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST" class="needs-validation" novalidate>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="real_name" class="form-label">
+                                <i class="fas fa-user me-2"></i>
+                                真实姓名 <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="real_name" 
+                                   name="real_name" 
+                                   required
+                                   placeholder="请输入真实姓名">
+                            <div class="invalid-feedback">
+                                请输入真实姓名
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="username" class="form-label">
+                                <i class="fas fa-at me-2"></i>
+                                用户名 <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="username" 
+                                   name="username" 
+                                   required
+                                   placeholder="请输入登录用户名">
+                            <div class="invalid-feedback">
+                                请输入用户名
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="password" class="form-label">
+                                <i class="fas fa-lock me-2"></i>
+                                密码 <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <input type="password" 
+                                       class="form-control" 
+                                       id="password" 
+                                       name="password" 
+                                       required
+                                       minlength="6"
+                                       placeholder="请输入密码">
+                                <button class="btn btn-outline-secondary" 
+                                        type="button" 
+                                        id="togglePassword">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <div class="invalid-feedback">
+                                密码长度至少6位
+                            </div>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                密码长度至少6位字符
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="role" class="form-label">
+                                <i class="fas fa-user-tag me-2"></i>
+                                用户角色 <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="role" name="role" required>
+                                {% if current_user.is_super_admin %}
+                                    <option value="">请选择角色</option>
+                                    <option value="teacher">教师</option>
+                                    <option value="student" selected>学生</option>
+                                {% else %}
+                                    <option value="student" selected>学生</option>
+                                {% endif %}
+                            </select>
+                            <div class="invalid-feedback">
+                                请选择用户角色
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 学号字段（仅学生显示） -->
+                    <div class="row" id="studentFields" style="display: none;">
+                        <div class="col-md-6 mb-3">
+                            <label for="student_id" class="form-label">
+                                <i class="fas fa-id-card me-2"></i>
+                                学号
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="student_id" 
+                                   name="student_id" 
+                                   placeholder="请输入学号（可选）">
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                学号为可选项，可以使用用户名作为标识
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="student_classes" class="form-label">
+                                <i class="fas fa-graduation-cap me-2"></i>
+                                分配班级
+                            </label>
+                            <select class="form-select" id="student_classes" name="classes" multiple size="4">
+                                <option value="">-- 请选择班级（可选） --</option>
+                                {% for class_obj in available_classes %}
+                                    <option value="{{ class_obj.id }}">
+                                        {{ class_obj.name }} ({{ class_obj.code }})
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">
+                                <i class="fas fa-users me-1"></i>
+                                按住Ctrl键可选择多个班级，不选择则不分配班级
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 教师班级分配（仅教师显示） -->
+                    {% if current_user.is_super_admin %}
+                        <div class="row" id="teacherFields" style="display: none;">
+                            <div class="col-md-12 mb-3">
+                                <label for="teacher_classes" class="form-label">
+                                    <i class="fas fa-chalkboard-teacher me-2"></i>
+                                    分配班级 <span class="text-info">(可选)</span>
+                                </label>
+                                <select class="form-select" id="teacher_classes" name="teacher_classes" multiple size="5">
+                                    <option value="">-- 请选择班级（可选） --</option>
+                                    {% for class_obj in available_classes %}
+                                        <option value="{{ class_obj.id }}">
+                                            {{ class_obj.name }} ({{ class_obj.code }}) 
+                                            {% if class_obj.grade %}- {{ class_obj.grade }}{% endif %}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    为教师分配负责的班级，按住Ctrl键可选择多个班级。创建后也可在班级管理中调整。不选择则不分配班级。
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                    
+                    <!-- 提示信息 -->
+                    <div class="alert alert-info border-0 mb-4">
+                        <h6 class="alert-heading">
+                            <i class="fas fa-lightbulb me-2"></i>
+                            温馨提示
+                        </h6>
+                        <ul class="mb-0">
+                            <li>用户可以使用用户名或真实姓名登录系统</li>
+                            <li>真实姓名和用户名都必须是唯一的</li>
+                            <li>学生角色的学号是可选的，但如果填写也必须唯一</li>
+                            {% if current_user.is_super_admin %}
+                                <li><strong>新流程：</strong>请先在“班级管理”中创建班级，再在创建用户时选择加入班级</li>
+                                <li>教师创建时可以选择负责的班级，学生创建时可以加入班级</li>
+                            {% else %}
+                                <li>您只能创建学生用户，并只能分配到您负责的班级</li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                    
+                    <div class="d-flex gap-3 justify-content-end">
+                        <a href="{{ url_for('user_mgmt.manage_users') }}" class="btn btn-secondary btn-lg">
+                            <i class="fas fa-arrow-left me-2"></i>
+                            返回列表
+                        </a>
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-user-plus me-2"></i>
+                            创建用户
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const roleSelect = document.getElementById('role');
+    const studentFields = document.getElementById('studentFields');
+    const teacherFields = document.getElementById('teacherFields');
+    const passwordInput = document.getElementById('password');
+    const togglePasswordBtn = document.getElementById('togglePassword');
+    const realNameInput = document.getElementById('real_name');
+    const usernameInput = document.getElementById('username');
+    
+    // 真实姓名输入时自动填充用户名
+    if (realNameInput && usernameInput) {
+        realNameInput.addEventListener('input', function() {
+            // 只有当用户名字段为空或者与真实姓名同步时才自动填充
+            if (!usernameInput.value || usernameInput.dataset.synced === 'true') {
+                usernameInput.value = this.value;
+                usernameInput.dataset.synced = 'true';
+            }
+        });
+        
+        // 用户名手动修改后取消同步
+        usernameInput.addEventListener('input', function() {
+            this.dataset.synced = 'false';
+        });
+    }
+    
+    // 角色变化时显示/隐藏相关字段
+    function toggleRoleFields() {
+        const selectedRole = roleSelect.value;
+        
+        // 隐藏所有字段
+        studentFields.style.display = 'none';
+        if (teacherFields) {
+            teacherFields.style.display = 'none';
+        }
+        
+        // 清空所有选择
+        document.getElementById('student_id').value = '';
+        const studentClasses = document.getElementById('student_classes');
+        if (studentClasses) {
+            // 重置班级选择，不自动选择任何班级
+            Array.from(studentClasses.options).forEach(option => {
+                if (option.value === '') {
+                    option.selected = true;  // 选择提示选项
+                } else {
+                    option.selected = false; // 取消选择其他选项
+                }
+            });
+        }
+        
+        if (teacherFields) {
+            const teacherClasses = document.getElementById('teacher_classes');
+            if (teacherClasses) {
+                // 重置班级选择，不自动选择任何班级
+                Array.from(teacherClasses.options).forEach(option => {
+                    if (option.value === '') {
+                        option.selected = true;  // 选择提示选项
+                    } else {
+                        option.selected = false; // 取消选择其他选项
+                    }
+                });
+            }
+        }
+        
+        // 根据角色显示相应字段
+        if (selectedRole === 'student') {
+            studentFields.style.display = 'block';
+        } else if (selectedRole === 'teacher' && teacherFields) {
+            teacherFields.style.display = 'block';
+        }
+    }
+    
+    roleSelect.addEventListener('change', toggleRoleFields);
+    
+    // 初始化时检查角色
+    toggleRoleFields();
+    
+    // 密码显示/隐藏
+    togglePasswordBtn.addEventListener('click', function() {
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+        
+        const icon = this.querySelector('i');
+        icon.classList.toggle('fa-eye');
+        icon.classList.toggle('fa-eye-slash');
+    });
+    
+    // 表单验证
+    const forms = document.querySelectorAll('.needs-validation');
+    Array.from(forms).forEach(form => {
+        form.addEventListener('submit', event => {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        }, false);
+    });
+    
+    // 实时验证用户名和真实姓名
+    function validateUnique(input, type) {
+        input.addEventListener('blur', function() {
+            if (this.value.trim()) {
+                // 这里可以添加AJAX验证逻辑检查用户名/姓名是否已存在
+                // 暂时跳过实时验证，在服务器端处理
+            }
+        });
+    }
+    
+    validateUnique(usernameInput, 'username');
+    validateUnique(realNameInput, 'real_name');
+});
+</script>
+
+<style>
+.user-add-icon {
+    animation: pulse 2s infinite;
+}
+
+.form-card {
+    border: 1px solid var(--border-color);
+    box-shadow: 0 15px 40px var(--shadow-color);
+    border-radius: 20px;
+    overflow: hidden;
+}
+
+.form-card .card-header {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.input-group .btn {
+    border-left: none;
+}
+
+.alert-info {
+    background: rgba(13, 202, 240, 0.1);
+    border: 1px solid rgba(13, 202, 240, 0.2);
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.form-control:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 0.25rem rgba(var(--accent-color-rgb), 0.25);
+}
+
+.form-select:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 0.25rem rgba(var(--accent-color-rgb), 0.25);
+}
+
+.form-select[multiple] {
+    min-height: 120px;
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+.form-select[multiple]:focus {
+    background-color: var(--bg-secondary);
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 0.25rem rgba(var(--accent-color-rgb), 0.25);
+}
+
+.form-select[multiple] option {
+    padding: 0.5rem;
+    margin-bottom: 0.25rem;
+    border-radius: 4px;
+}
+
+.form-select[multiple] option:checked {
+    background-color: var(--accent-color) !important;
+    color: white !important;
+}
+
+#teacherFields, #studentFields {
+    border: 2px dashed var(--border-color);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-top: 1rem;
+    background: var(--bg-glass);
+    transition: all 0.3s ease;
+}
+
+#teacherFields:hover, #studentFields:hover {
+    border-color: var(--accent-color);
+    background: rgba(var(--accent-color-rgb), 0.05);
+}
+</style>
+{% endblock %}

@@ -1,0 +1,609 @@
+{% extends "base.html" %}
+
+{% block title %}批量下载作业 - TG作业系统{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <!-- 页面头部 -->
+        <div class="text-center mb-4">
+            <div class="download-icon mb-3">
+                <i class="fas fa-download" style="font-size: 3.5rem; color: var(--accent-color);"></i>
+            </div>
+            <h2 class="fw-bold">
+                <i class="fas fa-archive me-2"></i>
+                批量下载作业
+            </h2>
+            <p class="text-muted">选择下载范围，系统将自动打包所有提交文件</p>
+        </div>
+
+        <!-- 下载选项 -->
+        <div class="card">
+            <div class="card-header bg-gradient">
+                <h5 class="mb-0">
+                    <i class="fas fa-cog me-2"></i>
+                    选择下载范围
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" class="needs-validation" novalidate>
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="radio" name="download_type" id="download_all" value="all" checked>
+                                <label class="form-check-label" for="download_all">
+                                    <i class="fas fa-globe me-2 text-primary"></i>
+                                    <strong>下载所有作业</strong>
+                                    <br>
+                                    <small class="text-muted">下载您有权限管理的所有作业的提交文件</small>
+                                </label>
+                            </div>
+                            
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="download_type" id="download_class" value="class">
+                                <label class="form-check-label" for="download_class">
+                                    <i class="fas fa-school me-2 text-success"></i>
+                                    <strong>按班级下载</strong>
+                                    <br>
+                                    <small class="text-muted">选择特定班级，下载该班级的所有作业</small>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 班级选择 (只有选择按班级下载时显示) -->
+                    <div id="class_selection" style="display: none;">
+                        <div class="mb-3">
+                            <label for="class_id" class="form-label">
+                                <i class="fas fa-users me-2"></i>
+                                选择班级
+                            </label>
+                            <select class="form-select" id="class_id" name="class_id">
+                                <option value="">请选择班级...</option>
+                                {% for class_obj in classes %}
+                                <option value="{{ class_obj.id }}">
+                                    {{ class_obj.name }} ({{ class_obj.code }})
+                                    {% if class_obj.assignments %}
+                                        - {{ class_obj.assignments|length }} 个作业
+                                    {% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 下载信息 -->
+                    <div class="alert alert-info">
+                        <h6 class="alert-heading">
+                            <i class="fas fa-info-circle me-2"></i>
+                            下载说明
+                        </h6>
+                        <ul class="mb-0">
+                            <li><strong>文件格式：</strong>ZIP压缩包，使用极限压缩节省空间</li>
+                            <li><strong>文件夹结构：</strong>按"班级-作业标题-创建时间"组织</li>
+                            <li><strong>文件命名：</strong>学生姓名_学号_提交时间_原文件名</li>
+                            <li><strong>注意：</strong>只包含已提交的文件，大文件下载可能需要较长时间</li>
+                        </ul>
+                    </div>
+
+                    <!-- 统计信息 -->
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div class="card text-center border-primary">
+                                <div class="card-body">
+                                    <h4 class="text-primary">{{ assignments|length }}</h4>
+                                    <small class="text-muted">可下载作业数</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card text-center border-success">
+                                <div class="card-body">
+                                    <h4 class="text-success">{{ classes|length }}</h4>
+                                    <small class="text-muted">可下载班级数</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card text-center border-warning">
+                                <div class="card-body">
+                                    {% set total_submissions = 0 %}
+                                    {% for assignment in assignments %}
+                                        {% set total_submissions = total_submissions + (assignment.submissions|length if assignment.submissions else 0) %}
+                                    {% endfor %}
+                                    <h4 class="text-warning">{{ total_submissions }}</h4>
+                                    <small class="text-muted">总提交文件数</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 操作按钮 -->
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('admin.super_admin_dashboard') if current_user.is_super_admin else url_for('admin.teacher_dashboard') }}" 
+                           class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>
+                            返回
+                        </a>
+                        <button type="button" class="btn btn-primary btn-lg" id="downloadBtn" onclick="startBatchDownload()">
+                            <i class="fas fa-download me-2"></i>
+                            开始下载
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 批量下载进度模态框 -->
+<div class="modal fade" id="batchDownloadProgressModal" tabindex="-1" aria-labelledby="batchDownloadProgressModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="batchDownloadProgressModalLabel">
+                    <i class="fas fa-archive me-2"></i>
+                    正在批量下载作业
+                </h5>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-4">
+                    <h6 id="batchDownloadTitle" class="mb-3">正在准备批量下载...</h6>
+                    <div class="spinner-border text-primary mb-3" role="status" id="batchDownloadSpinner">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+                
+                <!-- 进度条 -->
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-muted">总体进度</span>
+                        <span id="batchDownloadProgressPercent" class="fw-bold">0%</span>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div id="batchDownloadProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                </div>
+                
+                <!-- 状态信息 -->
+                <div class="alert alert-info mb-3">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <span id="batchDownloadStatusMessage">正在检查作业...</span>
+                    </div>
+                </div>
+                
+                <!-- 详细信息 -->
+                <div class="row text-center" id="batchDownloadDetails" style="display: none;">
+                    <div class="col-4">
+                        <div class="border rounded p-2">
+                            <div class="h6 mb-1"><span id="currentAssignmentNumber">0</span> / <span id="totalAssignmentNumber">0</span></div>
+                            <small class="text-muted">作业进度</small>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="border rounded p-2">
+                            <div class="h6 mb-1"><span id="currentFileNumber">0</span> / <span id="totalFileNumber">0</span></div>
+                            <small class="text-muted">文件进度</small>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="border rounded p-2">
+                            <div class="h6 mb-1" id="batchEstimatedTime">计算中...</div>
+                            <small class="text-muted">预计剩余</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 当前处理的作业 -->
+                <div id="currentAssignmentInfo" class="mt-3" style="display: none;">
+                    <div class="card bg-light">
+                        <div class="card-body py-2">
+                            <small class="text-muted">当前正在处理:</small>
+                            <div id="currentAssignmentTitle" class="fw-bold"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 成功状态 -->
+                <div id="batchDownloadSuccess" style="display: none;" class="text-center">
+                    <div class="text-success mb-3">
+                        <i class="fas fa-check-circle" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5 class="text-success">批量压缩完成！</h5>
+                    <p class="text-muted">所有作业已打包完成，文件即将开始下载...</p>
+                </div>
+                
+                <!-- 错误状态 -->
+                <div id="batchDownloadError" style="display: none;" class="text-center">
+                    <div class="text-danger mb-3">
+                        <i class="fas fa-exclamation-circle" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5 class="text-danger">批量下载失败</h5>
+                    <p id="batchDownloadErrorMessage" class="text-muted"></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="batchDownloadCancelBtn" 
+                        onclick="cancelBatchDownload()" style="display: none;">
+                    <i class="fas fa-times me-2"></i>
+                    取消下载
+                </button>
+                <button type="button" class="btn btn-primary" id="batchDownloadCloseBtn" 
+                        data-bs-dismiss="modal" style="display: none;">
+                    <i class="fas fa-check me-2"></i>
+                    完成
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const downloadTypeRadios = document.querySelectorAll('input[name="download_type"]');
+    const classSelection = document.getElementById('class_selection');
+    const classSelect = document.getElementById('class_id');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const form = document.querySelector('form');
+
+    // 监听下载类型变化
+    downloadTypeRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.value === 'class') {
+                classSelection.style.display = 'block';
+                classSelect.required = true;
+            } else {
+                classSelection.style.display = 'none';
+                classSelect.required = false;
+                classSelect.value = '';
+            }
+        });
+    });
+
+    // 表单提交处理
+    form.addEventListener('submit', function(e) {
+        e.preventDefault(); // 阻止默认提交，改用进度条方式
+    });
+
+    // 为统计卡片添加动画效果
+    const statCards = document.querySelectorAll('.card');
+    statCards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        setTimeout(() => {
+            card.style.transition = 'all 0.5s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+});
+
+// 批量下载相关功能
+let batchDownloadIntervalId = null;
+let batchDownloadStartTime = Date.now();
+
+// 开始批量下载
+function startBatchDownload() {
+    const form = document.querySelector('form');
+    const downloadType = document.querySelector('input[name="download_type"]:checked').value;
+    
+    if (downloadType === 'class' && !document.getElementById('class_id').value) {
+        alert('请选择要下载的班级');
+        return;
+    }
+
+    batchDownloadStartTime = Date.now();
+    
+    // 先清理旧的进度和错误状态
+    fetch('/admin/assignments/batch_download_clear', {
+        method: 'POST'
+    }).then(() => {
+        console.log('[调试] 已清理旧的下载状态');
+        // 显示进度模态框
+        resetBatchProgressModal();
+        new bootstrap.Modal(document.getElementById('batchDownloadProgressModal')).show();
+        
+        // 开始批量下载并监控进度
+        startBatchDownloadProcess(downloadType);
+    }).catch(error => {
+        console.warn('[调试] 清理旧状态失败，继续执行:', error);
+        // 即使清理失败也继续
+        resetBatchProgressModal();
+        new bootstrap.Modal(document.getElementById('batchDownloadProgressModal')).show();
+        startBatchDownloadProcess(downloadType);
+    });
+}
+
+// 重置批量下载进度模态框
+function resetBatchProgressModal() {
+    document.getElementById('batchDownloadProgressBar').style.width = '0%';
+    document.getElementById('batchDownloadProgressBar').setAttribute('aria-valuenow', '0');
+    document.getElementById('batchDownloadProgressPercent').textContent = '0%';
+    document.getElementById('batchDownloadStatusMessage').textContent = '正在检查作业...';
+    document.getElementById('batchDownloadSpinner').style.display = 'block';
+    document.getElementById('batchDownloadDetails').style.display = 'none';
+    document.getElementById('currentAssignmentInfo').style.display = 'none';
+    document.getElementById('batchDownloadSuccess').style.display = 'none';
+    document.getElementById('batchDownloadError').style.display = 'none';
+    document.getElementById('batchDownloadCancelBtn').style.display = 'inline-block';
+    document.getElementById('batchDownloadCloseBtn').style.display = 'none';
+}
+
+// 开始批量下载过程
+function startBatchDownloadProcess(downloadType) {
+    const classId = document.getElementById('class_id').value;
+    
+    // 构建表单数据
+    const formData = new FormData();
+    formData.append('download_type', downloadType);
+    if (classId) {
+        formData.append('class_id', classId);
+    }
+    
+    console.log('[调试] 开始批量下载，先启动进度监控');
+    
+    // 先启动进度监控，稍后再发起实际下载请求
+    batchDownloadIntervalId = setInterval(() => {
+        checkBatchDownloadProgress();
+    }, 500); // 每0.5秒检查一次进度
+    
+    // 延迟100ms后发起下载请求，让轮询先运行一次
+    setTimeout(() => {
+        console.log('[调试] 发起批量下载请求');
+        // 直接调用批量下载接口
+        fetch('/admin/assignments/batch_download', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('[调试] 批量下载响应:', data);
+            // 响应已经处理，进度轮询会自动检测到completed状态
+        })
+        .catch(error => {
+            console.error('[调试] 批量下载失败:', error);
+            showBatchDownloadError('批量下载失败: ' + error.message);
+            if (batchDownloadIntervalId) {
+                clearInterval(batchDownloadIntervalId);
+                batchDownloadIntervalId = null;
+            }
+        });
+    }, 100);
+}
+
+// 检查批量下载进度
+function checkBatchDownloadProgress() {
+    fetch('/admin/assignments/batch_download_status')
+        .then(response => response.json())
+        .then(data => {
+            console.log('[调试] 批量下载进度更新:', data);
+            updateBatchProgressUI(data);
+            
+            // 如果完成或出错，停止监控
+            if (data.status === 'completed' || data.status === 'error') {
+                if (batchDownloadIntervalId) {
+                    clearInterval(batchDownloadIntervalId);
+                    batchDownloadIntervalId = null;
+                }
+                
+                // 在显示成功消息后清理进度记录
+                if (data.status === 'completed') {
+                    // 如果下载就绪，触发文件下载
+                    if (data.download_ready) {
+                        console.log('[调试] 检测到下载就绪，触发下载');
+                        showBatchDownloadSuccess();
+                    }
+                    
+                    setTimeout(() => {
+                        // 清理服务器端的进度记录
+                        fetch('/admin/assignments/batch_download_clear', {
+                            method: 'POST'
+                        }).catch(error => {
+                            console.warn('[调试] 清理进度记录失败:', error);
+                        });
+                    }, 2000); // 2秒后清理，给用户时间看到成功消息
+                }
+                
+                // 如果是超时检测到的完成状态，显示特殊提示
+                if (data.timeout) {
+                    showBatchDownloadSuccess('下载可能已完成（检测到超时，文件已自动下载）');
+                }
+            }
+        })
+        .catch(error => {
+            console.error('检查批量下载进度失败:', error);
+            if (batchDownloadIntervalId) {
+                clearInterval(batchDownloadIntervalId);
+                batchDownloadIntervalId = null;
+            }
+            showBatchDownloadError('网络错误，无法获取下载进度');
+        });
+}
+
+// 更新批量进度UI
+function updateBatchProgressUI(data) {
+    const progressBar = document.getElementById('batchDownloadProgressBar');
+    const progressPercent = document.getElementById('batchDownloadProgressPercent');
+    const statusMessage = document.getElementById('batchDownloadStatusMessage');
+    const spinner = document.getElementById('batchDownloadSpinner');
+    const details = document.getElementById('batchDownloadDetails');
+    const currentAssignmentInfo = document.getElementById('currentAssignmentInfo');
+    
+    // 更新进度条
+    progressBar.style.width = `${data.progress}%`;
+    progressBar.setAttribute('aria-valuenow', data.progress);
+    progressPercent.textContent = `${data.progress}%`;
+    
+    // 更新状态消息
+    statusMessage.textContent = data.message || '正在处理...';
+    
+    // 根据状态更新UI
+    switch (data.status) {
+        case 'pending':
+        case 'started':
+        case 'processing':
+            spinner.style.display = 'block';
+            if (data.total_assignments) {
+                details.style.display = 'block';
+                document.getElementById('currentAssignmentNumber').textContent = data.current_assignment || 0;
+                document.getElementById('totalAssignmentNumber').textContent = data.total_assignments;
+                
+                // 显示当前处理的作业
+                if (data.current_assignment_title) {
+                    currentAssignmentInfo.style.display = 'block';
+                    document.getElementById('currentAssignmentTitle').textContent = data.current_assignment_title;
+                }
+                
+                // 计算预计剩余时间
+                if (data.progress > 0) {
+                    const elapsed = (Date.now() - batchDownloadStartTime) / 1000;
+                    const estimated = (elapsed / data.progress * 100) - elapsed;
+                    document.getElementById('batchEstimatedTime').textContent = formatTime(estimated);
+                } else {
+                    document.getElementById('batchEstimatedTime').textContent = '计算中...';
+                }
+            }
+            break;
+            
+        case 'completed':
+            showBatchDownloadSuccess();
+            break;
+            
+        case 'error':
+            showBatchDownloadError(data.message || '批量下载过程中发生未知错误');
+            break;
+    }
+}
+
+// 显示批量下载成功
+function showBatchDownloadSuccess(customMessage) {
+    document.getElementById('batchDownloadSpinner').style.display = 'none';
+    document.getElementById('batchDownloadDetails').style.display = 'none';
+    document.getElementById('currentAssignmentInfo').style.display = 'none';
+    document.getElementById('batchDownloadSuccess').style.display = 'block';
+    document.getElementById('batchDownloadCancelBtn').style.display = 'none';
+    document.getElementById('batchDownloadCloseBtn').style.display = 'inline-block';
+    
+    // 如果有自定义消息，更新显示文本
+    if (customMessage) {
+        const successMessage = document.querySelector('#batchDownloadSuccess h5');
+        if (successMessage) {
+            successMessage.textContent = customMessage;
+        }
+    }
+    
+    // 触发实际下载
+    console.log('[调试] 开始触发实际文件下载');
+    window.location.href = '/admin/assignments/batch_download_file';
+    
+    // 3秒后自动关闭模态框
+    setTimeout(() => {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('batchDownloadProgressModal'));
+        if (modal) {
+            modal.hide();
+        }
+    }, 5000); // 增加到5秒，给用户更多时间看到结果
+}
+
+// 显示批量下载错误
+function showBatchDownloadError(message) {
+    document.getElementById('batchDownloadSpinner').style.display = 'none';
+    document.getElementById('batchDownloadDetails').style.display = 'none';
+    document.getElementById('currentAssignmentInfo').style.display = 'none';
+    document.getElementById('batchDownloadError').style.display = 'block';
+    document.getElementById('batchDownloadErrorMessage').textContent = message;
+    document.getElementById('batchDownloadCancelBtn').style.display = 'none';
+    document.getElementById('batchDownloadCloseBtn').style.display = 'inline-block';
+}
+
+// 取消批量下载
+function cancelBatchDownload() {
+    if (batchDownloadIntervalId) {
+        clearInterval(batchDownloadIntervalId);
+        batchDownloadIntervalId = null;
+    }
+    
+    // 关闭模态框
+    const modal = bootstrap.Modal.getInstance(document.getElementById('batchDownloadProgressModal'));
+    if (modal) {
+        modal.hide();
+    }
+}
+
+// 格式化时间
+function formatTime(seconds) {
+    if (seconds < 60) {
+        return `${Math.round(seconds)}秒`;
+    } else if (seconds < 3600) {
+        return `${Math.round(seconds / 60)}分钟`;
+    } else {
+        return `${Math.round(seconds / 3600)}小时`;
+    }
+}
+</script>
+
+<style>
+.download-icon {
+    animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-10px);
+    }
+    60% {
+        transform: translateY(-5px);
+    }
+}
+
+.form-check {
+    padding: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    margin-bottom: 1rem;
+}
+
+.form-check:hover {
+    background-color: var(--bg-glass);
+    border-color: var(--accent-color);
+}
+
+.form-check-input:checked + .form-check-label {
+    color: var(--accent-color);
+}
+
+.form-check-input:checked {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+}
+
+.card {
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px var(--shadow-color);
+}
+
+.btn-lg {
+    padding: 0.75rem 2rem;
+    font-size: 1.125rem;
+}
+
+#class_selection {
+    background: var(--bg-glass);
+    padding: 1rem;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+}
+</style>
+{% endblock %}

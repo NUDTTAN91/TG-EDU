@@ -1,0 +1,404 @@
+{% extends "base.html" %}
+
+{% block title %}编辑作业 - TG作业系统{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 页面标题 -->
+    <div class="hero-section mb-4">
+        <div class="text-center">
+            <h1 class="display-6 fw-bold mb-3">
+                <i class="fas fa-edit me-3" style="color: var(--warning-color);"></i>
+                编辑作业
+            </h1>
+            <p class="lead text-muted">
+                修改作业信息和要求
+            </p>
+        </div>
+    </div>
+
+    <!-- 编辑表单 -->
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <form method="POST" class="needs-validation" novalidate enctype="multipart/form-data">
+                <!-- 基本信息 -->
+                <div class="card mb-4">
+                    <div class="card-header bg-gradient">
+                        <h5 class="mb-0">
+                            <i class="fas fa-info-circle me-2"></i>
+                            基本信息
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label for="title" class="form-label">
+                                    <i class="fas fa-tag me-2"></i>
+                                    作业标题 <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="title" 
+                                       name="title" 
+                                       value="{{ assignment.title }}"
+                                       placeholder="请输入作业标题"
+                                       required>
+                                <div class="invalid-feedback">
+                                    请输入作业标题
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="class_id" class="form-label">
+                                    <i class="fas fa-school me-2"></i>
+                                    指定班级 <span class="text-info">(可选)</span>
+                                </label>
+                                <select class="form-select" id="class_id" name="class_id">
+                                    <option value="" {% if not assignment.class_id %}selected{% endif %}>
+                                        不指定班级 (全校公共作业)
+                                    </option>
+                                    {% for class_obj in available_classes %}
+                                        <option value="{{ class_obj.id }}" 
+                                                {% if assignment.class_id == class_obj.id %}selected{% endif %}>
+                                            {{ class_obj.name }} ({{ class_obj.code }})
+                                            {% if class_obj.grade %} - {{ class_obj.grade }}{% endif %}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    选择班级后，只有该班级的学生能看到此作业
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    作业信息
+                                </label>
+                                <div class="creator-info">
+                                    <div class="info-item">
+                                        <strong>创建者：</strong> {{ assignment.teacher.real_name }}
+                                    </div>
+                                    <div class="info-item">
+                                        <strong>创建时间：</strong> {{ assignment.created_at|beijing_time }}
+                                    </div>
+                                    {% if assignment.class_info %}
+                                        <div class="info-item">
+                                            <strong>当前班级：</strong> {{ assignment.class_info.name }}
+                                        </div>
+                                    {% else %}
+                                        <div class="info-item">
+                                            <strong>作业类型：</strong> 全校公共作业
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-12 mb-3">
+                                <label for="description" class="form-label">
+                                    <i class="fas fa-align-left me-2"></i>
+                                    作业描述 <span class="text-info">(可选)</span>
+                                </label>
+                                <textarea class="form-control" 
+                                          id="description" 
+                                          name="description" 
+                                          rows="5" 
+                                          placeholder="请详细描述作业要求、注意事项等...">{{ assignment.description or '' }}</textarea>
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    详细的作业描述可以帮助学生更好地理解要求
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 附件设置 -->
+                <div class="card mb-4">
+                    <div class="card-header bg-gradient">
+                        <h5 class="mb-0">
+                            <i class="fas fa-paperclip me-2"></i>
+                            作业附件
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% if assignment.attachment_file_path %}
+                            <!-- 已有附件 -->
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-file me-2"></i>
+                                    当前附件
+                                </label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" 
+                                           value="{{ assignment.attachment_original_filename or assignment.attachment_filename }}" 
+                                           readonly>
+                                    <a href="{{ url_for('download.download_assignment_attachment', assignment_id=assignment.id) }}" 
+                                       class="btn btn-outline-primary">
+                                        <i class="fas fa-download me-1"></i>
+                                        下载
+                                    </a>
+                                </div>
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    文件大小: {{ "%.1f"|format(assignment.attachment_file_size / 1024 / 1024) }} MB
+                                </div>
+                            </div>
+                            
+                            <!-- 替换附件选项 -->
+                            <div class="mb-3">
+                                <label for="attachment" class="form-label">
+                                    <i class="fas fa-sync me-2"></i>
+                                    替换附件
+                                </label>
+                                <input type="file" class="form-control" id="attachment" name="attachment">
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    上传新文件将替换当前附件
+                                </div>
+                            </div>
+                            
+                            <!-- 删除附件选项 -->
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="delete_attachment" name="delete_attachment">
+                                    <label class="form-check-label" for="delete_attachment">
+                                        <i class="fas fa-trash me-2"></i>
+                                        删除当前附件
+                                    </label>
+                                </div>
+                                <div class="form-text text-danger">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                    勾选此选项将永久删除当前附件
+                                </div>
+                            </div>
+                        {% else %}
+                            <!-- 无附件 -->
+                            <div class="mb-3">
+                                <label for="attachment" class="form-label">
+                                    <i class="fas fa-upload me-2"></i>
+                                    上传附件 <span class="text-info">(可选)</span>
+                                </label>
+                                <input type="file" class="form-control" id="attachment" name="attachment">
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    可上传一个附件供学生下载，如参考资料、模板文件等
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- 提交设置 -->
+                <div class="card mb-4">
+                    <div class="card-header bg-gradient">
+                        <h5 class="mb-0">
+                            <i class="fas fa-cog me-2"></i>
+                            提交设置
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="due_date" class="form-label">
+                                    <i class="fas fa-clock me-2"></i>
+                                    截止时间 <span class="text-info">(可选)</span>
+                                </label>
+                                <input type="datetime-local" 
+                                       class="form-control" 
+                                       id="due_date" 
+                                       name="due_date" 
+                                       value="{% if assignment.due_date %}{{ assignment.due_date|beijing_datetime_local }}{% endif %}">
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    留空表示无截止时间限制
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="max_size" class="form-label">
+                                    <i class="fas fa-weight-hanging me-2"></i>
+                                    文件大小限制 (MB) <span class="text-danger">*</span>
+                                </label>
+                                <input type="number" 
+                                       class="form-control" 
+                                       id="max_size" 
+                                       name="max_size" 
+                                       value="{{ (assignment.max_file_size / 1024 / 1024)|round(1) }}"
+                                       min="1" 
+                                       max="10240" 
+                                       step="0.1" 
+                                       required>
+                                <div class="form-text">
+                                    可设置1MB到10GB (10240MB)，建议根据作业类型设置合适的大小
+                                </div>
+                                <div class="invalid-feedback">
+                                    请输入1-10240MB之间的文件大小限制
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="max_submissions" class="form-label">
+                                    <i class="fas fa-redo me-2"></i>
+                                    提交次数限制
+                                </label>
+                                <select class="form-select" id="max_submissions" name="max_submissions">
+                                    <option value="0" {% if assignment.max_submissions == 0 %}selected{% endif %}>无限制</option>
+                                    <option value="1" {% if assignment.max_submissions == 1 %}selected{% endif %}>1次</option>
+                                    <option value="2" {% if assignment.max_submissions == 2 %}selected{% endif %}>2次</option>
+                                    <option value="3" {% if assignment.max_submissions == 3 %}selected{% endif %}>3次</option>
+                                    <option value="5" {% if assignment.max_submissions == 5 %}selected{% endif %}>5次</option>
+                                    <option value="10" {% if assignment.max_submissions == 10 %}selected{% endif %}>10次</option>
+                                </select>
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    限制学生可以提交的次数，选择“无限制”允许多次提交
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-12 mb-3">
+                                <label for="file_types" class="form-label">
+                                    <i class="fas fa-file-alt me-2"></i>
+                                    允许的文件类型 <span class="text-info">(可选)</span>
+                                </label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="file_types" 
+                                       name="file_types" 
+                                       value="{{ assignment.allowed_file_types or '' }}"
+                                       placeholder="如：pdf,doc,docx,txt,zip">
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    用逗号分隔多个文件类型，留空表示允许常见文件类型
+                                </div>
+                                <div class="mt-2">
+                                    <small class="text-muted">当前允许的类型：</small>
+                                    <div class="mt-1">
+                                        {% for ext in assignment.get_allowed_extensions() %}
+                                            <span class="badge bg-primary me-1 mb-1">.{{ ext }}</span>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 操作按钮 -->
+                <div class="d-flex gap-3 justify-content-center">
+                    {% if current_user.is_super_admin %}
+                        <a href="{{ url_for('admin.super_admin_dashboard') }}" class="btn btn-secondary btn-lg">
+                            <i class="fas fa-arrow-left me-2"></i>
+                            取消编辑
+                        </a>
+                    {% else %}
+                        <a href="{{ url_for('admin.teacher_dashboard') }}" class="btn btn-secondary btn-lg">
+                            <i class="fas fa-arrow-left me-2"></i>
+                            取消编辑
+                        </a>
+                    {% endif %}
+                    <button type="submit" class="btn btn-success btn-lg">
+                        <i class="fas fa-save me-2"></i>
+                        保存修改
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 表单验证
+    const forms = document.querySelectorAll('.needs-validation');
+    Array.from(forms).forEach(form => {
+        form.addEventListener('submit', event => {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        }, false);
+    });
+    
+    // 文件类型输入实时预览
+    const fileTypesInput = document.getElementById('file_types');
+    const previewContainer = document.querySelector('.mt-2');
+    
+    fileTypesInput.addEventListener('input', function() {
+        const value = this.value.trim();
+        if (value) {
+            const types = value.split(',').map(t => t.trim().toLowerCase()).filter(t => t);
+            updatePreview(types);
+        }
+    });
+    
+    function updatePreview(types) {
+        const badgeContainer = previewContainer.querySelector('.mt-1');
+        badgeContainer.innerHTML = '';
+        
+        types.forEach(type => {
+            const badge = document.createElement('span');
+            badge.className = 'badge bg-primary me-1 mb-1';
+            badge.textContent = `.${type.startsWith('.') ? type.substring(1) : type}`;
+            badgeContainer.appendChild(badge);
+        });
+    }
+    
+    // 截止时间设置提示
+    const dueDateInput = document.getElementById('due_date');
+    dueDateInput.addEventListener('change', function() {
+        if (this.value) {
+            const selectedDate = new Date(this.value);
+            const now = new Date();
+            
+            if (selectedDate <= now) {
+                alert('注意：您设置的截止时间已经过期，学生将无法提交作业！');
+            }
+        }
+    });
+});
+</script>
+
+<style>
+.creator-info {
+    background: var(--bg-glass);
+    padding: 1rem;
+    border-radius: 8px;
+    border-left: 4px solid var(--info-color);
+}
+
+.info-item {
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.info-item:last-child {
+    margin-bottom: 0;
+}
+
+.form-select:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 0.2rem rgba(var(--accent-color-rgb), 0.25);
+}
+
+.badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .hero-section {
+        padding: 1rem 0;
+    }
+    
+    .display-6 {
+        font-size: 1.8rem;
+    }
+}
+</style>
+{% endblock %}

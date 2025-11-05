@@ -1,0 +1,670 @@
+{% extends "base.html" %}
+
+{% block title %}学生管理 - {{ class_obj.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 页面头部 -->
+    <div class="hero-section mb-4">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="display-6 fw-bold mb-2 fade-in-up">
+                    <i class="fas fa-users me-3" style="color: var(--accent-color);"></i>
+                    {{ class_obj.name }} - 学生管理
+                </h1>
+                <p class="lead mb-0 fade-in-up" style="animation-delay: 0.2s;">
+                    <span class="badge bg-primary me-2">{{ class_obj.code }}</span>
+                    {{ class_obj.description or '管理班级学生，添加或移除学生' }}
+                </p>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{{ url_for('class_mgmt.manage_classes') }}" class="btn btn-secondary me-2">
+                    <i class="fas fa-arrow-left me-1"></i>
+                    返回班级列表
+                </a>
+                <a href="{{ url_for('class_mgmt.class_grades', class_id=class_obj.id) }}" class="btn btn-success me-2">
+                    <i class="fas fa-chart-bar me-1"></i>
+                    成绩统计
+                </a>
+                {% if current_user.is_super_admin %}
+                    <a href="{{ url_for('class_mgmt.edit_class', class_id=class_obj.id) }}" class="btn btn-warning">
+                        <i class="fas fa-edit me-1"></i>
+                        编辑班级
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 班级信息卡片 -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card stat-card text-center">
+                <div class="card-body">
+                    <div class="shortcut-icon-wrapper mb-3">
+                        <div class="shortcut-icon success-icon">
+                            <i class="fas fa-user-graduate"></i>
+                        </div>
+                        <div class="shortcut-glow success-glow"></div>
+                    </div>
+                    <h4 class="stat-number success-text">{{ class_obj.students|length }}</h4>
+                    <p class="stat-label mb-0">班级学生</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card stat-card text-center">
+                <div class="card-body">
+                    <div class="shortcut-icon-wrapper mb-3">
+                        <div class="shortcut-icon warning-icon">
+                            <i class="fas fa-chalkboard-teacher"></i>
+                        </div>
+                        <div class="shortcut-glow warning-glow"></div>
+                    </div>
+                    <h4 class="stat-number warning-text">{{ class_obj.teachers|length }}</h4>
+                    <p class="stat-label mb-0">任课教师</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card stat-card text-center">
+                <div class="card-body">
+                    <div class="shortcut-icon-wrapper mb-3">
+                        <div class="shortcut-icon info-icon">
+                            <i class="fas fa-layer-group"></i>
+                        </div>
+                        <div class="shortcut-glow info-glow"></div>
+                    </div>
+                    <h4 class="stat-number info-text">{{ class_obj.grade or '未设置' }}</h4>
+                    <p class="stat-label mb-0">年级</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card stat-card text-center">
+                <div class="card-body">
+                    <div class="shortcut-icon-wrapper mb-3">
+                        <div class="shortcut-icon danger-icon">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                        <div class="shortcut-glow danger-glow"></div>
+                    </div>
+                    <h4 class="stat-number danger-text">{{ class_obj.created_at|beijing_short }}</h4>
+                    <p class="stat-label mb-0">创建时间</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- 学生列表 -->
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-gradient">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h5 class="mb-0">
+                                <i class="fas fa-list me-2"></i>
+                                班级学生列表
+                            </h5>
+                        </div>
+                        <div class="col-auto">
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="searchStudents" placeholder="搜索学生...">
+                                <button class="btn btn-outline-light" type="button">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    {% if class_obj.students %}
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="40%">
+                                            <i class="fas fa-user me-2"></i>
+                                            学生姓名
+                                        </th>
+                                        <th width="25%">
+                                            <i class="fas fa-id-card me-2"></i>
+                                            学号
+                                        </th>
+                                        <th width="20%">
+                                            <i class="fas fa-calendar me-2"></i>
+                                            加入时间
+                                        </th>
+                                        <th width="15%">
+                                            <i class="fas fa-cog me-2"></i>
+                                            操作
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody id="studentsTableBody">
+                                    {% for student in class_obj.students %}
+                                        <tr class="student-row" data-student-name="{{ student.real_name }}" data-student-id="{{ student.student_id or student.username }}">
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="student-avatar me-3">
+                                                        <i class="fas fa-user-circle fa-2x text-primary"></i>
+                                                    </div>
+                                                    <div>
+                                                        <h6 class="mb-1 fw-bold">{{ student.real_name }}</h6>
+                                                        <small class="text-muted">{{ student.username }}</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-light text-dark">
+                                                    {{ student.student_id or student.username }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <small class="text-muted">
+                                                    <i class="fas fa-calendar me-1"></i>
+                                                    {{ student.created_at|beijing_date if student.created_at else '未知' }}
+                                                </small>
+                                            </td>
+                                            <td>
+                                                <form method="POST" action="{{ url_for('class_mgmt.remove_student_from_class', class_id=class_obj.id) }}" 
+                                                      class="d-inline remove-student-form">
+                                                    <input type="hidden" name="student_id" value="{{ student.id }}">
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger" 
+                                                            title="移除学生" onclick="return confirm('确定要将 {{ student.real_name }} 从班级中移除吗？')">
+                                                        <i class="fas fa-user-minus"></i>
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <div class="empty-state">
+                                <i class="fas fa-user-graduate" style="font-size: 4rem; color: var(--text-secondary); opacity: 0.5;"></i>
+                                <h3 class="mt-4 mb-2">班级中还没有学生</h3>
+                                <p class="text-muted mb-4">开始添加学生到这个班级吧！</p>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- 添加学生 -->
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header bg-gradient-success">
+                    <h5 class="mb-0 text-white">
+                        <i class="fas fa-user-plus me-2"></i>
+                        添加学生
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('class_mgmt.add_student_to_class', class_id=class_obj.id) }}" class="needs-validation" novalidate>
+                        <div class="mb-3">
+                            <label for="student_id" class="form-label">
+                                <i class="fas fa-search me-1"></i>
+                                选择学生
+                            </label>
+                            <select class="form-select" id="student_id" name="student_id" required>
+                                <option value="">请选择学生</option>
+                                {% for student in available_students %}
+                                    <option value="{{ student.id }}">
+                                        {{ student.real_name }} ({{ student.student_id or student.username }})
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <div class="invalid-feedback">
+                                请选择要添加的学生
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-plus me-2"></i>
+                                添加到班级
+                            </button>
+                        </div>
+                    </form>
+
+                    {% if available_students|length == 0 %}
+                        <div class="alert alert-warning mt-3 mb-0">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>没有可添加的学生</strong><br>
+                            <small class="mt-2 d-block">
+                                原因可能是：<br>
+                                • 所有学生都已在班级中<br>
+                                • 系统中没有学生用户<br>
+                                • <a href="{{ url_for('user_mgmt.add_user') }}" class="text-decoration-none">点击这里创建新学生</a>
+                            </small>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+
+
+            <!-- 班级教师 -->
+            <div class="card mt-4">
+                <div class="card-header bg-gradient-info">
+                    <h5 class="mb-0 text-white">
+                        <i class="fas fa-chalkboard-teacher me-2"></i>
+                        任课教师
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if class_obj.teachers %}
+                        {% for teacher in class_obj.teachers %}
+                            <div class="teacher-item d-flex align-items-center mb-2">
+                                <div class="teacher-avatar me-3">
+                                    <i class="fas fa-user-tie fa-lg text-success"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-1">{{ teacher.real_name }}</h6>
+                                    <small class="text-muted">{{ teacher.username }}</small>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center text-muted">
+                            <i class="fas fa-user-slash mb-2"></i>
+                            <p class="mb-0">未分配教师</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 统计卡片动画效果
+    const statCards = document.querySelectorAll('.stat-card');
+    
+    // 统计卡片动画
+    statCards.forEach((card, index) => {
+        setTimeout(() => {
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+            card.classList.add('fade-in-up');
+        }, index * 100);
+        
+        // 添加悬停效果
+        card.addEventListener('mouseenter', function() {
+            const glow = this.querySelector('.shortcut-glow');
+            if (glow) {
+                glow.style.opacity = '0.3';
+            }
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            const glow = this.querySelector('.shortcut-glow');
+            if (glow) {
+                glow.style.opacity = '0';
+            }
+        });
+    });
+    
+    // 数字动画效果
+    function animateNumbers() {
+        const numbers = document.querySelectorAll('.stat-number');
+        
+        numbers.forEach(number => {
+            const text = number.textContent.trim();
+            const target = parseInt(text);
+            
+            // 只对数字执行动画
+            if (!isNaN(target)) {
+                const increment = target / 20;
+                let current = 0;
+                
+                const timer = setInterval(() => {
+                    current += increment;
+                    number.textContent = Math.floor(current);
+                    
+                    if (current >= target) {
+                        number.textContent = target;
+                        clearInterval(timer);
+                    }
+                }, 50);
+            }
+        });
+    }
+    
+    // 启动数字动画
+    setTimeout(animateNumbers, 800);
+    
+    // 表单验证
+    const forms = document.querySelectorAll('.needs-validation');
+    Array.from(forms).forEach(form => {
+        form.addEventListener('submit', event => {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        }, false);
+    });
+    
+    // 学生搜索功能
+    const searchInput = document.getElementById('searchStudents');
+    const tableBody = document.getElementById('studentsTableBody');
+    
+    if (searchInput && tableBody) {
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const rows = tableBody.querySelectorAll('.student-row');
+            
+            rows.forEach(row => {
+                const studentName = row.dataset.studentName.toLowerCase();
+                const studentId = row.dataset.studentId.toLowerCase();
+                
+                if (studentName.includes(searchTerm) || studentId.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+    }
+});
+
+// 批量操作函数
+function exportStudents() {
+    // 导出学生名单
+    const classId = '{{ class_obj.id }}';
+    window.location.href = `/admin/classes/${classId}/export`;
+}
+
+function importStudents() {
+    // 批量导入学生
+    showBatchImport();
+}
+
+function clearAllStudents() {
+    if (confirm('确定要清空班级中的所有学生吗？此操作不可恢复！')) {
+        const classId = '{{ class_obj.id }}';
+        fetch(`/admin/classes/${classId}/clear`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        }).then(response => {
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('操作失败，请重试');
+            }
+        });
+    }
+}
+</script>
+
+<style>
+/* 3D渐变圆形统计图标样式 */
+.stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 2rem;
+    height: 100%;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(30px);
+}
+
+.stat-card.fade-in-up {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.stat-card:hover {
+    transform: translateY(-10px) scale(1.02);
+    box-shadow: 0 25px 50px var(--shadow-color);
+    border-color: var(--accent-color);
+}
+
+.shortcut-icon-wrapper {
+    position: relative;
+    display: inline-block;
+    margin-bottom: 1.5rem;
+}
+
+.shortcut-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-color), #17a2b8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    color: white;
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    transition: all 0.3s ease;
+    position: relative;
+    z-index: 2;
+}
+
+.shortcut-icon.success-icon {
+    background: linear-gradient(135deg, var(--success-color), #68d391);
+    box-shadow: 0 10px 30px rgba(72, 187, 120, 0.3);
+}
+
+.shortcut-icon.warning-icon {
+    background: linear-gradient(135deg, var(--warning-color), #fbb040);
+    box-shadow: 0 10px 30px rgba(237, 137, 54, 0.3);
+}
+
+.shortcut-icon.info-icon {
+    background: linear-gradient(135deg, #17a2b8, #20c997);
+    box-shadow: 0 10px 30px rgba(23, 162, 184, 0.3);
+}
+
+.shortcut-icon.danger-icon {
+    background: linear-gradient(135deg, var(--danger-color), #fc8181);
+    box-shadow: 0 10px 30px rgba(245, 101, 101, 0.3);
+}
+
+.shortcut-glow {
+    position: absolute;
+    top: -10px;
+    left: -10px;
+    right: -10px;
+    bottom: -10px;
+    background: linear-gradient(135deg, var(--accent-color), #17a2b8);
+    border-radius: 50%;
+    opacity: 0;
+    filter: blur(20px);
+    transition: opacity 0.3s ease;
+    z-index: 1;
+}
+
+.shortcut-glow.success-glow {
+    background: linear-gradient(135deg, var(--success-color), #68d391);
+}
+
+.shortcut-glow.warning-glow {
+    background: linear-gradient(135deg, var(--warning-color), #fbb040);
+}
+
+.shortcut-glow.info-glow {
+    background: linear-gradient(135deg, #17a2b8, #20c997);
+}
+
+.shortcut-glow.danger-glow {
+    background: linear-gradient(135deg, var(--danger-color), #fc8181);
+}
+
+.stat-card:hover .shortcut-icon {
+    transform: scale(1.1) rotate(10deg);
+}
+
+.stat-card:hover .shortcut-glow {
+    opacity: 0.3;
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: 800;
+    margin: 0;
+    background: linear-gradient(135deg, var(--accent-color), #17a2b8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-number.success-text {
+    background: linear-gradient(135deg, var(--success-color), #68d391);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-number.warning-text {
+    background: linear-gradient(135deg, var(--warning-color), #fbb040);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-number.info-text {
+    background: linear-gradient(135deg, #17a2b8, #20c997);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-number.danger-text {
+    background: linear-gradient(135deg, var(--danger-color), #fc8181);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-label {
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.bg-gradient {
+    background: linear-gradient(135deg, var(--accent-color), var(--info-color));
+    color: white;
+}
+
+.bg-gradient-success {
+    background: linear-gradient(135deg, var(--success-color), var(--accent-color));
+}
+
+.bg-gradient-warning {
+    background: linear-gradient(135deg, var(--warning-color), var(--accent-color));
+}
+
+.bg-gradient-info {
+    background: linear-gradient(135deg, var(--info-color), var(--accent-color));
+}
+
+.student-row:hover {
+    background-color: var(--bg-glass);
+    transform: translateY(-1px);
+    transition: all 0.3s ease;
+}
+
+.student-avatar,
+.teacher-avatar {
+    transition: transform 0.3s ease;
+}
+
+.student-row:hover .student-avatar,
+.teacher-item:hover .teacher-avatar {
+    transform: scale(1.1);
+}
+
+.teacher-item {
+    padding: 0.75rem;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.teacher-item:hover {
+    background-color: var(--bg-glass);
+}
+
+.empty-state {
+    opacity: 0.8;
+}
+
+.card {
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    border: none;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.table th {
+    border-bottom: 2px solid var(--border-color);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.form-select:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 0.2rem rgba(var(--accent-color-rgb), 0.25);
+}
+
+.btn-outline-danger:hover {
+    transform: scale(1.05);
+    transition: transform 0.2s ease;
+}
+
+@media (max-width: 768px) {
+    .hero-section .col-md-4 {
+        text-align: left !important;
+        margin-top: 1rem;
+    }
+    
+    .hero-section .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stat-card {
+        padding: 1.5rem;
+    }
+    
+    .shortcut-icon {
+        width: 60px;
+        height: 60px;
+        font-size: 2rem;
+    }
+    
+    .stat-number {
+        font-size: 1.8rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .shortcut-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.5rem;
+    }
+    
+    .stat-number {
+        font-size: 1.5rem;
+    }
+}
+</style>
+{% endblock %}

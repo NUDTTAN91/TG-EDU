@@ -1,0 +1,448 @@
+{% extends "base.html" %}
+
+{% block title %}管理后台 - TG作业系统{% endblock %}
+
+{% block content %}
+<!-- 管理员欢迎页 -->
+<div class="hero-section mb-5">
+    <div class="text-center">
+        <div class="admin-icon mb-3">
+            <i class="fas fa-user-crown" style="font-size: 4rem; color: var(--accent-color);"></i>
+        </div>
+        <h1 class="display-5 fw-bold mb-3 fade-in-up">
+            <i class="fas fa-cogs me-3"></i>
+            管理后台
+        </h1>
+        <p class="lead mb-4 fade-in-up" style="animation-delay: 0.2s;">
+            <i class="fas fa-hand-sparkles me-2"></i>
+            欢迎回来，{{ current_user.username }}老师！让我们开始管理作业吧
+        </p>
+    </div>
+</div>
+
+<!-- 快速统计 -->
+<div class="row mb-5">
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card text-center">
+            <div class="card-body">
+                <div class="stat-icon mb-3">
+                    <i class="fas fa-tasks" style="color: var(--accent-color);"></i>
+                </div>
+                <h3 class="stat-number" style="color: var(--accent-color);">{{ assignments|length }}</h3>
+                <p class="stat-label mb-0">总作业数</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card text-center">
+            <div class="card-body">
+                <div class="stat-icon mb-3">
+                    <i class="fas fa-clock" style="color: var(--warning-color);"></i>
+                </div>
+                {% set active_count = assignments|selectattr('due_date')|list|length %}
+                <h3 class="stat-number" style="color: var(--warning-color);">{{ active_count }}</h3>
+                <p class="stat-label mb-0">有截止时间</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card text-center">
+            <div class="card-body">
+                <div class="stat-icon mb-3">
+                    <i class="fas fa-infinity" style="color: var(--success-color);"></i>
+                </div>
+                {% set unlimited_count = assignments|rejectattr('due_date')|list|length %}
+                <h3 class="stat-number" style="color: var(--success-color);">{{ unlimited_count }}</h3>
+                <p class="stat-label mb-0">无时间限制</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card text-center">
+            <div class="card-body">
+                <div class="stat-icon mb-3">
+                    <i class="fas fa-upload" style="color: var(--danger-color);"></i>
+                </div>
+                {% set total_submissions = 0 %}
+                {% for assignment in assignments %}
+                    {% set total_submissions = total_submissions + (assignment.submissions|length if assignment.submissions else 0) %}
+                {% endfor %}
+                <h3 class="stat-number" style="color: var(--danger-color);">{{ total_submissions }}</h3>
+                <p class="stat-label mb-0">总提交数</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 主操作区 -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2 class="fw-bold">
+                <i class="fas fa-list-alt me-2" style="color: var(--accent-color);"></i>
+                作业管理
+            </h2>
+            <div>
+                <a href="{{ url_for('download.batch_download_assignments') }}" class="btn btn-info me-2">
+                    <i class="fas fa-download me-2"></i>
+                    批量下载
+                </a>
+                <a href="{{ url_for('assignment.create_assignment') }}" class="btn btn-success btn-lg pulse">
+                    <i class="fas fa-plus me-2"></i>
+                    创建新作业
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if assignments %}
+    <div class="card assignment-list-card">
+        <div class="card-header bg-gradient">
+            <h5 class="mb-0">
+                <i class="fas fa-clipboard-list me-2"></i>
+                作业列表
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th width="30%">
+                                <i class="fas fa-file-alt me-2"></i>
+                                作业标题
+                            </th>
+                            <th width="15%">
+                                <i class="fas fa-calendar-alt me-2"></i>
+                                截止时间
+                            </th>
+                            <th width="15%">
+                                <i class="fas fa-clock me-2"></i>
+                                创建时间
+                            </th>
+                            <th width="10%">
+                                <i class="fas fa-users me-2"></i>
+                                提交数
+                            </th>
+                            <th width="15%">
+                                <i class="fas fa-chart-pie me-2"></i>
+                                状态
+                            </th>
+                            <th width="15%">
+                                <i class="fas fa-cog me-2"></i>
+                                操作
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for assignment in assignments %}
+                            <tr class="assignment-row" data-assignment-id="{{ assignment.id }}">
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="assignment-icon me-3">
+                                            <i class="fas fa-file-text" style="color: var(--accent-color);"></i>
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-1 fw-bold">{{ assignment.title }}</h6>
+                                            {% if assignment.description %}
+                                                <small class="text-muted">
+                                                    {{ assignment.description[:50] }}{% if assignment.description|length > 50 %}...{% endif %}
+                                                </small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if assignment.due_date %}
+                                        <span class="badge bg-warning">
+                                            <i class="fas fa-clock me-1"></i>
+                                            {{ assignment.due_date|beijing_short }}
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-infinity me-1"></i>
+                                            无限制
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small class="text-muted">
+                                        <i class="fas fa-calendar me-1"></i>
+                                        {{ assignment.created_at|beijing_short }}
+                                    </small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary submission-count" data-count="{{ assignment.submissions|length if assignment.submissions else 0 }}">
+                                        <i class="fas fa-upload me-1"></i>
+                                        {{ assignment.submissions|length if assignment.submissions else 0 }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if assignment.due_date %}
+                                        {% set now = moment.utcnow() %}
+                                        {% if assignment.due_date > now %}
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check-circle me-1"></i>
+                                                进行中
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-danger">
+                                                <i class="fas fa-times-circle me-1"></i>
+                                                已截止
+                                            </span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="badge bg-info">
+                                            <i class="fas fa-infinity me-1"></i>
+                                            永久有效
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a href="{{ url_for('assignment.view_submissions', assignment_id=assignment.id) }}" 
+                                           class="btn btn-sm btn-primary" 
+                                           title="查看提交">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="{{ url_for('download.download_assignment', assignment_id=assignment.id) }}" 
+                                           class="btn btn-sm btn-success" 
+                                           title="下载作业">
+                                            <i class="fas fa-download"></i>
+                                        </a>
+                                        <button class="btn btn-sm btn-warning" 
+                                                title="编辑作业"
+                                                onclick="editAssignment({{ assignment.id }})">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" 
+                                                title="删除作业"
+                                                onclick="deleteAssignment({{ assignment.id }})">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% else %}
+    <div class="text-center py-5">
+        <div class="empty-state">
+            <i class="fas fa-clipboard" style="font-size: 4rem; color: var(--text-secondary); opacity: 0.5;"></i>
+            <h3 class="mt-4 mb-2">您还没有创建任何作业</h3>
+            <p class="text-muted mb-4">开始创建您的第一个作业，让学生们开始提交吧！</p>
+            <a href="{{ url_for('assignment.create_assignment') }}" class="btn btn-success btn-lg pulse">
+                <i class="fas fa-plus me-2"></i>
+                创建第一个作业
+            </a>
+        </div>
+    </div>
+{% endif %}
+
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 管理后台交互功能
+document.addEventListener('DOMContentLoaded', function() {
+    // 为统计卡片添加动画
+    const statNumbers = document.querySelectorAll('.stat-number');
+    statNumbers.forEach(num => {
+        const target = parseInt(num.textContent);
+        let current = 0;
+        const increment = Math.max(1, Math.ceil(target / 50));
+        
+        const timer = setInterval(() => {
+            current += increment;
+            if (current >= target) {
+                num.textContent = target;
+                clearInterval(timer);
+            } else {
+                num.textContent = current;
+            }
+        }, 50);
+    });
+    
+    // 为作业行添加悬停效果
+    const assignmentRows = document.querySelectorAll('.assignment-row');
+    assignmentRows.forEach(row => {
+        row.addEventListener('mouseenter', function() {
+            this.style.transform = 'scale(1.01)';
+            this.style.boxShadow = '0 4px 20px var(--shadow-color)';
+        });
+        
+        row.addEventListener('mouseleave', function() {
+            this.style.transform = 'scale(1)';
+            this.style.boxShadow = 'none';
+        });
+    });
+});
+
+// 编辑作业
+function editAssignment(id) {
+    // TODO: 实现编辑功能
+    alert('编辑功能待开发，作业 ID: ' + id);
+}
+
+// 删除作业
+function deleteAssignment(id) {
+    if (confirm('确定要删除这个作业吗？此操作不可恢复！')) {
+        // TODO: 实现删除功能
+        alert('删除功能待开发，作业 ID: ' + id);
+    }
+}
+
+// 导出数据
+function exportData() {
+    alert('导出功能待开发');
+}
+
+// 显示设置
+function showSettings() {
+    alert('设置功能待开发');
+}
+</script>
+
+<style>
+.admin-icon {
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+.stat-card {
+    transition: all 0.3s ease;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px var(--shadow-color);
+}
+
+.stat-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+}
+
+.stat-number {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+}
+
+.assignment-list-card {
+    border: 1px solid var(--border-color);
+    box-shadow: 0 10px 40px var(--shadow-color);
+}
+
+.assignment-row {
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.assignment-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-glass);
+    border-radius: 10px;
+    font-size: 1.2rem;
+}
+
+.submission-count {
+    font-size: 0.9rem;
+    padding: 0.5rem 0.8rem;
+}
+
+.shortcuts-card {
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+}
+
+.shortcut-item {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    border-radius: 10px;
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: all 0.3s ease;
+    border: 1px solid var(--border-color);
+    background: var(--bg-glass);
+}
+
+.shortcut-item:hover {
+    color: var(--text-primary);
+    background: var(--bg-card);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px var(--shadow-color);
+}
+
+.shortcut-icon {
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent-color);
+    color: white;
+    border-radius: 10px;
+    font-size: 1.5rem;
+    margin-right: 1rem;
+}
+
+.shortcut-content h6 {
+    margin-bottom: 0.2rem;
+    font-weight: 600;
+}
+
+.empty-state {
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 3rem;
+}
+
+.hero-section {
+    padding: 2rem 0;
+    margin-bottom: 2rem;
+}
+
+@media (max-width: 768px) {
+    .stat-card {
+        margin-bottom: 1rem;
+    }
+    
+    .btn-group {
+        flex-direction: column;
+    }
+    
+    .btn-group .btn {
+        margin-bottom: 0.2rem;
+    }
+}
+</style>
+{% endblock %}

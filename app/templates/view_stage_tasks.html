@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block title %}任务总览 - {{ stage.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2>
+                        <i class="fas fa-list-check me-2"></i>
+                        {{ stage.name }} - 任务总览
+                    </h2>
+                    <p class="text-muted">
+                        <i class="fas fa-school me-2"></i>{{ major_assignment.title }} - {{ major_assignment.class_info.name }}
+                    </p>
+                </div>
+                <div>
+                    <a href="{{ url_for('major_assignment.manage_stages', assignment_id=major_assignment.id) }}" 
+                       class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>返回阶段管理
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 阶段信息 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-2">
+                                <i class="fas fa-calendar me-2"></i>
+                                <strong>时间：</strong>
+                                {{ stage.start_date|beijing_time }} 至 {{ stage.end_date|beijing_time }}
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-2">
+                                <strong>状态：</strong>
+                                <span class="badge {% if stage.status == 'pending' %}bg-warning
+                                              {% elif stage.status == 'active' %}bg-success
+                                              {% else %}bg-secondary{% endif %}">
+                                    {% if stage.status == 'pending' %}待开始
+                                    {% elif stage.status == 'active' %}进行中
+                                    {% else %}已完成{% endif %}
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                    {% if stage.description %}
+                    <p class="mb-0"><strong>描述：</strong>{{ stage.description }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 任务列表 -->
+    {% if tasks_by_team %}
+    {% for team, tasks in tasks_by_team.items() %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">
+                <i class="fas fa-users me-2"></i>
+                {{ team.name }}
+                <span class="badge bg-light text-dark ms-2">{{ tasks|length }} 个任务</span>
+            </h5>
+        </div>
+        <div class="card-body">
+            {% if tasks %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="30%">任务标题</th>
+                            <th width="20%">负责人</th>
+                            <th width="10%">优先级</th>
+                            <th width="15%">状态</th>
+                            <th width="15%">进度</th>
+                            <th width="10%">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for task in tasks %}
+                        <tr>
+                            <td>
+                                <strong>{{ task.title }}</strong>
+                                {% if task.description %}
+                                <br><small class="text-muted">{{ task.description[:50] }}...</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if task.assignee %}
+                                <span class="badge bg-info">
+                                    <i class="fas fa-user me-1"></i>{{ task.assignee.real_name }}
+                                </span>
+                                {% else %}
+                                <span class="text-muted">未分配</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge {% if task.priority == 'high' %}bg-danger
+                                                  {% elif task.priority == 'medium' %}bg-warning
+                                                  {% else %}bg-secondary{% endif %}">
+                                    {% if task.priority == 'high' %}高
+                                    {% elif task.priority == 'medium' %}中
+                                    {% else %}低{% endif %}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge {% if task.status == 'completed' %}bg-success
+                                                  {% elif task.status == 'in_progress' %}bg-primary
+                                                  {% else %}bg-secondary{% endif %}">
+                                    {% if task.status == 'completed' %}已完成
+                                    {% elif task.status == 'in_progress' %}进行中
+                                    {% else %}待开始{% endif %}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar {% if task.progress == 100 %}bg-success
+                                                              {% elif task.progress >= 50 %}bg-primary
+                                                              {% else %}bg-warning{% endif %}"
+                                         role="progressbar"
+                                         style="width: {{ task.progress }}%"
+                                         aria-valuenow="{{ task.progress }}"
+                                         aria-valuemin="0"
+                                         aria-valuemax="100">
+                                        {{ task.progress }}%
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-info" 
+                                        onclick="viewTaskDetails({{ task.id }})">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted text-center mb-0">该团队暂无任务</p>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="alert alert-info text-center">
+        <i class="fas fa-info-circle fa-3x mb-3"></i>
+        <p class="mb-0">该阶段暂无任务</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function viewTaskDetails(taskId) {
+    // TODO: 实现任务详情查看模态框
+    alert('任务详情功能开发中');
+}
+</script>
+{% endblock %}

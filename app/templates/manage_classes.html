@@ -1,0 +1,626 @@
+{% extends "base.html" %}
+
+{% block title %}班级管理 - TG作业系统{% endblock %}
+
+{% block content %}
+<!-- 班级管理页面 -->
+<div class="hero-section mb-4">
+    <div class="row align-items-center">
+        <div class="col-md-8">
+            <h1 class="display-6 fw-bold mb-2 fade-in-up">
+                <i class="fas fa-users me-3" style="color: var(--accent-color);"></i>
+                班级管理
+            </h1>
+            <p class="lead mb-0 fade-in-up" style="animation-delay: 0.2s;">
+                {% if current_user.is_super_admin %}
+                    管理所有班级，分配教师和学生
+                {% else %}
+                    管理您负责的班级
+                {% endif %}
+            </p>
+        </div>
+        <div class="col-md-4 text-end">
+            {% if current_user.is_super_admin %}
+                <a href="{{ url_for('class_mgmt.add_class') }}" class="btn btn-primary btn-lg">
+                    <i class="fas fa-plus me-2"></i>
+                    创建班级
+                </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- 班级统计卡片 -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card text-center">
+            <div class="card-body">
+                <div class="shortcut-icon-wrapper mb-3">
+                    <div class="shortcut-icon">
+                        <i class="fas fa-school"></i>
+                    </div>
+                    <div class="shortcut-glow"></div>
+                </div>
+                <h4 class="stat-number">{{ classes|length }}</h4>
+                <p class="stat-label mb-0">班级总数</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card text-center">
+            <div class="card-body">
+                <div class="shortcut-icon-wrapper mb-3">
+                    <div class="shortcut-icon success-icon">
+                        <i class="fas fa-user-graduate"></i>
+                    </div>
+                    <div class="shortcut-glow success-glow"></div>
+                </div>
+                <h4 class="stat-number success-text">{{ stats.total_students }}</h4>
+                <p class="stat-label mb-0">学生总数</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card text-center">
+            <div class="card-body">
+                <div class="shortcut-icon-wrapper mb-3">
+                    <div class="shortcut-icon warning-icon">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                    </div>
+                    <div class="shortcut-glow warning-glow"></div>
+                </div>
+                <h4 class="stat-number warning-text">{{ stats.total_teachers }}</h4>
+                <p class="stat-label mb-0">任课教师</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card text-center">
+            <div class="card-body">
+                <div class="shortcut-icon-wrapper mb-3">
+                    <div class="shortcut-icon info-icon">
+                        <i class="fas fa-tasks"></i>
+                    </div>
+                    <div class="shortcut-glow info-glow"></div>
+                </div>
+                <h4 class="stat-number info-text">{{ stats.total_assignments }}</h4>
+                <p class="stat-label mb-0">作业总数</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 班级列表 -->
+<div class="card">
+    <div class="card-header bg-gradient">
+        <div class="row align-items-center">
+            <div class="col">
+                <h5 class="mb-0">
+                    <i class="fas fa-list me-2"></i>
+                    班级列表
+                </h5>
+            </div>
+            <div class="col-auto">
+                <div class="input-group">
+                    <input type="text" class="form-control" id="searchInput" placeholder="搜索班级...">
+                    <button class="btn btn-outline-secondary" type="button">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        {% if classes %}
+            <div class="row g-0">
+                {% for class_obj in classes %}
+                    <div class="col-lg-6 col-xl-6">
+                        <div class="class-card m-3" data-class-name="{{ class_obj.name }}" data-class-code="{{ class_obj.code }}">
+                            <div class="class-header">
+                                <div class="class-icon">
+                                    <i class="fas fa-graduation-cap"></i>
+                                </div>
+                                <div class="class-info">
+                                    <h6 class="class-name mb-1">{{ class_obj.name }}</h6>
+                                    <small class="class-code">{{ class_obj.code }}</small>
+                                    {% if class_obj.grade %}
+                                        <span class="badge bg-info ms-2">{{ class_obj.grade }}</span>
+                                    {% endif %}
+                                </div>
+                                <div class="class-status">
+                                    {% if class_obj.is_active %}
+                                        <span class="badge bg-success">活跃</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">停用</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            {% if class_obj.description %}
+                                <div class="class-description">
+                                    <p class="mb-0">{{ class_obj.description }}</p>
+                                </div>
+                            {% endif %}
+                            
+                            <div class="class-stats">
+                                <div class="stat-item">
+                                    <i class="fas fa-user-graduate text-success"></i>
+                                    <span>{{ class_obj.students|length }} 学生</span>
+                                </div>
+                                <div class="stat-item">
+                                    <i class="fas fa-chalkboard-teacher text-warning"></i>
+                                    <span>{{ class_obj.teachers|length }} 教师</span>
+                                </div>
+                                <div class="stat-item">
+                                    <i class="fas fa-tasks text-info"></i>
+                                    <span>{{ class_obj.assignments|length }} 作业</span>
+                                </div>
+                            </div>
+                            
+                            <div class="class-teachers">
+                                <small class="text-muted">任课教师：</small>
+                                {% if class_obj.teachers %}
+                                    {% for teacher in class_obj.teachers %}
+                                        <span class="badge bg-outline-primary me-1">{{ teacher.real_name }}</span>
+                                    {% endfor %}
+                                {% else %}
+                                    <span class="text-muted">未分配</span>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="class-actions d-flex flex-wrap gap-2">
+                                <a href="{{ url_for('class_mgmt.class_students', class_id=class_obj.id) }}" 
+                                   class="btn btn-sm btn-primary d-flex align-items-center" 
+                                   title="管理班级学生 - 添加/移除学生">
+                                    <i class="fas fa-users me-1"></i>
+                                    管理学生 ({{ class_obj.students|length }})
+                                </a>
+                                <a href="{{ url_for('class_mgmt.class_grades', class_id=class_obj.id) }}" 
+                                   class="btn btn-sm btn-success d-flex align-items-center" 
+                                   title="查看班级成绩统计和排名">
+                                    <i class="fas fa-chart-bar me-1"></i>
+                                    成绩统计
+                                </a>
+                                {% if current_user.is_super_admin or current_user in class_obj.teachers %}
+                                    <a href="{{ url_for('class_mgmt.edit_class', class_id=class_obj.id) }}" 
+                                       class="btn btn-sm btn-outline-secondary d-flex align-items-center" 
+                                       title="编辑班级">
+                                        <i class="fas fa-edit me-1"></i>
+                                        编辑
+                                    </a>
+                                {% endif %}
+                                {% if current_user.is_super_admin or (current_user in class_obj.teachers and not class_obj.students and not class_obj.assignments) %}
+                                    <button class="btn btn-sm btn-outline-danger d-flex align-items-center" 
+                                            data-class-id="{{ class_obj.id }}"
+                                            data-class-name="{{ class_obj.name }}"
+                                            data-has-students="{{ class_obj.students|length > 0 }}"
+                                            data-has-assignments="{{ class_obj.assignments|length > 0 }}"
+                                            onclick="deleteClass(this.dataset.classId, this.dataset.className, this.dataset.hasStudents === 'True', this.dataset.hasAssignments === 'True')"
+                                            title="删除班级">
+                                        <i class="fas fa-trash me-1"></i>
+                                        删除
+                                    </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <div class="empty-state">
+                    <i class="fas fa-school fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">暂无班级</h5>
+                    {% if current_user.is_super_admin %}
+                        <p class="text-muted">点击上方"创建班级"按钮创建第一个班级</p>
+                        <a href="{{ url_for('class_mgmt.add_class') }}" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>
+                            创建班级
+                        </a>
+                    {% else %}
+                        <p class="text-muted">您还没有被分配到任何班级</p>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 删除班级确认模态框 -->
+<div class="modal fade" id="deleteClassModal" tabindex="-1" aria-labelledby="deleteClassModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteClassModalLabel">
+                    <i class="fas fa-warning me-2 text-danger"></i>
+                    删除班级确认
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-warning me-2"></i>
+                    <strong>警告：</strong> 此操作不可逆转！
+                </div>
+                <p>您确定要删除班级 <strong id="classToDelete"></strong> 吗？</p>
+                <p class="text-muted mb-0" id="deleteWarning">
+                    <i class="fas fa-info-circle me-1"></i>
+                    删除后将清除所有相关的数据。
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>
+                    取消
+                </button>
+                <form id="deleteClassForm" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-2"></i>
+                        确认删除
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 搜索功能
+document.getElementById('searchInput').addEventListener('input', function() {
+    const searchTerm = this.value.toLowerCase();
+    const cards = document.querySelectorAll('.class-card');
+    
+    cards.forEach(card => {
+        const className = card.dataset.className.toLowerCase();
+        const classCode = card.dataset.classCode.toLowerCase();
+        
+        if (className.includes(searchTerm) || classCode.includes(searchTerm)) {
+            card.parentElement.style.display = '';
+        } else {
+            card.parentElement.style.display = 'none';
+        }
+    });
+});
+
+// 页面加载动画
+document.addEventListener('DOMContentLoaded', function() {
+    const statCards = document.querySelectorAll('.stat-card');
+    const classCards = document.querySelectorAll('.class-card');
+    
+    // 统计卡片动画
+    statCards.forEach((card, index) => {
+        setTimeout(() => {
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+            card.classList.add('fade-in-up');
+        }, index * 100);
+        
+        // 添加悬停效果
+        card.addEventListener('mouseenter', function() {
+            const glow = this.querySelector('.shortcut-glow');
+            if (glow) {
+                glow.style.opacity = '0.3';
+            }
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            const glow = this.querySelector('.shortcut-glow');
+            if (glow) {
+                glow.style.opacity = '0';
+            }
+        });
+    });
+    
+    // 班级卡片动画
+    classCards.forEach((card, index) => {
+        setTimeout(() => {
+            card.classList.add('fade-in-up');
+        }, index * 100 + 400); // 延迟400ms开始
+    });
+    
+    // 统计数字动画
+    const numbers = document.querySelectorAll('.stat-number');
+    numbers.forEach(number => {
+        const target = parseInt(number.textContent);
+        const increment = target / 20;
+        let current = 0;
+        
+        const timer = setInterval(() => {
+            current += increment;
+            number.textContent = Math.floor(current);
+            
+            if (current >= target) {
+                number.textContent = target;
+                clearInterval(timer);
+            }
+        }, 50);
+    });
+});
+
+// 删除班级函数
+function deleteClass(classId, className, hasStudents, hasAssignments) {
+    const modal = new bootstrap.Modal(document.getElementById('deleteClassModal'));
+    const form = document.getElementById('deleteClassForm');
+    const classNameElement = document.getElementById('classToDelete');
+    const warningElement = document.getElementById('deleteWarning');
+    
+    classNameElement.textContent = className;
+    form.action = `/admin/classes/${classId}/delete`;
+    
+    // 根据情况显示不同的警告信息
+    if (hasStudents || hasAssignments) {
+        warningElement.innerHTML = `
+            <i class="fas fa-exclamation-triangle me-1 text-danger"></i>
+            警告：该班级包含 ${hasStudents ? '学生' : ''} ${hasStudents && hasAssignments ? '和' : ''} ${hasAssignments ? '作业' : ''} 数据，删除后将一并清除！
+        `;
+    } else {
+        warningElement.innerHTML = `
+            <i class="fas fa-info-circle me-1"></i>
+            该班级为空班级，可以安全删除。
+        `;
+    }
+    
+    modal.show();
+}
+</script>
+
+<style>
+.class-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 15px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+    opacity: 0;
+    transform: translateY(20px);
+}
+
+.class-card.fade-in-up {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.class-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 40px var(--shadow-color);
+    border-color: var(--accent-color);
+}
+
+.class-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.class-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-color), var(--info-color));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.5rem;
+    margin-right: 1rem;
+}
+
+.class-info {
+    flex: 1;
+}
+
+.class-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.class-code {
+    color: var(--text-secondary);
+    font-family: 'Courier New', monospace;
+}
+
+.class-description {
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background: var(--bg-glass);
+    border-radius: 8px;
+    border-left: 4px solid var(--accent-color);
+}
+
+.class-description p {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.class-stats {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background: var(--bg-glass);
+    border-radius: 8px;
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.stat-item i {
+    margin-right: 0.5rem;
+}
+
+.class-teachers {
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.class-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.class-actions .btn {
+    flex: 1;
+}
+
+.stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 2rem;
+    height: 100%;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(30px);
+}
+
+.stat-card.fade-in-up {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.stat-card:hover {
+    transform: translateY(-10px) scale(1.02);
+    box-shadow: 0 25px 50px var(--shadow-color);
+    border-color: var(--accent-color);
+}
+
+.shortcut-icon-wrapper {
+    position: relative;
+    display: inline-block;
+    margin-bottom: 1.5rem;
+}
+
+.shortcut-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-color), #17a2b8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    color: white;
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    transition: all 0.3s ease;
+    position: relative;
+    z-index: 2;
+}
+
+.shortcut-icon.warning-icon {
+    background: linear-gradient(135deg, var(--warning-color), #fbb040);
+    box-shadow: 0 10px 30px rgba(237, 137, 54, 0.3);
+}
+
+.shortcut-icon.success-icon {
+    background: linear-gradient(135deg, var(--success-color), #68d391);
+    box-shadow: 0 10px 30px rgba(72, 187, 120, 0.3);
+}
+
+.shortcut-icon.info-icon {
+    background: linear-gradient(135deg, #17a2b8, #20c997);
+    box-shadow: 0 10px 30px rgba(23, 162, 184, 0.3);
+}
+
+.shortcut-glow {
+    position: absolute;
+    top: -10px;
+    left: -10px;
+    right: -10px;
+    bottom: -10px;
+    background: linear-gradient(135deg, var(--accent-color), #17a2b8);
+    border-radius: 50%;
+    opacity: 0;
+    filter: blur(20px);
+    transition: opacity 0.3s ease;
+    z-index: 1;
+}
+
+.shortcut-glow.warning-glow {
+    background: linear-gradient(135deg, var(--warning-color), #fbb040);
+}
+
+.shortcut-glow.success-glow {
+    background: linear-gradient(135deg, var(--success-color), #68d391);
+}
+
+.shortcut-glow.info-glow {
+    background: linear-gradient(135deg, #17a2b8, #20c997);
+}
+
+.stat-card:hover .shortcut-icon {
+    transform: scale(1.1) rotate(10deg);
+}
+
+.stat-card:hover .shortcut-glow {
+    opacity: 0.3;
+}
+
+.stat-number {
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin: 0;
+    background: linear-gradient(135deg, var(--accent-color), #17a2b8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-number.warning-text {
+    background: linear-gradient(135deg, var(--warning-color), #fbb040);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-number.success-text {
+    background: linear-gradient(135deg, var(--success-color), #68d391);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-number.info-text {
+    background: linear-gradient(135deg, #17a2b8, #20c997);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-label {
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.empty-state {
+    padding: 3rem 2rem;
+}
+
+.fade-in-up {
+    animation: fadeInUp 0.6s ease forwards;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+</style>
+{% endblock %}

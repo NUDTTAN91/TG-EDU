@@ -1,0 +1,726 @@
+{% extends "base.html" %}
+
+{% block title %}查看分组情况 - {{ major_assignment.title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2>
+                        <i class="fas fa-users me-2"></i>
+                        {{ major_assignment.title }} - 分组情况
+                    </h2>
+                    <p class="text-muted">
+                        <i class="fas fa-school me-2"></i>{{ major_assignment.class_info.name }}
+                        <i class="fas fa-users ms-3 me-2"></i>组队人数：{{ major_assignment.min_team_size }} - {{ major_assignment.max_team_size }} 人
+                    </p>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('major_assignment.manage_stages', assignment_id=major_assignment.id) }}" class="btn btn-primary">
+                        <i class="fas fa-layer-group me-1"></i>阶段管理
+                    </a>
+                    <a href="{{ url_for('major_assignment.major_assignment_dashboard') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>返回
+                    </a>
+                </div>
+            </div>
+            
+            <!-- 作业资料 -->
+            {% set all_attachments = major_assignment.get_all_attachments() %}
+            {% set all_links = major_assignment.get_all_links() %}
+            
+            {% if all_attachments or all_links %}
+            <div class="card mt-3 shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0">
+                        <i class="fas fa-folder-open me-2"></i>作业资料
+                    </h6>
+                </div>
+                <div class="card-body bg-light">
+                    <div class="row">
+                        <!-- 附件列表 -->
+                        {% if all_attachments %}
+                        <div class="col-md-{% if all_links %}6{% else %}12{% endif %} mb-3">
+                            <div class="border-start border-primary border-3 ps-3">
+                                <h6 class="text-primary mb-3">
+                                    <i class="fas fa-paperclip me-2"></i>附件文件
+                                </h6>
+                                {% for attachment in all_attachments %}
+                                <div class="card mb-2 border-0 shadow-sm bg-white">
+                                    <div class="card-body p-3">
+                                        <div class="d-flex align-items-center">
+                                            <div class="flex-shrink-0">
+                                                <i class="fas fa-file-alt fa-2x text-primary"></i>
+                                            </div>
+                                            <div class="flex-grow-1 ms-3">
+                                                {% if not attachment.is_old %}
+                                                <div class="fw-bold mb-1">
+                                                    <a href="{{ url_for('major_assignment.download_major_assignment_attachment', attachment_id=attachment.id) }}" 
+                                                       class="text-decoration-none">
+                                                        {{ attachment.original_filename }}
+                                                    </a>
+                                                </div>
+                                                {% if attachment.file_size %}
+                                                <small class="text-muted">
+                                                    <i class="fas fa-hdd me-1"></i>{{ attachment.file_size|filesize }}
+                                                </small>
+                                                {% endif %}
+                                                {% else %}
+                                                <div class="fw-bold mb-1">
+                                                    <a href="{{ url_for('major_assignment.download_major_assignment_requirement', assignment_id=major_assignment.id) }}" 
+                                                       class="text-decoration-none">
+                                                        {{ attachment.original_filename }}
+                                                    </a>
+                                                    <span class="badge bg-secondary ms-2">旧系统</span>
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="flex-shrink-0 ms-2">
+                                                <a href="{% if not attachment.is_old %}{{ url_for('major_assignment.download_major_assignment_attachment', attachment_id=attachment.id) }}{% else %}{{ url_for('major_assignment.download_major_assignment_requirement', assignment_id=major_assignment.id) }}{% endif %}" 
+                                                   class="btn btn-sm btn-primary">
+                                                    <i class="fas fa-download"></i>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- 链接列表 -->
+                        {% if all_links %}
+                        <div class="col-md-{% if all_attachments %}6{% else %}12{% endif %} mb-3">
+                            <div class="border-start border-success border-3 ps-3">
+                                <h6 class="text-success mb-3">
+                                    <i class="fas fa-link me-2"></i>参考链接
+                                </h6>
+                                {% for link in all_links %}
+                                <a href="{{ link.url }}" target="_blank" class="text-decoration-none">
+                                    <div class="card mb-2 border-0 shadow-sm bg-white hover-shadow">
+                                        <div class="card-body p-3">
+                                            <div class="d-flex align-items-center">
+                                                <div class="flex-shrink-0">
+                                                    <i class="fas fa-external-link-alt fa-2x text-success"></i>
+                                                </div>
+                                                <div class="flex-grow-1 ms-3">
+                                                    <div class="fw-bold mb-1">{{ link.title }}</div>
+                                                    <small class="text-muted text-truncate d-block" style="max-width: 250px;">
+                                                        <i class="fas fa-globe me-1"></i>{{ link.url }}
+                                                    </small>
+                                                </div>
+                                                <div class="flex-shrink-0 ms-2">
+                                                    <i class="fas fa-arrow-right text-muted"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </a>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center shadow-sm">
+                <div class="card-body">
+                    <h3 class="text-primary">{{ total_teams }}</h3>
+                    <p class="text-muted mb-0">团队总数</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center shadow-sm">
+                <div class="card-body">
+                    <h3 class="text-success">{{ confirmed_teams }}</h3>
+                    <p class="text-muted mb-0">已确认</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center shadow-sm">
+                <div class="card-body">
+                    <h3 class="text-warning">{{ pending_teams }}</h3>
+                    <p class="text-muted mb-0">待确认</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center shadow-sm">
+                <div class="card-body">
+                    <h3 class="text-info">{{ total_students }}</h3>
+                    <p class="text-muted mb-0">已组队学生</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 阶段进度卡片 -->
+    {% if stages|length > 0 %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0">
+                        <i class="fas fa-tasks me-2"></i>
+                        阶段进度
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for stage in stages %}
+                        <div class="col-md-4 mb-2">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-layer-group me-2 
+                                    {% if stage.status == 'active' %}text-success
+                                    {% elif stage.status == 'completed' %}text-secondary
+                                    {% else %}text-warning{% endif %}"></i>
+                                <div class="flex-grow-1">
+                                    <strong>{{ stage.name }}</strong>
+                                    <span class="badge 
+                                        {% if stage.status == 'pending' %}bg-warning
+                                        {% elif stage.status == 'active' %}bg-success
+                                        {% elif stage.status == 'completed' %}bg-secondary
+                                        {% else %}bg-info{% endif %} ms-2">
+                                        {% if stage.status == 'pending' %}待开始
+                                        {% elif stage.status == 'active' %}进行中
+                                        {% elif stage.status == 'completed' %}已完成
+                                        {% else %}{{ stage.status }}{% endif %}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 团队列表 -->
+    {% if teams %}
+    <div class="row">
+        {% for team in teams %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card h-100 {% if team.status == 'confirmed' %}border-success{% elif team.status == 'rejected' %}border-danger{% elif team.confirmation_requested_at %}border-info{% else %}border-warning{% endif %}">
+                <div class="card-header {% if team.status == 'confirmed' %}bg-success{% elif team.status == 'rejected' %}bg-danger{% elif team.confirmation_requested_at %}bg-info{% else %}bg-warning{% endif %} text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-users me-2"></i>
+                            {{ team.name }}
+                            {% if team.is_locked %}
+                            <i class="fas fa-lock ms-2" title="已锁定"></i>
+                            {% endif %}
+                        </h5>
+                        {% if team.status == 'confirmed' %}
+                        <span class="badge bg-light text-success">
+                            <i class="fas fa-check-circle me-1"></i>已确认
+                        </span>
+                        {% elif team.status == 'rejected' %}
+                        <span class="badge bg-light text-danger">已拒绝</span>
+                        {% elif team.confirmation_requested_at %}
+                        <span class="badge bg-light text-info">
+                            <i class="fas fa-clock me-1"></i>请求确认
+                        </span>
+                        {% else %}
+                        <span class="badge bg-light text-warning">待确认</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- 组长信息 -->
+                    <p class="mb-2">
+                        <i class="fas fa-crown text-warning me-2"></i>
+                        <strong>组长：</strong>{{ team.leader.real_name }} ({{ team.leader.student_id }})
+                    </p>
+                    
+                    <!-- 成员列表 -->
+                    <p class="mb-2"><strong>成员：</strong></p>
+                    <ul class="list-unstyled ms-3">
+                        {% for member in team.members %}
+                        <li class="mb-1">
+                            <i class="fas fa-user me-2"></i>
+                            {{ member.user.real_name }} ({{ member.user.student_id }})
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    
+                    <!-- 人数信息 -->
+                    <p class="mb-2">
+                        <strong>总人数：</strong>
+                        <span class="{% if team.is_size_valid() %}text-success{% else %}text-danger{% endif %}">
+                            {{ team.get_member_count() }} 人
+                            {% if not team.is_size_valid() %}
+                            <i class="fas fa-exclamation-triangle ms-1"></i>
+                            {% endif %}
+                        </span>
+                    </p>
+                    
+                    <!-- 团队分工 -->
+                    {% if division_stages|length > 0 %}
+                    <hr>
+                    <p class="mb-2"><strong><i class="fas fa-tasks me-2"></i>团队分工：</strong></p>
+                    {% for stage in division_stages %}
+                        {% set team_divisions = stage.get_team_divisions(team.id) %}
+                        {% if team_divisions|length > 0 %}
+                        <div class="mb-3">
+                            <small class="text-muted d-block mb-1">
+                                <i class="fas fa-layer-group me-1"></i>{{ stage.name }}
+                            </small>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th width="35%">角色</th>
+                                            <th width="65%">负责成员</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for division in team_divisions %}
+                                        <tr>
+                                            <td>
+                                                <small><strong>{{ division.role_name }}</strong></small>
+                                                {% if division.role_description %}
+                                                <br><small class="text-muted">{{ division.role_description[:30] }}{% if division.role_description|length > 30 %}...{% endif %}</small>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if division.members|length > 0 %}
+                                                <div class="d-flex flex-wrap gap-1">
+                                                    {% for member in division.members %}
+                                                    <span class="badge bg-primary" style="font-size: 0.75rem;">
+                                                        {{ member.real_name }}
+                                                    </span>
+                                                    {% endfor %}
+                                                </div>
+                                                {% else %}
+                                                <small class="text-muted">未分配</small>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                    {% endif %}
+                    
+                    {% if team.size_exception_reason or team.confirmation_request_reason %}
+                    <div class="alert alert-warning small mb-2">
+                        <i class="fas fa-exclamation-circle me-1"></i>
+                        <strong>人数异常说明：</strong>
+                        {{ team.confirmation_request_reason or team.size_exception_reason }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if team.status == 'rejected' and team.reject_reason %}
+                    <div class="alert alert-danger small mb-2">
+                        <i class="fas fa-times-circle me-1"></i>
+                        <strong>拒绝理由：</strong>
+                        {{ team.reject_reason }}
+                    </div>
+                    {% endif %}
+                    
+                    {% if team.confirmation_requested_at %}
+                    <div class="alert alert-info small mb-2">
+                        <i class="fas fa-info-circle me-1"></i>
+                        组长已请求确认（{{ team.confirmation_requested_at|beijing_time }}）
+                    </div>
+                    {% endif %}
+                    
+                    <p class="text-muted small mb-0">
+                        <i class="fas fa-clock me-1"></i>
+                        创建时间：{{ team.created_at|beijing_time }}
+                    </p>
+                </div>
+                
+                {% if team.status == 'pending' %}
+                <div class="card-footer bg-light">
+                    <div class="d-flex gap-1 flex-wrap">
+                        <form action="{{ url_for('major_assignment.confirm_team', team_id=team.id) }}" method="POST" style="display: inline;">
+                            <button type="submit" class="btn btn-sm btn-success">
+                                <i class="fas fa-check me-1"></i>确认
+                            </button>
+                        </form>
+                        <button class="btn btn-sm btn-danger" onclick="rejectTeam({{ team.id }})">
+                            <i class="fas fa-times me-1"></i>拒绝
+                        </button>
+                        <button class="btn btn-sm btn-warning" onclick="manageTeam({{ team.id }}, '{{ team.name }}')">
+                            <i class="fas fa-cog me-1"></i>管理
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="dissolveTeam({{ team.id }}, '{{ team.name }}')">
+                            <i class="fas fa-trash-alt me-1"></i>解散
+                        </button>
+                    </div>
+                </div>
+                {% elif team.status == 'confirmed' %}
+                <div class="card-footer bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-success">
+                            <i class="fas fa-check-circle me-1"></i>
+                            已于 {{ team.confirmed_at|beijing_time }} 确认
+                        </small>
+                        <div>
+                            <button class="btn btn-sm btn-outline-primary" onclick="manageTeam({{ team.id }}, '{{ team.name }}')">
+                                <i class="fas fa-cog me-1"></i>管理
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="dissolveTeam({{ team.id }}, '{{ team.name }}')">
+                                <i class="fas fa-trash-alt me-1"></i>解散
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-info text-center">
+        <i class="fas fa-info-circle fa-3x mb-3"></i>
+        <p class="mb-0">暂无团队</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- 拒绝模态框 -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-times-circle me-2"></i>拒绝团队
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="rejectForm" method="POST">
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-info-circle me-2"></i>
+                        拒绝后，组长可以调整团队后重新申请确认。
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="fas fa-comment me-1"></i>拒绝理由 <span class="text-muted">(建议填写)</span>
+                        </label>
+                        <textarea class="form-control" name="reject_reason" rows="3" 
+                                  placeholder="请说明拒绝的原因，例如：人数仍然不足、理由不充分等..."></textarea>
+                        <small class="form-text text-muted">
+                            <i class="fas fa-lightbulb"></i> 填写详细的拒绝理由可以帮助学生更好地调整团队
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-times me-1"></i>确认拒绝
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 解散团队模态框 -->
+<div class="modal fade" id="dissolveModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle me-2"></i>解散团队
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="dissolveForm" method="POST">
+                <div class="modal-body">
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        <strong>警告：</strong>解散团队后，所有成员关系将被清除，此操作不可恢复！
+                    </div>
+                    <p>确定要解散团队 <strong id="dissolveTeamName"></strong> 吗？</p>
+                    <div class="mb-3">
+                        <label class="form-label">解散原因（可选）</label>
+                        <textarea class="form-control" name="reason" rows="3" 
+                                  placeholder="请说明解散原因..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash-alt me-1"></i>确认解散
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 管理团队模态框 -->
+<div class="modal fade" id="manageModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-cog me-2"></i>管理团队：<span id="manageTeamName"></span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="currentTeamId">
+                
+                <!-- 移除成员 -->
+                <div class="mb-4">
+                    <h6 class="border-bottom pb-2">
+                        <i class="fas fa-user-minus me-2"></i>移除成员
+                    </h6>
+                    <div id="teamMembersList">
+                        <p class="text-muted">正在加载...</p>
+                    </div>
+                </div>
+                
+                <!-- 添加成员 -->
+                <div class="mb-4">
+                    <h6 class="border-bottom pb-2">
+                        <i class="fas fa-user-plus me-2"></i>添加成员
+                    </h6>
+                    <form id="addMemberForm">
+                        <div class="row">
+                            <div class="col-md-5">
+                                <input type="text" class="form-control" id="newMemberName" 
+                                       placeholder="请输入学生姓名" required>
+                            </div>
+                            <div class="col-md-5">
+                                <input type="text" class="form-control" id="newMemberNumber" 
+                                       placeholder="请输入学生学号" required>
+                            </div>
+                            <div class="col-md-2">
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="fas fa-plus"></i> 添加
+                                </button>
+                            </div>
+                        </div>
+                        <small class="text-muted">输入姓名和学号进行验证</small>
+                    </form>
+                </div>
+                
+                <!-- 转移组长 -->
+                <div class="mb-3">
+                    <h6 class="border-bottom pb-2">
+                        <i class="fas fa-exchange-alt me-2"></i>转移组长
+                    </h6>
+                    <form id="transferLeaderForm">
+                        <div class="row">
+                            <div class="col-md-10">
+                                <select class="form-select" id="newLeaderId" required>
+                                    <option value="">请选择新组长</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <button type="submit" class="btn btn-warning w-100">
+                                    <i class="fas fa-exchange-alt"></i> 转移
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function rejectTeam(teamId) {
+    const form = document.getElementById('rejectForm');
+    form.action = `/major_assignments/teams/${teamId}/reject`;
+    const modal = new bootstrap.Modal(document.getElementById('rejectModal'));
+    modal.show();
+}
+
+function dissolveTeam(teamId, teamName) {
+    const form = document.getElementById('dissolveForm');
+    form.action = `/teams/${teamId}/admin_dissolve`;
+    document.getElementById('dissolveTeamName').textContent = teamName;
+    const modal = new bootstrap.Modal(document.getElementById('dissolveModal'));
+    modal.show();
+}
+
+function manageTeam(teamId, teamName) {
+    document.getElementById('currentTeamId').value = teamId;
+    document.getElementById('manageTeamName').textContent = teamName;
+    
+    // 加载团队成员
+    fetch(`/teams/${teamId}/members`)
+        .then(response => response.json())
+        .then(data => {
+            const membersList = document.getElementById('teamMembersList');
+            const newLeaderSelect = document.getElementById('newLeaderId');
+            
+            if (data.members.length === 0) {
+                membersList.innerHTML = '<p class="text-muted">暂无成员（只有组长）</p>';
+                newLeaderSelect.innerHTML = '<option value="">暂无可转移的成员</option>';
+            } else {
+                // 渲染成员列表
+                let html = '<div class="list-group">';
+                data.members.forEach(member => {
+                    html += `
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>
+                                <i class="fas fa-user me-2"></i>
+                                ${member.real_name} (${member.student_id})
+                            </span>
+                            <button class="btn btn-sm btn-outline-danger" 
+                                    onclick="removeMember(${teamId}, ${member.id}, '${member.real_name}')">
+                                <i class="fas fa-times"></i> 移除
+                            </button>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                membersList.innerHTML = html;
+                
+                // 填充新组长选项
+                newLeaderSelect.innerHTML = '<option value="">请选择新组长</option>';
+                data.members.forEach(member => {
+                    newLeaderSelect.innerHTML += `<option value="${member.id}">${member.real_name} (${member.student_id})</option>`;
+                });
+            }
+            
+            // 显示组长信息
+            if (data.leader) {
+                membersList.insertAdjacentHTML('afterbegin', `
+                    <div class="alert alert-info mb-2">
+                        <i class="fas fa-crown text-warning me-2"></i>
+                        <strong>当前组长：</strong>${data.leader.real_name} (${data.leader.student_id})
+                    </div>
+                `);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('teamMembersList').innerHTML = 
+                '<p class="text-danger">加载失败，请重试</p>';
+        });
+    
+    const modal = new bootstrap.Modal(document.getElementById('manageModal'));
+    modal.show();
+}
+
+function removeMember(teamId, memberId, memberName) {
+    if (!confirm(`确定要移除成员 ${memberName} 吗？`)) {
+        return;
+    }
+    
+    fetch(`/teams/${teamId}/members/${memberId}/remove`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('移除成功！');
+            manageTeam(teamId, document.getElementById('manageTeamName').textContent);
+        } else {
+            alert('移除失败：' + (data.message || '未知错误'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('操作失败，请重试');
+    });
+}
+
+// 添加成员
+ document.getElementById('addMemberForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const teamId = document.getElementById('currentTeamId').value;
+    const name = document.getElementById('newMemberName').value;
+    const number = document.getElementById('newMemberNumber').value;
+    
+    fetch(`/teams/${teamId}/members/add`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            name: name,
+            number: number
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('添加成功！');
+            document.getElementById('newMemberName').value = '';
+            document.getElementById('newMemberNumber').value = '';
+            manageTeam(teamId, document.getElementById('manageTeamName').textContent);
+        } else {
+            alert('添加失败：' + (data.message || '未知错误'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('操作失败，请重试');
+    });
+});
+
+// 转移组长
+document.getElementById('transferLeaderForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const teamId = document.getElementById('currentTeamId').value;
+    const newLeaderId = document.getElementById('newLeaderId').value;
+    
+    if (!newLeaderId) {
+        alert('请选择新组长');
+        return;
+    }
+    
+    if (!confirm('确定要转移组长吗？')) {
+        return;
+    }
+    
+    fetch(`/teams/${teamId}/transfer_leader`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            new_leader_id: newLeaderId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('转移成功！');
+            location.reload();
+        } else {
+            alert('转移失败：' + (data.message || '未知错误'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('操作失败，请重试');
+    });
+});
+</script>
+{% endblock %}

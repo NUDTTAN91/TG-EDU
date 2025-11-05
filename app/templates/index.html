@@ -1,0 +1,354 @@
+{% extends "base.html" %}
+
+{% block title %}TG作业系统{% endblock %}
+
+{% block content %}
+<div class="hero-section mb-5">
+    <div class="text-center">
+        <h1 class="display-4 fw-bold mb-3 fade-in-up">
+            <i class="fas fa-rocket me-3" style="color: var(--accent-color);"></i>
+            欢迎来到TG作业系统
+        </h1>
+        <p class="lead mb-4 fade-in-up" style="animation-delay: 0.2s;">
+            <i class="fas fa-star me-2"></i>
+            让学习更高效，让教学更轻松
+        </p>
+        {% if not current_user.is_authenticated %}
+            <div class="fade-in-up" style="animation-delay: 0.4s;">
+                <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg me-3">
+                    <i class="fas fa-sign-in-alt me-2"></i>
+                    立即登录
+                </a>
+                <p class="text-muted mt-3">
+                    <i class="fas fa-info-circle me-2"></i>
+                    请登录后访问您的作业中心
+                </p>
+            </div>
+        {% else %}
+            <div class="fade-in-up" style="animation-delay: 0.4s;">
+                <div class="alert alert-info d-inline-block border-0">
+                    <i class="fas fa-hand-sparkles me-2"></i>
+                    欢迎回来，<strong>{{ current_user.real_name }}</strong>！
+                    请通过左侧菜单访问您的工作台。
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% if not current_user.is_authenticated %}
+    <!-- 登录前的系统介绍 -->
+    <div class="row g-4 mb-5">
+        <div class="col-lg-4 col-md-6">
+            <div class="card feature-card h-100">
+                <div class="card-body text-center">
+                    <div class="feature-icon mb-3">
+                        <i class="fas fa-user-graduate" style="color: var(--success-color);"></i>
+                    </div>
+                    <h5 class="card-title">学生功能</h5>
+                    <p class="card-text text-muted">
+                        登录后可以查看作业列表、提交作业文件、查看提交历史记录。
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 col-md-6">
+            <div class="card feature-card h-100">
+                <div class="card-body text-center">
+                    <div class="feature-icon mb-3">
+                        <i class="fas fa-chalkboard-teacher" style="color: var(--warning-color);"></i>
+                    </div>
+                    <h5 class="card-title">教师功能</h5>
+                    <p class="card-text text-muted">
+                        登录后可以创建作业、管理学生、查看提交情况、下载作业文件。
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 col-md-6">
+            <div class="card feature-card h-100">
+                <div class="card-body text-center">
+                    <div class="feature-icon mb-3">
+                        <i class="fas fa-user-shield" style="color: var(--accent-color);"></i>
+                    </div>
+                    <h5 class="card-title">管理员功能</h5>
+                    <p class="card-text text-muted">
+                        登录后可以管理用户、创建班级、系统设置、数据统计等。
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 系统特点 -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card bg-gradient">
+                <div class="card-body text-center">
+                    <h5 class="card-title">
+                        <i class="fas fa-star me-2"></i>
+                        系统特点
+                    </h5>
+                    <div class="row mt-4">
+                        <div class="col-md-3">
+                            <div class="feature-item">
+                                <div class="feature-number">
+                                    <i class="fas fa-shield-alt"></i>
+                                </div>
+                                <h6>安全可靠</h6>
+                                <p class="text-muted mb-0">严格的权限控制和数据保护</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="feature-item">
+                                <div class="feature-number">
+                                    <i class="fas fa-mobile-alt"></i>
+                                </div>
+                                <h6>响应式设计</h6>
+                                <p class="text-muted mb-0">支持多端访问，随时随地使用</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="feature-item">
+                                <div class="feature-number">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                </div>
+                                <h6>多格式支持</h6>
+                                <p class="text-muted mb-0">支持多种文件格式上传</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="feature-item">
+                                <div class="feature-number">
+                                    <i class="fas fa-clock"></i>
+                                </div>
+                                <h6>实时统计</h6>
+                                <p class="text-muted mb-0">实时查看提交情况和统计</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% else %}
+    <!-- 登录后的快捷导航 -->
+    <div class="row g-4">
+        {% if current_user.is_super_admin %}
+            <div class="col-lg-4 col-md-6">
+                <a href="{{ url_for('admin.super_admin_dashboard') }}" class="text-decoration-none">
+                    <div class="card quick-nav-card h-100">
+                        <div class="card-body text-center">
+                            <div class="quick-nav-icon mb-3">
+                                <i class="fas fa-user-shield" style="color: var(--accent-color);"></i>
+                            </div>
+                            <h5 class="card-title">超级管理员</h5>
+                            <p class="card-text text-muted">系统总控台，管理所有用户和设置</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        {% elif current_user.is_teacher %}
+            <div class="col-lg-4 col-md-6">
+                <a href="{{ url_for('admin.teacher_dashboard') }}" class="text-decoration-none">
+                    <div class="card quick-nav-card h-100">
+                        <div class="card-body text-center">
+                            <div class="quick-nav-icon mb-3">
+                                <i class="fas fa-chalkboard-teacher" style="color: var(--warning-color);"></i>
+                            </div>
+                            <h5 class="card-title">教师后台</h5>
+                            <p class="card-text text-muted">管理作业和学生，查看提交情况</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        {% else %}
+            <div class="col-lg-4 col-md-6">
+                <a href="{{ url_for('student.dashboard') }}" class="text-decoration-none">
+                    <div class="card quick-nav-card h-100">
+                        <div class="card-body text-center">
+                            <div class="quick-nav-icon mb-3">
+                                <i class="fas fa-user-graduate" style="color: var(--success-color);"></i>
+                            </div>
+                            <h5 class="card-title">学生中心</h5>
+                            <p class="card-text text-muted">查看作业和提交记录</p>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        {% endif %}
+        
+        <div class="col-lg-4 col-md-6">
+            <a href="#" onclick="showUserProfile()" class="text-decoration-none">
+                <div class="card quick-nav-card h-100">
+                    <div class="card-body text-center">
+                        <div class="quick-nav-icon mb-3">
+                            <i class="fas fa-user-cog" style="color: var(--info-color, #17a2b8);"></i>
+                        </div>
+                        <h5 class="card-title">个人设置</h5>
+                        <p class="card-text text-muted">修改个人信息和密码</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        
+        <div class="col-lg-4 col-md-6">
+            <a href="{{ url_for('auth.logout') }}" class="text-decoration-none">
+                <div class="card quick-nav-card h-100">
+                    <div class="card-body text-center">
+                        <div class="quick-nav-icon mb-3">
+                            <i class="fas fa-sign-out-alt" style="color: var(--danger-color);"></i>
+                        </div>
+                        <h5 class="card-title">安全退出</h5>
+                        <p class="card-text text-muted">退出当前登录账户</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 为卡片添加交互效果
+document.addEventListener('DOMContentLoaded', function() {
+    const cards = document.querySelectorAll('.feature-card, .quick-nav-card');
+    
+    cards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-10px) scale(1.02)';
+            this.classList.add('shimmer');
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0) scale(1)';
+            this.classList.remove('shimmer');
+        });
+    });
+    
+    // 添加点击波纹效果
+    const buttons = document.querySelectorAll('.btn');
+    buttons.forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            const ripple = document.createElement('span');
+            const rect = this.getBoundingClientRect();
+            const size = Math.max(rect.width, rect.height);
+            const x = e.clientX - rect.left - size / 2;
+            const y = e.clientY - rect.top - size / 2;
+            
+            ripple.style.width = ripple.style.height = size + 'px';
+            ripple.style.left = x + 'px';
+            ripple.style.top = y + 'px';
+            ripple.classList.add('ripple');
+            
+            this.appendChild(ripple);
+            
+            setTimeout(() => {
+                ripple.remove();
+            }, 600);
+        });
+    });
+});
+
+// 个人设置功能（待实现）
+function showUserProfile() {
+    alert('个人设置功能即将推出，请稍后...');
+}
+</script>
+
+<style>
+.feature-card, .quick-nav-card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+
+.feature-card:hover, .quick-nav-card:hover {
+    border-color: var(--accent-color);
+    box-shadow: 0 10px 30px var(--shadow-color);
+}
+
+.feature-icon, .quick-nav-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: var(--bg-glass);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    margin: 0 auto;
+    transition: all 0.3s ease;
+}
+
+.feature-card:hover .feature-icon,
+.quick-nav-card:hover .quick-nav-icon {
+    transform: scale(1.1) rotate(5deg);
+}
+
+.feature-number {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: var(--accent-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: white;
+    margin: 0 auto 1rem;
+}
+
+.feature-item {
+    padding: 1rem;
+}
+
+.hero-section {
+    padding: 3rem 0;
+    position: relative;
+}
+
+.ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.6);
+    transform: scale(0);
+    animation: ripple-animation 0.6s linear;
+    pointer-events: none;
+}
+
+@keyframes ripple-animation {
+    to {
+        transform: scale(4);
+        opacity: 0;
+    }
+}
+
+.fade-in-up {
+    animation: fadeInUp 0.8s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.quick-nav-card {
+    background: var(--bg-card);
+    color: var(--text-primary);
+}
+
+.quick-nav-card:hover {
+    color: var(--text-primary);
+    text-decoration: none;
+}
+</style>
+{% endblock %}

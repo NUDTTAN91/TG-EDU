@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+
+{% block title %}创建班级 - TG作业系统{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <!-- 页面头部 -->
+        <div class="text-center mb-4">
+            <div class="class-icon mb-3">
+                <i class="fas fa-graduation-cap" style="font-size: 3.5rem; color: var(--accent-color);"></i>
+            </div>
+            <h2 class="fw-bold">
+                <i class="fas fa-plus-circle me-2"></i>
+                创建新班级
+            </h2>
+            <p class="text-muted">创建班级后，您可以在添加教师和学生时将他们分配到班级</p>
+        </div>
+
+        <!-- 创建表单 -->
+        <div class="card form-card">
+            <div class="card-header bg-gradient">
+                <h5 class="mb-0">
+                    <i class="fas fa-clipboard-list me-2"></i>
+                    班级基本信息
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST" class="needs-validation" novalidate>
+                    <div class="row">
+                        <div class="col-md-6 mb-4">
+                            <label for="name" class="form-label">
+                                <i class="fas fa-tag me-2"></i>
+                                班级名称 <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="name" 
+                                   name="name" 
+                                   placeholder="如：高三(1)班"
+                                   required>
+                            <div class="invalid-feedback">
+                                请输入班级名称
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-4">
+                            <label for="code" class="form-label">
+                                <i class="fas fa-code me-2"></i>
+                                班级代码 <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="code" 
+                                   name="code" 
+                                   placeholder="如：G31"
+                                   required>
+                            <div class="invalid-feedback">
+                                请输入班级代码
+                            </div>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                班级代码用于快速识别班级，建议使用简短易记的字符
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12 mb-4">
+                            <label for="description" class="form-label">
+                                <i class="fas fa-align-left me-2"></i>
+                                班级描述
+                            </label>
+                            <textarea class="form-control" 
+                                      id="description" 
+                                      name="description" 
+                                      rows="4" 
+                                      placeholder="输入班级描述信息..."></textarea>
+                            <div class="form-text">
+                                <i class="fas fa-lightbulb me-1"></i>
+                                可以描述班级的特色、目标或其他相关信息
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-4">
+                            <label for="grade" class="form-label">
+                                <i class="fas fa-layer-group me-2"></i>
+                                年级
+                            </label>
+                            <select class="form-select" id="grade" name="grade">
+                                <option value="">请选择年级</option>
+                                <option value="小学一年级">小学一年级</option>
+                                <option value="小学二年级">小学二年级</option>
+                                <option value="小学三年级">小学三年级</option>
+                                <option value="小学四年级">小学四年级</option>
+                                <option value="小学五年级">小学五年级</option>
+                                <option value="小学六年级">小学六年级</option>
+                                <option value="初中一年级">初中一年级</option>
+                                <option value="初中二年级">初中二年级</option>
+                                <option value="初中三年级">初中三年级</option>
+                                <option value="高中一年级">高中一年级</option>
+                                <option value="高中二年级">高中二年级</option>
+                                <option value="高中三年级">高中三年级</option>
+                                <option value="大学一年级">大学一年级</option>
+                                <option value="大学二年级">大学二年级</option>
+                                <option value="大学三年级">大学三年级</option>
+                                <option value="大学四年级">大学四年级</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-3 justify-content-end">
+                        <a href="{{ url_for('class_mgmt.manage_classes') }}" class="btn btn-secondary btn-lg">
+                            <i class="fas fa-arrow-left me-2"></i>
+                            返回
+                        </a>
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="fas fa-save me-2"></i>
+                            创建班级
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 表单验证
+    const forms = document.querySelectorAll('.needs-validation');
+    Array.from(forms).forEach(form => {
+        form.addEventListener('submit', event => {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        }, false);
+    });
+    
+    // 班级代码自动生成建议
+    const nameInput = document.getElementById('name');
+    const codeInput = document.getElementById('code');
+    
+    nameInput.addEventListener('input', function() {
+        const name = this.value;
+        if (name && !codeInput.value) {
+            // 简单的代码生成逻辑
+            let code = '';
+            if (name.includes('高三')) code = 'G3';
+            else if (name.includes('高二')) code = 'G2';
+            else if (name.includes('高一')) code = 'G1';
+            else if (name.includes('初三')) code = 'M3';
+            else if (name.includes('初二')) code = 'M2';
+            else if (name.includes('初一')) code = 'M1';
+            else if (name.includes('六年级')) code = 'P6';
+            else if (name.includes('五年级')) code = 'P5';
+            else if (name.includes('四年级')) code = 'P4';
+            else if (name.includes('三年级')) code = 'P3';
+            else if (name.includes('二年级')) code = 'P2';
+            else if (name.includes('一年级')) code = 'P1';
+            
+            // 提取班级号
+            const classNumber = name.match(/\((\d+)\)/);
+            if (classNumber && code) {
+                code += classNumber[1];
+                codeInput.value = code;
+            }
+        }
+    });
+    
+    // 多选下拉框美化 - 移除因为不再使用
+    // const teacherSelect = document.getElementById('teachers');
+    // if (teacherSelect) {
+    //     teacherSelect.addEventListener('change', function() {
+    //         const selectedCount = this.selectedOptions.length;
+    //         if (selectedCount > 0) {
+    //             this.style.borderColor = 'var(--success-color)';
+    //         } else {
+    //             this.style.borderColor = '';
+    //         }
+    //     });
+    // }
+});
+</script>
+
+<style>
+.form-card {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    border: none;
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.class-icon {
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+.next-step {
+    padding: 1rem;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.next-step:hover {
+    background: var(--bg-glass);
+    transform: translateY(-5px);
+}
+
+.next-step i {
+    font-size: 2rem;
+}
+
+.form-select[multiple] {
+    min-height: 120px;
+}
+
+.form-select[multiple]:focus {
+    box-shadow: 0 0 0 0.2rem rgba(var(--accent-color-rgb), 0.25);
+}
+
+.bg-gradient {
+    background: linear-gradient(135deg, var(--accent-color), var(--info-color));
+    color: white;
+}
+
+.was-validated .form-control:valid {
+    border-color: var(--success-color);
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%2328a745' d='m2.3 6.73.4.37 3.2-3.73L5.54 3zM0 0h8v8H0z'/%3e%3c/svg%3e");
+}
+</style>
+{% endblock %}

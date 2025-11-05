@@ -1,0 +1,407 @@
+{% extends "base.html" %}
+
+{% block title %}系统重置 - TG作业系统{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 警告横幅 -->
+    <div class="alert alert-danger border-0 mb-4">
+        <div class="row align-items-center">
+            <div class="col-auto">
+                <i class="fas fa-exclamation-triangle fa-3x"></i>
+            </div>
+            <div class="col">
+                <h5 class="alert-heading mb-2">
+                    <i class="fas fa-warning me-2"></i>
+                    危险操作警告
+                </h5>
+                <p class="mb-0">
+                    系统重置是不可逆操作，执行后相关数据将永久丢失！请务必确认您的操作并输入管理员密码验证。
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 页面标题 -->
+    <div class="hero-section mb-4">
+        <div class="text-center">
+            <h1 class="display-6 fw-bold mb-3">
+                <i class="fas fa-undo me-3" style="color: var(--danger-color);"></i>
+                系统重置
+            </h1>
+            <p class="lead text-muted">
+                选择重置类型并确认操作
+            </p>
+        </div>
+    </div>
+
+    <!-- 重置选项 -->
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <form method="POST" class="needs-validation" novalidate>
+                <!-- 重置类型选择 -->
+                <div class="card mb-4">
+                    <div class="card-header bg-gradient">
+                        <h5 class="mb-0">
+                            <i class="fas fa-list-ul me-2"></i>
+                            选择重置类型
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-4">
+                            <!-- 清除作业数据 -->
+                            <div class="col-md-4">
+                                <div class="reset-option">
+                                    <input type="radio" 
+                                           id="reset_assignments" 
+                                           name="reset_type" 
+                                           value="assignments" 
+                                           class="form-check-input" 
+                                           required>
+                                    <label for="reset_assignments" class="reset-card">
+                                        <div class="reset-icon warning-icon">
+                                            <i class="fas fa-tasks"></i>
+                                        </div>
+                                        <h6 class="reset-title">清除作业数据</h6>
+                                        <p class="reset-desc">
+                                            删除所有作业和学生提交的文件，保留用户和班级信息
+                                        </p>
+                                        <div class="reset-effects">
+                                            <small class="text-muted">
+                                                <i class="fas fa-minus-circle me-1"></i>
+                                                删除：作业、提交文件、评分记录<br>
+                                                <i class="fas fa-check-circle me-1"></i>
+                                                保留：用户、班级
+                                            </small>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- 清除人员数据 -->
+                            <div class="col-md-4">
+                                <div class="reset-option">
+                                    <input type="radio" 
+                                           id="reset_users" 
+                                           name="reset_type" 
+                                           value="users" 
+                                           class="form-check-input" 
+                                           required>
+                                    <label for="reset_users" class="reset-card">
+                                        <div class="reset-icon danger-icon">
+                                            <i class="fas fa-users"></i>
+                                        </div>
+                                        <h6 class="reset-title">清除人员数据</h6>
+                                        <p class="reset-desc">
+                                            删除所有教师和学生用户，保留您的超级管理员账户
+                                        </p>
+                                        <div class="reset-effects">
+                                            <small class="text-muted">
+                                                <i class="fas fa-minus-circle me-1"></i>
+                                                删除：教师、学生、班级、评分记录<br>
+                                                <i class="fas fa-check-circle me-1"></i>
+                                                保留：超级管理员
+                                            </small>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- 重置所有数据 -->
+                            <div class="col-md-4">
+                                <div class="reset-option">
+                                    <input type="radio" 
+                                           id="reset_all" 
+                                           name="reset_type" 
+                                           value="all" 
+                                           class="form-check-input" 
+                                           required>
+                                    <label for="reset_all" class="reset-card">
+                                        <div class="reset-icon critical-icon">
+                                            <i class="fas fa-bomb"></i>
+                                        </div>
+                                        <h6 class="reset-title">重置所有数据</h6>
+                                        <p class="reset-desc">
+                                            完全重置系统，删除所有数据，恢复到初始状态
+                                        </p>
+                                        <div class="reset-effects">
+                                            <small class="text-muted">
+                                                <i class="fas fa-minus-circle me-1"></i>
+                                                删除：所有数据<br>
+                                                <i class="fas fa-check-circle me-1"></i>
+                                                保留：您的管理员账户
+                                            </small>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 密码确认 -->
+                <div class="card mb-4">
+                    <div class="card-header bg-gradient">
+                        <h5 class="mb-0">
+                            <i class="fas fa-shield-alt me-2"></i>
+                            安全验证
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label for="confirm_password" class="form-label">
+                                    <i class="fas fa-key me-2"></i>
+                                    输入您的管理员密码确认操作 <span class="text-danger">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-lock"></i>
+                                    </span>
+                                    <input type="password" 
+                                           class="form-control" 
+                                           id="confirm_password" 
+                                           name="confirm_password" 
+                                           placeholder="请输入管理员密码"
+                                           required>
+                                    <button type="button" 
+                                            class="btn btn-outline-secondary" 
+                                            id="togglePassword">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                                <div class="invalid-feedback">
+                                    请输入管理员密码以确认操作
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="alert alert-warning border-0 h-100 d-flex align-items-center">
+                                    <div>
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        <strong>重要提醒：</strong><br>
+                                        <small>
+                                            请确保您已备份重要数据，重置操作无法撤销！
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 操作按钮 -->
+                <div class="d-flex gap-3 justify-content-center">
+                    <a href="{{ url_for('admin.super_admin_dashboard') }}" class="btn btn-secondary btn-lg">
+                        <i class="fas fa-arrow-left me-2"></i>
+                        取消操作
+                    </a>
+                    <button type="submit" class="btn btn-danger btn-lg" id="resetButton" disabled>
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        执行重置
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const resetOptions = document.querySelectorAll('input[name="reset_type"]');
+    const passwordInput = document.getElementById('confirm_password');
+    const resetButton = document.getElementById('resetButton');
+    const togglePasswordBtn = document.getElementById('togglePassword');
+    
+    // 监听选项变化
+    resetOptions.forEach(option => {
+        option.addEventListener('change', updateButtonState);
+    });
+    
+    // 监听密码输入
+    passwordInput.addEventListener('input', updateButtonState);
+    
+    // 更新按钮状态
+    function updateButtonState() {
+        const hasSelectedOption = Array.from(resetOptions).some(option => option.checked);
+        const hasPassword = passwordInput.value.trim().length > 0;
+        
+        resetButton.disabled = !(hasSelectedOption && hasPassword);
+        
+        // 更新按钮样式
+        if (resetButton.disabled) {
+            resetButton.classList.remove('btn-danger');
+            resetButton.classList.add('btn-secondary');
+        } else {
+            resetButton.classList.remove('btn-secondary');
+            resetButton.classList.add('btn-danger');
+        }
+    }
+    
+    // 密码显示/隐藏
+    togglePasswordBtn.addEventListener('click', function() {
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+        
+        const icon = this.querySelector('i');
+        icon.classList.toggle('fa-eye');
+        icon.classList.toggle('fa-eye-slash');
+    });
+    
+    // 表单提交确认
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const selectedOption = document.querySelector('input[name="reset_type"]:checked');
+        let confirmMessage = '';
+        
+        if (selectedOption) {
+            switch (selectedOption.value) {
+                case 'assignments':
+                    confirmMessage = '确定要清除所有作业数据吗？这将删除所有作业、学生提交的文件和评分记录！';
+                    break;
+                case 'users':
+                    confirmMessage = '确定要清除所有人员数据吗？这将删除所有教师和学生用户及其相关的评分记录！';
+                    break;
+                case 'all':
+                    confirmMessage = '确定要重置整个系统吗？这将删除所有数据，系统将恢复到初始状态！';
+                    break;
+            }
+        }
+        
+        if (!confirm(confirmMessage + '\n\n此操作不可撤销，请再次确认！')) {
+            e.preventDefault();
+        }
+    });
+    
+    // 重置卡片交互效果
+    const resetCards = document.querySelectorAll('.reset-card');
+    resetCards.forEach(card => {
+        card.addEventListener('click', function() {
+            // 移除其他卡片的选中状态
+            resetCards.forEach(c => c.classList.remove('selected'));
+            // 添加当前卡片的选中状态
+            this.classList.add('selected');
+            
+            // 更新按钮状态
+            updateButtonState();
+        });
+    });
+    
+    // 表单验证
+    const forms = document.querySelectorAll('.needs-validation');
+    Array.from(forms).forEach(form => {
+        form.addEventListener('submit', event => {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        }, false);
+    });
+});
+</script>
+
+<style>
+.reset-option {
+    position: relative;
+}
+
+.reset-option input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.reset-card {
+    display: block;
+    padding: 2rem;
+    border: 2px solid var(--border-color);
+    border-radius: 15px;
+    background: var(--bg-card);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    height: 100%;
+    text-align: center;
+}
+
+.reset-card:hover {
+    border-color: var(--accent-color);
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px var(--shadow-color);
+}
+
+.reset-card.selected {
+    border-color: var(--danger-color);
+    background: rgba(var(--danger-color), 0.1);
+    transform: translateY(-5px) scale(1.02);
+}
+
+.reset-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    color: white;
+    margin: 0 auto 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.warning-icon {
+    background: linear-gradient(135deg, var(--warning-color), #fbb040);
+    box-shadow: 0 10px 30px rgba(237, 137, 54, 0.3);
+}
+
+.danger-icon {
+    background: linear-gradient(135deg, var(--danger-color), #fc8181);
+    box-shadow: 0 10px 30px rgba(245, 101, 101, 0.3);
+}
+
+.critical-icon {
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    box-shadow: 0 10px 30px rgba(220, 38, 38, 0.3);
+}
+
+.reset-card:hover .reset-icon {
+    transform: scale(1.1) rotate(5deg);
+}
+
+.reset-title {
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+}
+
+.reset-desc {
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+    line-height: 1.5;
+}
+
+.reset-effects {
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.hero-section {
+    padding: 2rem 0;
+    margin-bottom: 2rem;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .reset-card {
+        padding: 1.5rem;
+    }
+    
+    .reset-icon {
+        width: 60px;
+        height: 60px;
+        font-size: 2rem;
+    }
+}
+</style>
+{% endblock %}

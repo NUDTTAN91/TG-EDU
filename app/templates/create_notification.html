@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+
+{% block title %}发送通知 - TG作业系统{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-paper-plane"></i> 发送通知
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('notification.create_notification_page') }}">
+                        <!-- 通知标题 -->
+                        <div class="mb-3">
+                            <label for="title" class="form-label">通知标题 <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="title" name="title" 
+                                   placeholder="请输入通知标题" required maxlength="200">
+                        </div>
+
+                        <!-- 通知内容 -->
+                        <div class="mb-3">
+                            <label for="content" class="form-label">通知内容 <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="content" name="content" rows="6" 
+                                      placeholder="请输入通知内容..." required></textarea>
+                            <small class="text-muted">支持多行文本</small>
+                        </div>
+
+                        <!-- 通知类型 -->
+                        <div class="mb-3">
+                            <label for="notification_type" class="form-label">通知类型</label>
+                            <select class="form-select" id="notification_type" name="notification_type">
+                                <option value="system">系统通知</option>
+                                <option value="assignment">作业通知</option>
+                                <option value="announcement">公告通知</option>
+                            </select>
+                        </div>
+
+                        <!-- 目标用户选择 -->
+                        <div class="mb-3">
+                            <label class="form-label">发送对象 <span class="text-danger">*</span></label>
+                            
+                            {% if current_user.is_super_admin %}
+                            <!-- 超级管理员选项 -->
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="target_type" 
+                                       id="target_all" value="all" checked 
+                                       onchange="updateTargetOptions()">
+                                <label class="form-check-label" for="target_all">
+                                    <i class="fas fa-users"></i> 所有用户
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="target_type" 
+                                       id="target_role" value="role" 
+                                       onchange="updateTargetOptions()">
+                                <label class="form-check-label" for="target_role">
+                                    <i class="fas fa-user-tag"></i> 指定角色
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="target_type" 
+                                       id="target_individual" value="individual" 
+                                       onchange="updateTargetOptions()">
+                                <label class="form-check-label" for="target_individual">
+                                    <i class="fas fa-user"></i> 指定个人
+                                </label>
+                            </div>
+                            
+                            <!-- 角色选择 -->
+                            <div id="role_selection" class="mt-2" style="display: none;">
+                                <select class="form-select" name="target_role">
+                                    <option value="teacher">教师</option>
+                                    <option value="student">学生</option>
+                                </select>
+                            </div>
+                            
+                            <!-- 个人选择 -->
+                            <div id="individual_selection" class="mt-2" style="display: none;">
+                                <select class="form-select" name="target_user_id">
+                                    <option value="">请选择用户...</option>
+                                    {% for user in all_users %}
+                                    <option value="{{ user.id }}">
+                                        {{ user.real_name }} ({{ user.username }}) - 
+                                        {% if user.is_super_admin %}超级管理员
+                                        {% elif user.is_teacher %}教师
+                                        {% else %}学生
+                                        {% endif %}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            {% else %}
+                            <!-- 教师选项 - 只能选择班级 -->
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="target_type" 
+                                       id="target_class" value="class" checked>
+                                <label class="form-check-label" for="target_class">
+                                    <i class="fas fa-school"></i> 选择班级
+                                </label>
+                            </div>
+                            
+                            <div class="mt-2">
+                                <select class="form-select" name="target_class_id" required>
+                                    <option value="">请选择班级...</option>
+                                    {% for class_obj in available_classes %}
+                                    <option value="{{ class_obj.id }}">
+                                        {{ class_obj.name }} ({{ class_obj.students|length }}名学生)
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- 提交按钮 -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('notification.notifications') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> 返回
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane"></i> 发送通知
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+{% if current_user.is_super_admin %}
+function updateTargetOptions() {
+    const targetType = document.querySelector('input[name="target_type"]:checked').value;
+    
+    // 隐藏所有选项
+    document.getElementById('role_selection').style.display = 'none';
+    document.getElementById('individual_selection').style.display = 'none';
+    
+    // 显示对应选项
+    if (targetType === 'role') {
+        document.getElementById('role_selection').style.display = 'block';
+    } else if (targetType === 'individual') {
+        document.getElementById('individual_selection').style.display = 'block';
+    }
+}
+{% endif %}
+</script>
+{% endblock %}

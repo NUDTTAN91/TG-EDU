@@ -1,0 +1,409 @@
+{% extends "base.html" %}
+
+{% block title %}评分作业 - {{ assignment.title }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- 页面标题 -->
+    <div class="content-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="page-title">
+                    <i class="fas fa-star me-2" style="color: var(--accent-color);"></i>
+                    评分作业
+                </h1>
+                <p class="page-subtitle">对 {{ student.real_name }} 的整个作业进行评分</p>
+            </div>
+            <div>
+                {% if force_makeup %}
+                    <a href="{{ url_for('assignment.makeup_grading', assignment_id=assignment.id) }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>
+                        返回补交评分
+                    </a>
+                {% else %}
+                    <a href="{{ url_for('assignment.view_submissions', assignment_id=assignment.id) }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i>
+                        返回
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 作业信息卡片 -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-gradient">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file-alt me-2"></i>
+                        作业信息
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>作业标题：</strong> {{ assignment.title }}</p>
+                            <p><strong>学生姓名：</strong> {{ student.real_name }}</p>
+                            <p><strong>学号：</strong> {{ student.student_id or '未设置' }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            {% if assignment.due_date %}
+                                <p><strong>截止时间：</strong> {{ assignment.due_date|beijing_time }}</p>
+                            {% endif %}
+                            <p><strong>创建时间：</strong> {{ assignment.created_at|beijing_time }}</p>
+                            {% if assignment.class_info %}
+                                <p><strong>班级：</strong> {{ assignment.class_info.name }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if assignment.description %}
+                        <hr>
+                        <p><strong>作业描述：</strong></p>
+                        <div class="alert alert-light">
+                            {{ assignment.description|nl2br }}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        评分说明
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0">
+                        <li><i class="fas fa-check text-success me-2"></i>基于整个作业评分</li>
+                        <li><i class="fas fa-check text-success me-2"></i>可查看所有提交记录</li>
+                        <li><i class="fas fa-check text-success me-2"></i>支持多教师评分</li>
+                        <li><i class="fas fa-check text-success me-2"></i>学生看到平均分</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 学生提交记录 -->
+    <div class="card mb-4">
+        <div class="card-header bg-gradient">
+            <h5 class="mb-0">
+                <i class="fas fa-upload me-2"></i>
+                学生提交记录 ({{ submissions|length }} 次提交)
+            </h5>
+        </div>
+        <div class="card-body">
+            {% if submissions %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>提交时间</th>
+                                <th>文件名</th>
+                                <th>文件大小</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for submission in submissions %}
+                            <tr>
+                                <td>
+                                    <span class="badge bg-primary">{{ loop.index }}</span>
+                                    {% if loop.first %}
+                                        <span class="badge bg-warning ms-1">最新</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small class="text-muted">
+                                        <i class="fas fa-clock me-1"></i>
+                                        {{ submission.submitted_at|beijing_time }}
+                                    </small>
+                                </td>
+                                <td>
+                                    <div>
+                                        <span class="fw-bold">{{ submission.original_filename }}</span>
+                                        {% if submission.notes %}
+                                            <br><small class="text-muted">备注: {{ submission.notes }}</small>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td>
+                                    <small class="text-muted">
+                                        {% if submission.file_size %}
+                                            {{ submission.file_size|filesize }}
+                                        {% else %}
+                                            未知
+                                        {% endif %}
+                                    </small>
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a href="{{ url_for('submission.download_file', submission_id=submission.id) }}" 
+                                           class="btn btn-sm btn-outline-primary" 
+                                           title="下载文件">
+                                            <i class="fas fa-download"></i>
+                                        </a>
+                                        {% if submission.is_pdf() %}
+                                            <a href="{{ url_for('submission.preview_file', submission_id=submission.id) }}" 
+                                               class="btn btn-sm btn-outline-info" 
+                                               target="_blank"
+                                               title="预览PDF">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">该学生尚未提交此作业</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 评分表单 -->
+    <div class="card">
+        <div class="card-header bg-gradient">
+            <h5 class="mb-0">
+                <i class="fas fa-star me-2"></i>
+                作业评分
+            </h5>
+        </div>
+        <div class="card-body">
+            <form method="POST">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="grade" class="form-label">
+                                <i class="fas fa-star me-1"></i>
+                                评分 (0-100分)
+                            </label>
+                            <input type="number" 
+                                   class="form-control" 
+                                   id="grade" 
+                                   name="grade" 
+                                   min="0" 
+                                   max="100" 
+                                   step="0.1"
+                                   value="{{ existing_grade.grade if existing_grade and existing_grade.grade is not none else '' }}"
+                                   placeholder="请输入0-100之间的分数">
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                可以使用小数，例如：85.5
+                            </div>
+                        </div>
+                        
+                        <!--补交选项 -->
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" 
+                                       type="checkbox" 
+                                       id="is_makeup" 
+                                       name="is_makeup"
+                                       {{ 'checked' if force_makeup or (existing_grade and existing_grade.is_makeup) else '' }}
+                                       {{ 'onclick="return false;"' if force_makeup else '' }}>
+                                <label class="form-check-label" for="is_makeup">
+                                    <i class="fas fa-redo me-1" style="color: #6c9a8b;"></i>
+                                    <strong>这是补交作业</strong>
+                                    {% if force_makeup %}
+                                        <span class="badge bg-warning ms-2">已锁定</span>
+                                    {% endif %}
+                                </label>
+                            </div>
+                            <div class="form-text">
+                                {% if force_makeup %}
+                                    从补交评分入口进入，默认为补交作业并应用折扣
+                                {% else %}
+                                    勾选后可设置折扣百分比（如未按时交作业）
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- 折扣设置 -->
+                        <div class="mb-3" id="discountSection" style="display: none;">
+                            <label for="discount_rate" class="form-label">
+                                <i class="fas fa-percent me-1"></i>
+                                折扣百分比
+                            </label>
+                            <div class="input-group">
+                                <input type="number" 
+                                       class="form-control" 
+                                       id="discount_rate" 
+                                       name="discount_rate" 
+                                       min="0" 
+                                       max="100" 
+                                       step="1"
+                                       value="{{ existing_grade.discount_rate if existing_grade and existing_grade.discount_rate is not none else '80' }}"
+                                       placeholder="80">
+                                <span class="input-group-text">%</span>
+                            </div>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                例如：80% 表示最终得分为原始分数的80%
+                            </div>
+                            <div id="calculatedGrade" class="alert alert-info mt-2" style="display: none;">
+                                <strong>最终得分：</strong><span id="finalGrade">0</span>分
+                                <small class="text-muted">（原始分数 × 折扣）</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        {% if existing_grade %}
+                            <div class="mb-3">
+                                <label class="form-label">当前评分信息</label>
+                                <div class="alert alert-info">
+                                    {% if existing_grade.grade is not none %}
+                                        <strong>当前分数：</strong> {{ existing_grade.grade }}分<br>
+                                    {% endif %}
+                                    <strong>评分时间：</strong> {{ existing_grade.graded_at|beijing_time }}<br>
+                                    {% if existing_grade.updated_at != existing_grade.graded_at %}
+                                        <strong>更新时间：</strong> {{ existing_grade.updated_at|beijing_time }}
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="feedback" class="form-label">
+                        <i class="fas fa-comment me-1"></i>
+                        教师反馈
+                    </label>
+                    <textarea class="form-control" 
+                              id="feedback" 
+                              name="feedback" 
+                              rows="6" 
+                              placeholder="请输入对学生作业的评语和建议...">{{ existing_grade.feedback if existing_grade else '' }}</textarea>
+                    <div class="form-text">
+                        <i class="fas fa-info-circle me-1"></i>
+                        详细的反馈能帮助学生更好地改进
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-between">
+                    {% if force_makeup %}
+                        <a href="{{ url_for('assignment.makeup_grading', assignment_id=assignment.id) }}" 
+                           class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>
+                            返回补交评分
+                        </a>
+                    {% else %}
+                        <a href="{{ url_for('assignment.view_submissions', assignment_id=assignment.id) }}" 
+                           class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>
+                            返回
+                        </a>
+                    {% endif %}
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>
+                        {{ '更新评分' if existing_grade else '保存评分' }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 表单验证
+    const form = document.querySelector('form');
+    const gradeInput = document.getElementById('grade');
+    const isMakeupCheckbox = document.getElementById('is_makeup');
+    const discountSection = document.getElementById('discountSection');
+    const discountInput = document.getElementById('discount_rate');
+    const calculatedGradeDiv = document.getElementById('calculatedGrade');
+    const finalGradeSpan = document.getElementById('finalGrade');
+    
+    // 检查是否是强制补交模式
+    const forceMakeup = {% if force_makeup %}true{% else %}false{% endif %};
+    
+    // 控制折扣选项显示
+    function toggleDiscountSection() {
+        if (isMakeupCheckbox.checked) {
+            discountSection.style.display = 'block';
+            calculateFinalGrade();
+        } else {
+            discountSection.style.display = 'none';
+            calculatedGradeDiv.style.display = 'none';
+        }
+    }
+    
+    // 计算最终得分
+    function calculateFinalGrade() {
+        const grade = parseFloat(gradeInput.value);
+        const discount = parseFloat(discountInput.value);
+        
+        if (!isNaN(grade) && !isNaN(discount) && isMakeupCheckbox.checked) {
+            const finalGrade = (grade * discount / 100).toFixed(1);
+            finalGradeSpan.textContent = finalGrade;
+            calculatedGradeDiv.style.display = 'block';
+        } else {
+            calculatedGradeDiv.style.display = 'none';
+        }
+    }
+    
+    // 初始化显示状态
+    toggleDiscountSection();
+    
+    // 监听补交复选框变化（如果不是强制模式）
+    if (!forceMakeup) {
+        isMakeupCheckbox.addEventListener('change', toggleDiscountSection);
+    }
+    
+    // 监听输入变化，实时计算
+    gradeInput.addEventListener('input', calculateFinalGrade);
+    discountInput.addEventListener('input', calculateFinalGrade);
+    
+    form.addEventListener('submit', function(e) {
+        const grade = parseFloat(gradeInput.value);
+        
+        if (gradeInput.value !== '' && (isNaN(grade) || grade < 0 || grade > 100)) {
+            e.preventDefault();
+            alert('评分必须在0-100之间');
+            gradeInput.focus();
+            return false;
+        }
+        
+        // 验证折扣百分比
+        if (isMakeupCheckbox.checked) {
+            const discount = parseFloat(discountInput.value);
+            if (isNaN(discount) || discount < 0 || discount > 100) {
+                e.preventDefault();
+                alert('折扣百分比必须在0-100之间');
+                discountInput.focus();
+                return false;
+            }
+        }
+    });
+    
+    // 评分输入实时验证
+    gradeInput.addEventListener('input', function() {
+        const grade = parseFloat(this.value);
+        const isValid = this.value === '' || (!isNaN(grade) && grade >= 0 && grade <= 100);
+        
+        if (isValid) {
+            this.classList.remove('is-invalid');
+            this.classList.add('is-valid');
+        } else {
+            this.classList.remove('is-valid');
+            this.classList.add('is-invalid');
+        }
+    });
+});
+</script>
+{% endblock %}

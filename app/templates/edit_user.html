@@ -1,0 +1,352 @@
+{% extends "base.html" %}
+
+{% block title %}编辑用户 - TG作业系统{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <!-- 页面头部 -->
+        <div class="text-center mb-4">
+            <div class="user-edit-icon mb-3">
+                <i class="fas fa-user-edit" style="font-size: 3.5rem; color: var(--accent-color);"></i>
+            </div>
+            <h2 class="fw-bold">
+                <i class="fas fa-user-edit me-2"></i>
+                编辑用户信息
+            </h2>
+            <p class="text-muted">修改用户 {{ user.real_name }} 的信息</p>
+        </div>
+
+        <!-- 表单卡片 -->
+        <div class="card form-card">
+            <div class="card-header bg-gradient">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h5 class="mb-0">
+                            <i class="fas fa-form me-2"></i>
+                            用户信息
+                        </h5>
+                    </div>
+                    <div class="col-auto">
+                        <span class="badge {{ 'bg-danger' if user.role == 'super_admin' else 'bg-warning' if user.role == 'teacher' else 'bg-success' }}">
+                            {% if user.role == 'super_admin' %}
+                                <i class="fas fa-crown me-1"></i>超级管理员
+                            {% elif user.role == 'teacher' %}
+                                <i class="fas fa-chalkboard-teacher me-1"></i>教师
+                            {% else %}
+                                <i class="fas fa-user-graduate me-1"></i>学生
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST" class="needs-validation" novalidate>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="real_name" class="form-label">
+                                <i class="fas fa-user me-2"></i>
+                                真实姓名 <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="real_name" 
+                                   name="real_name" 
+                                   value="{{ user.real_name }}"
+                                   required
+                                   placeholder="请输入真实姓名">
+                            <div class="invalid-feedback">
+                                请输入真实姓名
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="username" class="form-label">
+                                <i class="fas fa-at me-2"></i>
+                                用户名
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="username" 
+                                   name="username" 
+                                   value="{{ user.username }}"
+                                   readonly
+                                   placeholder="请输入登录用户名">
+                            <div class="form-text text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                用户名与真实姓名保持一致，不可单独修改
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="password" class="form-label">
+                                <i class="fas fa-lock me-2"></i>
+                                新密码
+                            </label>
+                            <div class="input-group">
+                                <input type="password" 
+                                       class="form-control" 
+                                       id="password" 
+                                       name="password" 
+                                       placeholder="留空则不修改密码">
+                                <button class="btn btn-outline-secondary" 
+                                        type="button" 
+                                        id="togglePassword">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                {% if current_user.is_super_admin %}
+                                    留空则不修改密码，填写则必须至少6位字符。如果修改其他用户密码，该用户下次登录时必须再次修改密码
+                                {% else %}
+                                    留空则不修改密码，填写则必须至少6位字符
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        {% if current_user.is_super_admin %}
+                        <div class="col-md-6 mb-3">
+                            <label for="role" class="form-label">
+                                <i class="fas fa-user-tag me-2"></i>
+                                用户角色 <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="role" name="role" required>
+                                <option value="super_admin" {{ 'selected' if user.role == 'super_admin' else '' }}>超级管理员</option>
+                                <option value="teacher" {{ 'selected' if user.role == 'teacher' else '' }}>教师</option>
+                                <option value="student" {{ 'selected' if user.role == 'student' else '' }}>学生</option>
+                            </select>
+                            <div class="invalid-feedback">
+                                请选择用户角色
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- 学号字段（仅学生显示） -->
+                    <div class="row" id="studentFields" style="display: {{ 'block' if user.role == 'student' else 'none' }};">
+                        <div class="col-md-6 mb-3">
+                            <label for="student_id" class="form-label">
+                                <i class="fas fa-id-card me-2"></i>
+                                学号
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="student_id" 
+                                   name="student_id" 
+                                   value="{{ user.student_id or '' }}"
+                                   placeholder="请输入学号（可选）">
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                学号为可选项，可以使用用户名作为标识
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-toggle-on me-2"></i>
+                                账户状态
+                            </label>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" 
+                                       type="checkbox" 
+                                       id="is_active" 
+                                       name="is_active"
+                                       {{ 'checked' if user.is_active else '' }}>
+                                <label class="form-check-label" for="is_active">
+                                    账户启用状态
+                                </label>
+                            </div>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                禁用后用户将无法登录系统
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if not user.role == 'student' %}
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-toggle-on me-2"></i>
+                                账户状态
+                            </label>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" 
+                                       type="checkbox" 
+                                       id="is_active_other" 
+                                       name="is_active"
+                                       {{ 'checked' if user.is_active else '' }}>
+                                <label class="form-check-label" for="is_active_other">
+                                    账户启用状态
+                                </label>
+                            </div>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                禁用后用户将无法登录系统
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- 用户统计信息 -->
+                    <div class="alert alert-info border-0 mb-4">
+                        <h6 class="alert-heading">
+                            <i class="fas fa-chart-bar me-2"></i>
+                            用户统计
+                        </h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <small class="text-muted">
+                                    <i class="fas fa-calendar me-1"></i>
+                                    创建时间: {{ user.created_at|beijing_time }}
+                                </small>
+                            </div>
+                            {% if user.role == 'student' %}
+                            <div class="col-md-6">
+                                <small class="text-muted">
+                                    <i class="fas fa-file-upload me-1"></i>
+                                    提交作业: {{ user.submissions|length }} 份
+                                </small>
+                            </div>
+                            {% elif user.role == 'teacher' %}
+                            <div class="col-md-6">
+                                <small class="text-muted">
+                                    <i class="fas fa-tasks me-1"></i>
+                                    发布作业: {{ user.assignments|length }} 个
+                                </small>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-3 justify-content-end">
+                        <a href="{{ url_for('user_mgmt.manage_users') }}" class="btn btn-secondary btn-lg">
+                            <i class="fas fa-arrow-left me-2"></i>
+                            返回列表
+                        </a>
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="fas fa-save me-2"></i>
+                            保存修改
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const roleSelect = document.getElementById('role');
+    const studentFields = document.getElementById('studentFields');
+    const passwordInput = document.getElementById('password');
+    const togglePasswordBtn = document.getElementById('togglePassword');
+    
+    // 角色变化时显示/隐藏学号字段
+    function toggleStudentFields() {
+        if (roleSelect && roleSelect.value === 'student') {
+            studentFields.style.display = 'block';
+        } else if (roleSelect) {
+            studentFields.style.display = 'none';
+        }
+    }
+    
+    if (roleSelect) {
+        roleSelect.addEventListener('change', toggleStudentFields);
+    }
+    
+    // 密码显示/隐藏
+    if (togglePasswordBtn) {
+        togglePasswordBtn.addEventListener('click', function() {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            
+            const icon = this.querySelector('i');
+            icon.classList.toggle('fa-eye');
+            icon.classList.toggle('fa-eye-slash');
+        });
+    }
+    
+    // 表单验证
+    const forms = document.querySelectorAll('.needs-validation');
+    Array.from(forms).forEach(form => {
+        form.addEventListener('submit', event => {
+            // 如果填写了密码，检查密码长度
+            const passwordValue = passwordInput.value;
+            if (passwordValue && passwordValue.length < 6) {
+                passwordInput.setCustomValidity('密码长度至少6位');
+            } else {
+                passwordInput.setCustomValidity('');
+            }
+            
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        }, false);
+    });
+    
+    // 真实姓名输入时自动更新用户名
+    const realNameInput = document.getElementById('real_name');
+    const usernameInput = document.getElementById('username');
+    
+    if (realNameInput && usernameInput) {
+        realNameInput.addEventListener('input', function() {
+            // 自动更新用户名字段
+            usernameInput.value = this.value;
+        });
+    }
+});
+</script>
+
+<style>
+.user-edit-icon {
+    animation: rotate 3s linear infinite;
+}
+
+@keyframes rotate {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.form-card {
+    border: 1px solid var(--border-color);
+    box-shadow: 0 15px 40px var(--shadow-color);
+    border-radius: 20px;
+    overflow: hidden;
+}
+
+.form-card .card-header {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.input-group .btn {
+    border-left: none;
+}
+
+.alert-info {
+    background: rgba(13, 202, 240, 0.1);
+    border: 1px solid rgba(13, 202, 240, 0.2);
+}
+
+.form-check-input:checked {
+    background-color: var(--success-color);
+    border-color: var(--success-color);
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 0.25rem rgba(var(--accent-color-rgb), 0.25);
+}
+</style>
+{% endblock %}

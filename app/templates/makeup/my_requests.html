@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}我的补交申请{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 页面头部 -->
+    <div class="hero-section mb-4">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="display-6 fw-bold mb-2 fade-in-up">
+                    <i class="fas fa-list-alt me-3" style="color: var(--accent-color);"></i>
+                    我的补交申请
+                </h1>
+                <p class="lead mb-0 fade-in-up" style="animation-delay: 0.2s;">
+                    查看您的所有补交申请及审批状态
+                </p>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{{ url_for('assignment.student_assignments') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-1"></i>
+                    返回作业列表
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 申请列表 -->
+    {% if requests %}
+    <div class="card">
+        <div class="card-header bg-gradient">
+            <h5 class="mb-0">
+                <i class="fas fa-clock me-2"></i>
+                申请记录（共 {{ requests|length }} 条）
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th width="20%">作业名称</th>
+                            <th width="15%">所属班级</th>
+                            <th width="25%">补交理由</th>
+                            <th width="10%">申请时间</th>
+                            <th width="10%">状态</th>
+                            <th width="20%">审批详情</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for req in requests %}
+                        <tr>
+                            <td>
+                                <strong>{{ req.assignment.title }}</strong>
+                            </td>
+                            <td>
+                                <span class="badge bg-primary">{{ req.assignment.class_obj.name }}</span>
+                            </td>
+                            <td>
+                                <small>{{ req.reason[:50] }}{% if req.reason|length > 50 %}...{% endif %}</small>
+                            </td>
+                            <td>
+                                <small>{{ req.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                            </td>
+                            <td>
+                                {% if req.status == 'pending' %}
+                                    <span class="badge bg-warning">
+                                        <i class="fas fa-clock me-1"></i>待审批
+                                    </span>
+                                {% elif req.status == 'approved' %}
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-check me-1"></i>已通过
+                                    </span>
+                                {% elif req.status == 'rejected' %}
+                                    <span class="badge bg-danger">
+                                        <i class="fas fa-times me-1"></i>已拒绝
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if req.status == 'approved' %}
+                                    <small>
+                                        <i class="fas fa-calendar-check me-1 text-success"></i>
+                                        截止：{{ req.deadline.strftime('%Y-%m-%d %H:%M') if req.deadline else '未设置' }}
+                                    </small>
+                                    <br>
+                                    <a href="{{ url_for('assignment.submit_assignment', assignment_id=req.assignment_id) }}" 
+                                       class="btn btn-sm btn-success mt-1">
+                                        <i class="fas fa-upload me-1"></i>
+                                        提交补交作业
+                                    </a>
+                                {% elif req.status == 'rejected' %}
+                                    {% if req.reject_reason %}
+                                        <small class="text-danger">
+                                            <i class="fas fa-comment me-1"></i>
+                                            {{ req.reject_reason }}
+                                        </small>
+                                    {% else %}
+                                        <small class="text-muted">无</small>
+                                    {% endif %}
+                                {% else %}
+                                    <small class="text-muted">等待老师审批中...</small>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <div class="shortcut-icon-wrapper mb-3 d-inline-block">
+                <div class="shortcut-icon secondary-icon">
+                    <i class="fas fa-inbox"></i>
+                </div>
+                <div class="shortcut-glow secondary-glow"></div>
+            </div>
+            <h5 class="text-muted">暂无补交申请记录</h5>
+            <p class="text-muted mb-4">您还没有提交过任何补交申请</p>
+            <a href="{{ url_for('assignment.student_assignments') }}" class="btn btn-primary">
+                <i class="fas fa-tasks me-1"></i>
+                查看作业列表
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

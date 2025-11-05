@@ -1,0 +1,401 @@
+{% extends "base.html" %}
+
+{% block title %}评分学生作业 - {{ student.real_name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-11">
+        <!-- 页面头部 -->
+        <div class="text-center mb-4">
+            <div class="grading-icon mb-3">
+                <i class="fas fa-user-graduate" style="font-size: 3.5rem; color: var(--accent-color);"></i>
+            </div>
+            <h2 class="fw-bold">
+                <i class="fas fa-star me-2"></i>
+                评分学生作业
+            </h2>
+            <p class="text-muted">为 {{ student.real_name }} 评分作业：{{ assignment.title }}</p>
+        </div>
+
+        <!-- 学生和作业信息 -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-gradient">
+                        <h5 class="mb-0">
+                            <i class="fas fa-user me-2"></i>
+                            学生信息
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>姓名：</strong> {{ student.real_name }}</p>
+                        <p><strong>学号：</strong> {{ student.username }}</p>
+                        {% if student.email %}
+                        <p><strong>邮箱：</strong> {{ student.email }}</p>
+                        {% endif %}
+                        <p><strong>总提交次数：</strong> 
+                            <span class="badge bg-info">{{ submissions|length }} 次</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-gradient">
+                        <h5 class="mb-0">
+                            <i class="fas fa-tasks me-2"></i>
+                            作业信息
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>作业标题：</strong> {{ assignment.title }}</p>
+                        {% if assignment.due_date %}
+                        <p><strong>截止时间：</strong> 
+                            <span class="{% if assignment.is_overdue() %}text-danger{% else %}text-success{% endif %}">
+                                {{ assignment.due_date|beijing_time }}
+                            </span>
+                        </p>
+                        {% endif %}
+                        {% if assignment.description %}
+                        <p><strong>作业要求：</strong></p>
+                        <div class="alert alert-light">
+                            {{ assignment.description }}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 学生提交记录 -->
+        <div class="card">
+            <div class="card-header bg-gradient">
+                <h5 class="mb-0">
+                    <i class="fas fa-list me-2"></i>
+                    学生提交记录
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                {% if submissions %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th width="5%">#</th>
+                                <th width="20%">提交时间</th>
+                                <th width="25%">文件名</th>
+                                <th width="10%">文件大小</th>
+                                <th width="15%">当前评分</th>
+                                <th width="15%">当前反馈</th>
+                                <th width="10%">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for submission in submissions %}
+                            <tr>
+                                <td>
+                                    <span class="badge bg-primary">{{ loop.index }}</span>
+                                    {% if loop.first %}
+                                        <br><small class="text-warning">最新</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small class="text-muted">
+                                        <i class="fas fa-clock me-1"></i>
+                                        {{ submission.submitted_at|beijing_time }}
+                                    </small>
+                                </td>
+                                <td>
+                                    <div>
+                                        <span class="fw-bold">{{ submission.original_filename }}</span>
+                                        {% if submission.notes %}
+                                            <br><small class="text-muted">备注: {{ submission.notes }}</small>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td>
+                                    <small class="text-muted">
+                                        {% if submission.file_size %}
+                                            {{ submission.file_size|filesize }}
+                                        {% else %}
+                                            未知
+                                        {% endif %}
+                                    </small>
+                                </td>
+                                <td>
+                                    {% if submission.grade is not none %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-star me-1"></i>
+                                            {{ submission.grade }}分
+                                        </span>
+                                        {% if submission.graded_at %}
+                                            <br><small class="text-muted">
+                                                {{ submission.graded_at|beijing_time }}
+                                            </small>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="badge bg-secondary">
+                                            <i class="fas fa-hourglass-half me-1"></i>
+                                            未评分
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if submission.feedback %}
+                                        <button class="btn btn-sm btn-outline-info" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#viewFeedbackModal{{ submission.id }}">
+                                            <i class="fas fa-eye me-1"></i>
+                                            查看
+                                        </button>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if submission.is_pdf() %}
+                                        <button class="btn btn-sm btn-info me-1" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#previewModal{{ submission.id }}">
+                                            <i class="fas fa-eye me-1"></i>
+                                            预览
+                                        </button>
+                                    {% endif %}
+                                    <button class="btn btn-sm btn-primary" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#gradeModal{{ submission.id }}">
+                                        <i class="fas fa-star me-1"></i>
+                                        {% if submission.grade is not none %}修改{% else %}评分{% endif %}
+                                    </button>
+                                    <a href="{{ url_for('submission.download_file', submission_id=submission.id) }}" 
+                                       class="btn btn-sm btn-outline-primary mt-1" 
+                                       target="_blank">
+                                        <i class="fas fa-download me-1"></i>
+                                        下载
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-inbox" style="font-size: 4rem; color: var(--text-secondary); opacity: 0.5;"></i>
+                    <h3 class="mt-4 mb-2">暂无提交记录</h3>
+                    <p class="text-muted">该学生还没有提交过此作业。</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 操作按钮 -->
+        <div class="text-center mt-4">
+            <a href="{{ url_for('assignment.view_submissions', assignment_id=assignment.id) }}" class="btn btn-secondary me-2">
+                <i class="fas fa-arrow-left me-2"></i>
+                返回提交列表
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- PDF预览模态框 -->
+{% for submission in submissions %}
+    {% if submission.is_pdf() %}
+    <div class="modal fade" id="previewModal{{ submission.id }}" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-file-pdf me-2 text-danger"></i>
+                        PDF预览 - {{ submission.original_filename }}
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="pdf-preview-container">
+                        <iframe 
+                            src="{{ url_for('submission.preview_file', submission_id=submission.id) }}" 
+                            width="100%" 
+                            height="600px" 
+                            type="application/pdf">
+                            <p>您的浏览器不支持PDF预览，请 
+                                <a href="{{ url_for('submission.download_file', submission_id=submission.id) }}" target="_blank">点击下载</a>
+                            </p>
+                        </iframe>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                    <a href="{{ url_for('submission.download_file', submission_id=submission.id) }}" 
+                       class="btn btn-primary" target="_blank">
+                        <i class="fas fa-download me-1"></i>
+                        下载 PDF
+                    </a>
+                    <button type="button" class="btn btn-success" 
+                            data-bs-dismiss="modal"
+                            data-bs-toggle="modal" 
+                            data-bs-target="#gradeModal{{ submission.id }}">
+                        <i class="fas fa-star me-1"></i>
+                        立即评分
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+{% endfor %}
+
+<!-- 评分模态框 -->
+{% for submission in submissions %}
+<div class="modal fade" id="gradeModal{{ submission.id }}" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="POST">
+                <input type="hidden" name="submission_id" value="{{ submission.id }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-star me-2"></i>
+                        评分作业
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <p><strong>学生：</strong> {{ student.real_name }}</p>
+                            <p><strong>提交时间：</strong> {{ submission.submitted_at|beijing_time }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>文件名：</strong> {{ submission.original_filename }}</p>
+                            <p><strong>文件大小：</strong> 
+                                {% if submission.file_size %}
+                                    {{ submission.file_size|filesize }}
+                                {% else %}
+                                    未知
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="grade{{ submission.id }}" class="form-label">
+                                <i class="fas fa-star me-1"></i>
+                                评分 (0-100分)
+                            </label>
+                            <input type="number" 
+                                   class="form-control" 
+                                   id="grade{{ submission.id }}" 
+                                   name="grade" 
+                                   min="0" 
+                                   max="100" 
+                                   step="0.5"
+                                   value="{{ submission.grade if submission.grade is not none else '' }}"
+                                   placeholder="输入分数">
+                        </div>
+                        <div class="col-md-8 mb-3">
+                            <label for="feedback{{ submission.id }}" class="form-label">
+                                <i class="fas fa-comment me-1"></i>
+                                评语和反馈
+                            </label>
+                            <textarea class="form-control" 
+                                      id="feedback{{ submission.id }}" 
+                                      name="feedback" 
+                                      rows="4" 
+                                      placeholder="请输入评语和反馈...">{{ submission.feedback if submission.feedback else '' }}</textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-1"></i>
+                        <strong>提示：</strong> 
+                        <ul class="mb-0 mt-2">
+                            <li>评分范围：0-100分，支持小数点（如85.5分）</li>
+                            <li>评语将显示给学生，请提供具体的建议和反馈</li>
+                            <li>可以多次修改评分和评语</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>
+                        保存评分
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- 查看反馈模态框 -->
+{% for submission in submissions %}
+    {% if submission.feedback %}
+    <div class="modal fade" id="viewFeedbackModal{{ submission.id }}" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-comment me-2"></i>
+                        查看反馈
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>提交时间：</strong> {{ submission.submitted_at|beijing_time }}</p>
+                    <p><strong>文件名：</strong> {{ submission.original_filename }}</p>
+                    {% if submission.grade is not none %}
+                    <p><strong>评分：</strong> <span class="badge bg-success">{{ submission.grade }}分</span></p>
+                    {% endif %}
+                    {% if submission.graded_at %}
+                    <p><strong>评分时间：</strong> {{ submission.graded_at|beijing_time }}</p>
+                    {% endif %}
+                    <hr>
+                    <h6>反馈内容：</h6>
+                    <div class="alert alert-light">
+                        {{ submission.feedback|nl2br }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 为评分输入框添加验证
+    const gradeInputs = document.querySelectorAll('input[name="grade"]');
+    gradeInputs.forEach(input => {
+        input.addEventListener('input', function() {
+            const value = parseFloat(this.value);
+            if (value < 0 || value > 100) {
+                this.setCustomValidity('评分必须在0-100之间');
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+    });
+    
+    // 为表格行添加悬停效果
+    const tableRows = document.querySelectorAll('tbody tr');
+    tableRows.forEach(row => {
+        row.addEventListener('mouseenter', function() {
+            this.style.backgroundColor = 'var(--bs-light)';
+        });
+        row.addEventListener('mouseleave', function() {
+            this.style.backgroundColor = '';
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,1082 @@
+{% extends "base.html" %}
+
+{% block title %}{{ major_assignment.title }} - 我的团队{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <!-- 作业信息 -->
+            <div class="card shadow mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-project-diagram me-2"></i>
+                        {{ major_assignment.title }}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    {% if major_assignment.description %}
+                    <p class="mb-3">{{ major_assignment.description }}</p>
+                    {% endif %}
+                    
+                    <!-- 作业资料（附件和链接） -->
+                    {% set all_attachments = major_assignment.get_all_attachments() %}
+                    {% set all_links = major_assignment.get_all_links() %}
+                    
+                    {% if all_attachments or all_links %}
+                    <div class="alert alert-info mb-3">
+                        <h6 class="alert-heading">
+                            <i class="fas fa-folder-open me-2"></i>作业资料
+                        </h6>
+                        
+                        <!-- 附件列表 -->
+                        {% if all_attachments %}
+                        <div class="mb-2">
+                            <strong><i class="fas fa-paperclip me-1"></i>附件文件：</strong>
+                            <div class="list-group mt-2">
+                                {% for attachment in all_attachments %}
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <i class="fas fa-file me-2 text-primary"></i>
+                                        {% if not attachment.is_old %}
+                                        <a href="{{ url_for('major_assignment.download_major_assignment_attachment', attachment_id=attachment.id) }}" class="text-decoration-none">
+                                            {{ attachment.original_filename }}
+                                        </a>
+                                        {% if attachment.file_size %}
+                                        <small class="text-muted ms-2">
+                                            ({{ attachment.file_size|filesize }})
+                                        </small>
+                                        {% endif %}
+                                        {% else %}
+                                        <a href="{{ url_for('major_assignment.download_major_assignment_requirement', assignment_id=major_assignment.id) }}" class="text-decoration-none">
+                                            {{ attachment.original_filename }}
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        {% if not attachment.is_old %}
+                                        <a href="{{ url_for('major_assignment.download_major_assignment_attachment', attachment_id=attachment.id) }}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-download"></i> 下载
+                                        </a>
+                                        {% else %}
+                                        <a href="{{ url_for('major_assignment.download_major_assignment_requirement', assignment_id=major_assignment.id) }}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-download"></i> 下载
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- 链接列表 -->
+                        {% if all_links %}
+                        <div class="{% if all_attachments %}mt-3{% endif %}">
+                            <strong><i class="fas fa-link me-1"></i>参考链接：</strong>
+                            <div class="list-group mt-2">
+                                {% for link in all_links %}
+                                <a href="{{ link.url }}" target="_blank" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <i class="fas fa-external-link-alt me-2 text-success"></i>
+                                        <strong>{{ link.title }}</strong>
+                                        <br>
+                                        <small class="text-muted">{{ link.url }}</small>
+                                    </div>
+                                    <div>
+                                        <i class="fas fa-arrow-right"></i>
+                                    </div>
+                                </a>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-2">
+                                <i class="fas fa-users me-2"></i>
+                                <strong>组队人数：</strong>{{ major_assignment.min_team_size }} - {{ major_assignment.max_team_size }} 人
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            {% if major_assignment.start_date %}
+                            <p class="mb-2">
+                                <i class="fas fa-play-circle me-2 text-success"></i>
+                                <strong>开始时间：</strong>{{ major_assignment.start_date|beijing_time }}
+                            </p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            {% if major_assignment.end_date %}
+                            <p class="mb-2">
+                                <i class="fas fa-stop-circle me-2 text-danger"></i>
+                                <strong>结束时间：</strong>{{ major_assignment.end_date|beijing_time }}
+                            </p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            {% if major_assignment.due_date %}
+                            <p class="mb-2">
+                                <i class="fas fa-calendar-alt me-2 text-warning"></i>
+                                <strong>截止时间：</strong>{{ major_assignment.due_date|beijing_time }}
+                            </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 阶段信息 -->
+            {% if all_stages|length > 0 %}
+            <div class="card shadow mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list-ol me-2"></i>
+                        阶段安排
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info py-2">
+                        <i class="fas fa-info-circle me-1"></i>
+                        <strong>说明：</strong>请按照以下阶段安排完成大作业
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-bordered mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="5%">#</th>
+                                    <th width="20%">阶段名称</th>
+                                    <th width="15%">类型</th>
+                                    <th width="35%">时间范围</th>
+                                    <th width="15%">状态</th>
+                                    <th width="10%">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for stage in all_stages %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td>
+                                        <strong>{{ stage.name }}</strong>
+                                        {% if stage.description %}
+                                        <br><small class="text-muted">{{ stage.description }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if stage.stage_type == 'team_formation' %}
+                                        <span class="badge bg-primary">
+                                            <i class="fas fa-users me-1"></i>组队阶段
+                                        </span>
+                                        {% elif stage.stage_type == 'division' %}
+                                        <span class="badge bg-info">
+                                            <i class="fas fa-tasks me-1"></i>分工阶段
+                                        </span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">
+                                            <i class="fas fa-flag me-1"></i>自定义阶段
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small>
+                                            <i class="fas fa-calendar-alt me-1 text-success"></i>
+                                            <strong>开始：</strong>{{ stage.start_date|beijing_time if stage.start_date else '未设置' }}
+                                            <br>
+                                            <i class="fas fa-calendar-alt me-1 text-danger"></i>
+                                            <strong>结束：</strong>{{ stage.end_date|beijing_time if stage.end_date else '未设置' }}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        {% if stage.status == 'pending' %}
+                                        <span class="badge bg-secondary">
+                                            <i class="fas fa-clock me-1"></i>待开始
+                                        </span>
+                                        {% elif stage.status == 'active' %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-play me-1"></i>进行中
+                                        </span>
+                                        {% elif stage.status == 'completed' %}
+                                        <span class="badge bg-dark">
+                                            <i class="fas fa-check me-1"></i>已完成
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if stage.stage_type == 'team_formation' %}
+                                        {% if stage.status == 'active' and not my_team %}
+                                        <button class="btn btn-sm btn-primary" onclick="$('#createTeamCard').get(0).scrollIntoView({behavior: 'smooth'});">
+                                            <i class="fas fa-arrow-down me-1"></i>组队
+                                        </button>
+                                        {% elif stage.status == 'completed' %}
+                                        <span class="text-muted small">已结束</span>
+                                        {% endif %}
+                                        {% elif stage.stage_type == 'division' %}
+                                        {% if my_team and my_team.leader_id == current_user.id %}
+                                        <a href="{{ url_for('major_assignment.team_assign_divisions', team_id=my_team.id, stage_id=stage.id) }}" 
+                                           class="btn btn-sm btn-info">
+                                            <i class="fas fa-edit me-1"></i>分配
+                                        </a>
+                                        {% else %}
+                                        <span class="text-muted small">组长分配</span>
+                                        {% endif %}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- 当前阶段提示 -->
+                    {% set active_stage = all_stages|selectattr('status', 'equalto', 'active')|list|first %}
+                    {% if active_stage %}
+                    <div class="alert alert-success mt-3 mb-0">
+                        <i class="fas fa-info-circle me-1"></i>
+                        <strong>当前阶段：</strong>{{ active_stage.name }}
+                        {% if active_stage.end_date %}
+                        <span class="ms-2">
+                            <i class="fas fa-clock me-1"></i>
+                            将于 <strong>{{ active_stage.end_date|beijing_time }}</strong> 结束
+                        </span>
+                        {% endif %}
+                        
+                        {% if active_stage.stage_type == 'team_formation' and not my_team %}
+                        <div class="mt-2">
+                            <i class="fas fa-exclamation-triangle me-1"></i>
+                            请尽快创建或加入团队！阶段结束时，系统将自动为未组队学生分配团队。
+                        </div>
+                        {% elif active_stage.stage_type == 'division' and my_team and my_team.leader_id == current_user.id %}
+                        <div class="mt-2">
+                            <i class="fas fa-exclamation-triangle me-1"></i>
+                            请尽快为团队成员分配角色！阶段结束时，系统将自动分配未分配的必须角色。
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            {% if my_team %}
+            <!-- 我的团队 -->
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-users me-2"></i>
+                        我的团队：{{ my_team.name }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>团队信息</h6>
+                            <p>
+                                <i class="fas fa-crown text-warning me-2"></i>
+                                <strong>组长：</strong>{{ my_team.leader.real_name }}
+                            </p>
+                            <p>
+                                <strong>人数：</strong>{{ my_team.get_member_count() }} 人
+                            </p>
+                            <p>
+                                <strong>状态：</strong>
+                                {% if my_team.status == 'confirmed' %}
+                                <span class="badge bg-success">
+                                    <i class="fas fa-check-circle me-1"></i>已确认
+                                </span>
+                                {% if my_team.is_locked %}
+                                <span class="badge bg-secondary ms-1">
+                                    <i class="fas fa-lock me-1"></i>已锁定
+                                </span>
+                                {% endif %}
+                                {% elif my_team.status == 'rejected' %}
+                                <span class="badge bg-danger">已拒绝</span>
+                                {% elif my_team.confirmation_requested_at %}
+                                <span class="badge bg-info">
+                                    <i class="fas fa-clock me-1"></i>等待确认
+                                </span>
+                                <small class="text-muted d-block mt-1">
+                                    请求时间：{{ my_team.confirmation_requested_at|beijing_time }}
+                                </small>
+                                {% else %}
+                                <span class="badge bg-warning">待确认</span>
+                                {% endif %}
+                            </p>
+                            {% if my_team.is_locked %}
+                            <div class="alert alert-warning py-2 small">
+                                <i class="fas fa-info-circle me-1"></i>
+                                团队已锁定，无法调整成员。如需调整请联系老师。
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <h6>团队成员</h6>
+                            <ul class="list-unstyled">
+                                <li class="mb-1">
+                                    <i class="fas fa-crown text-warning me-2"></i>
+                                    {{ my_team.leader.real_name }} ({{ my_team.leader.student_id }})
+                                </li>
+                                {% for member in my_team.members %}
+                                <li class="mb-1">
+                                    <i class="fas fa-user me-2"></i>
+                                    {{ member.user.real_name }} ({{ member.user.student_id }})
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- 组长操作 -->
+                    {% if my_team.leader_id == current_user.id %}
+                    <hr>
+                    <div class="mb-3">
+                        <h6>组长操作</h6>
+                        
+                        <!-- 检查分组阶段是否已完成 -->
+                        {% set team_formation_stage = all_stages|selectattr('stage_type', 'equalto', 'team_formation')|list|first %}
+                        {% set is_team_formation_completed = team_formation_stage and team_formation_stage.status == 'completed' %}
+                        
+                        <!-- 检查是否锁定 -->
+                        {% if not my_team.is_locked %}
+                        <button class="btn btn-primary" {% if is_team_formation_completed %}disabled{% endif %} 
+                                {% if is_team_formation_completed %}onclick="alert('当前操作不在阶段，请联系管理员或老师'); return false;"{% else %}data-bs-toggle="modal" data-bs-target="#inviteModal"{% endif %}>
+                            <i class="fas fa-user-plus me-1"></i>邀请成员{% if is_team_formation_completed %}（已结束）{% endif %}
+                        </button>
+                        {% else %}
+                        <button class="btn btn-secondary" disabled title="团队已锁定，无法邀请成员">
+                            <i class="fas fa-lock me-1"></i>邀请成员（已锁定）
+                        </button>
+                        {% endif %}
+                        
+                        <button class="btn btn-danger ms-2" {% if is_team_formation_completed %}disabled{% endif %}
+                                {% if is_team_formation_completed %}onclick="alert('当前操作不在阶段，请联系管理员或老师'); return false;"{% else %}data-bs-toggle="modal" data-bs-target="#dissolveModal"{% endif %}>
+                            <i class="fas fa-trash-alt me-1"></i>解散团队{% if is_team_formation_completed %}（已结束）{% endif %}
+                        </button>
+                        
+                        <button class="btn btn-info ms-2" data-bs-toggle="modal" data-bs-target="#invitationRecordsModal">
+                            <i class="fas fa-history me-1"></i>邀请记录
+                            {% if team_invitations|length > 0 %}
+                            <span class="badge bg-light text-dark">{{ team_invitations|length }}</span>
+                            {% endif %}
+                        </button>
+                        
+                        <!-- 请求确认按钮 -->
+                        {% if my_team.status != 'confirmed' and not my_team.confirmation_requested_at %}
+                        <button class="btn btn-success ms-2" data-bs-toggle="modal" data-bs-target="#requestConfirmModal">
+                            <i class="fas fa-check-circle me-1"></i>请求确认
+                        </button>
+                        {% endif %}
+                        
+                        <!-- 分工管理快捷入口 -->
+                        {% if division_stages|length > 0 %}
+                        <div class="mt-3">
+                            <h6 class="text-info">
+                                <i class="fas fa-user-tag me-2"></i>分工管理
+                            </h6>
+                            {% for stage in division_stages %}
+                            <button class="btn btn-info me-2 mb-2" 
+                                    onclick="window.location.href='{{ url_for('major_assignment.team_assign_divisions', team_id=my_team.id, stage_id=stage.id) }}'">
+                                <i class="fas fa-edit me-1"></i>{{ stage.name }} - 分配角色
+                            </button>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        
+                        <!-- 任务管理快捷入口 -->
+                        <div class="mt-3">
+                            <h6 class="text-success">
+                                <i class="fas fa-list-check me-2"></i>任务管理
+                            </h6>
+                            <button class="btn btn-success" 
+                                    onclick="window.location.href='{{ url_for('major_assignment.team_task_management', team_id=my_team.id) }}'">
+                                <i class="fas fa-tasks me-1"></i>管理团队任务
+                            </button>
+                        </div>
+                    </div>
+                    {% else %}
+                    <!-- 组员操作 -->
+                    <hr>
+                    <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#leaveModal">
+                        <i class="fas fa-sign-out-alt me-1"></i>申请退组
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- 团队分工卡片 -->
+            {% if division_stages|length > 0 %}
+            <div class="card shadow mt-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-tasks me-2"></i>
+                        团队分工
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% for stage in division_stages %}
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6>
+                                <i class="fas fa-layer-group me-2"></i>
+                                {{ stage.name }}
+                                <span class="badge bg-info ms-2">{{ stage.status }}</span>
+                            </h6>
+                            {% if my_team.leader_id == current_user.id %}
+                            <button class="btn btn-sm btn-primary" 
+                                    onclick="window.location.href='{{ url_for('major_assignment.team_assign_divisions', team_id=my_team.id, stage_id=stage.id) }}'">
+                                <i class="fas fa-edit me-1"></i>分配角色
+                            </button>
+                            {% endif %}
+                        </div>
+                        
+                        <p class="text-muted small mb-2">
+                            <i class="fas fa-calendar me-1"></i>
+                            {{ stage.start_date|beijing_time }} 至 {{ stage.end_date|beijing_time }}
+                        </p>
+                        
+                        {% if stage.description %}
+                        <p class="text-muted small">{{ stage.description }}</p>
+                        {% endif %}
+                        
+                        <!-- 显示分工情况 -->
+                        {% set team_divisions = stage.get_team_divisions(my_team.id) %}
+                        {% if team_divisions|length > 0 %}
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="25%">角色名称</th>
+                                        <th width="45%">角色描述</th>
+                                        <th width="30%">负责成员</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for division in team_divisions %}
+                                    <tr>
+                                        <td>
+                                            <strong><i class="fas fa-user-tag me-1"></i>{{ division.role_name }}</strong>
+                                        </td>
+                                        <td>
+                                            {% if division.role_description %}
+                                            <small class="text-muted">{{ division.role_description }}</small>
+                                            {% else %}
+                                            <small class="text-muted"><i>无描述</i></small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if division.members|length > 0 %}
+                                            <div class="d-flex flex-wrap gap-1">
+                                                {% for member in division.members %}
+                                                <span class="badge bg-primary">
+                                                    <i class="fas fa-user me-1"></i>
+                                                    {{ member.real_name }}
+                                                </span>
+                                                {% endfor %}
+                                            </div>
+                                            {% else %}
+                                            <span class="text-muted"><i class="fas fa-question-circle me-1"></i>未分配</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-warning py-2 small">
+                            <i class="fas fa-info-circle me-1"></i>
+                            {% if my_team.leader_id == current_user.id %}
+                            请点击“分配角色”按钮为团队成员分配分工角色
+                            {% else %}
+                            等待组长分配分工角色
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% if not loop.last %}<hr>{% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- 任务管理卡片 -->
+            {% if my_tasks|length > 0 %}
+            <div class="card shadow mt-4">
+                <div class="card-header bg-success text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-list-check me-2"></i>团队任务
+                        </h5>
+                        {% if my_team and my_team.leader_id == current_user.id %}
+                        <button class="btn btn-light btn-sm" 
+                                onclick="window.location.href='{{ url_for('major_assignment.team_task_management', team_id=my_team.id) }}'">
+                            <i class="fas fa-cog me-1"></i>管理任务
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="30%">任务标题</th>
+                                    <th width="15%">负责人</th>
+                                    <th width="10%">优先级</th>
+                                    <th width="15%">状态</th>
+                                    <th width="20%">进度</th>
+                                    <th width="10%">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for task in my_tasks %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ task.title }}</strong>
+                                        {% if task.description %}
+                                        <br><small class="text-muted">{{ task.description[:40] }}...</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if task.assignee %}
+                                        <span class="badge bg-info">
+                                            <i class="fas fa-user me-1"></i>{{ task.assignee.real_name }}
+                                        </span>
+                                        {% else %}
+                                        <span class="text-muted">未分配</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge {% if task.priority == 'high' %}bg-danger
+                                                          {% elif task.priority == 'medium' %}bg-warning
+                                                          {% else %}bg-secondary{% endif %}">
+                                            {% if task.priority == 'high' %}高
+                                            {% elif task.priority == 'medium' %}中
+                                            {% else %}低{% endif %}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge {% if task.status == 'completed' %}bg-success
+                                                          {% elif task.status == 'in_progress' %}bg-primary
+                                                          {% else %}bg-secondary{% endif %}">
+                                            {% if task.status == 'completed' %}已完成
+                                            {% elif task.status == 'in_progress' %}进行中
+                                            {% else %}待开始{% endif %}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="progress" style="height: 18px;">
+                                            <div class="progress-bar {% if task.progress == 100 %}bg-success
+                                                                      {% elif task.progress >= 50 %}bg-primary
+                                                                      {% else %}bg-warning{% endif %}"
+                                                 role="progressbar"
+                                                 style="width: {{ task.progress }}%">
+                                                {{ task.progress }}%
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary" 
+                                                onclick="updateProgress({{ task.id }}, '{{ task.title }}', {{ task.progress }}, '{{ task.status }}')"
+                                                title="更新进度">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- 组队阶段信息卡片 -->
+            {% if team_formation_stages|length > 0 %}
+            <div class="card shadow mt-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-users me-2"></i>
+                        组队阶段
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% for stage in team_formation_stages %}
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h6>
+                                <i class="fas fa-layer-group me-2"></i>
+                                {{ stage.name }}
+                            </h6>
+                            <span class="badge 
+                                {% if stage.status == 'pending' %}bg-warning
+                                {% elif stage.status == 'active' %}bg-success
+                                {% elif stage.status == 'completed' %}bg-secondary
+                                {% else %}bg-info{% endif %}">
+                                {% if stage.status == 'pending' %}待开始
+                                {% elif stage.status == 'active' %}进行中
+                                {% elif stage.status == 'completed' %}已完成
+                                {% else %}{{ stage.status }}{% endif %}
+                            </span>
+                        </div>
+                        <p class="text-muted small mb-2">
+                            <i class="fas fa-calendar me-1"></i>
+                            {{ stage.start_date|beijing_time }} 至 {{ stage.end_date|beijing_time }}
+                        </p>
+                        {% if stage.description %}
+                        <p class="text-muted small">{{ stage.description }}</p>
+                        {% endif %}
+                        
+                        {% if stage.status == 'active' %}
+                        <div class="alert alert-info py-2 small">
+                            <i class="fas fa-info-circle me-1"></i>
+                            <strong>说明：</strong>该阶段结束时，尚未组队的学生将被自动随机分组
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% if not loop.last %}<hr>{% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            
+            {% else %}
+            <!-- 创建或加入团队 -->
+            <div class="card shadow">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-users me-2"></i>
+                        组队
+                    </h5>
+                </div>
+                <div class="card-body text-center">
+                    <i class="fas fa-users fa-4x text-muted mb-3"></i>
+                    <p class="text-muted mb-4">您还没有加入任何团队</p>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createTeamModal">
+                        <i class="fas fa-plus me-1"></i>创建团队
+                    </button>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- 创建团队模态框 -->
+<div class="modal fade" id="createTeamModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">创建团队</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('major_assignment.create_team', assignment_id=major_assignment.id) }}" method="POST">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        团队名称将自动生成为：<strong>您的姓名 + 的团队</strong>
+                    </div>
+                    <p class="text-muted">点击"创建"按钮后，您将成为团队组长</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">创建</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 邀请成员模态框 -->
+{% if my_team and my_team.leader_id == current_user.id %}
+<div class="modal fade" id="inviteModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">邀请成员</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('major_assignment.invite_team_members', team_id=my_team.id) }}" method="POST">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        请准确填写同学的姓名和学号进行邀请
+                    </div>
+                    <div class="mb-3">
+                        <label for="invitee_name" class="form-label">
+                            <i class="fas fa-user me-1"></i>同学姓名 <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" class="form-control" id="invitee_name" name="invitee_name" 
+                               placeholder="请输入同学的真实姓名" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="invitee_number" class="form-label">
+                            <i class="fas fa-id-card me-1"></i>同学学号 <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" class="form-control" id="invitee_number" name="invitee_number" 
+                               placeholder="请输入同学的学号" required>
+                        <small class="form-text text-muted">姓名和学号必须同时匹配才能发送邀请</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-paper-plane me-1"></i>发送邀请
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- 解散团队模态框 -->
+{% if my_team and my_team.leader_id == current_user.id %}
+<div class="modal fade" id="dissolveModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle me-2"></i>解散团队
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('major_assignment.request_dissolve_team', team_id=my_team.id) }}" method="POST">
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        <strong>注意：</strong>解散团队需要超级管理员或负责老师确认后才会生效。解散后，所有团队成员将被移除。
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">解散原因 <span class="text-danger">*</span></label>
+                        <textarea class="form-control" name="reason" rows="3" 
+                                  placeholder="请说明解散团队的原因..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash-alt me-1"></i>申请解散
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- 退组申请模态框 -->
+{% if my_team and my_team.leader_id != current_user.id %}
+<div class="modal fade" id="leaveModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title">申请退组</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('major_assignment.request_leave_team', team_id=my_team.id) }}" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">退组原因</label>
+                        <textarea class="form-control" name="reason" rows="3" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-warning">提交申请</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- 邀请记录模态框 -->
+{% if my_team and my_team.leader_id == current_user.id %}
+<div class="modal fade" id="invitationRecordsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-history me-2"></i>邀请记录
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                {% if team_invitations|length > 0 %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>被邀请人</th>
+                                <th>学号</th>
+                                <th>邀请时间</th>
+                                <th>状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for invitation in team_invitations %}
+                            <tr>
+                                <td>
+                                    <i class="fas fa-user me-1"></i>
+                                    {{ invitation.invitee.real_name }}
+                                </td>
+                                <td>{{ invitation.invitee.student_id }}</td>
+                                <td>
+                                    <small class="text-muted">
+                                        {{ invitation.created_at|beijing_time }}
+                                    </small>
+                                </td>
+                                <td>
+                                    {% if invitation.status == 'pending' %}
+                                    <span class="badge bg-warning">
+                                        <i class="fas fa-clock me-1"></i>待处理
+                                    </span>
+                                    {% elif invitation.status == 'accepted' %}
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-check-circle me-1"></i>已接受
+                                    </span>
+                                    {% elif invitation.status == 'rejected' %}
+                                    <span class="badge bg-danger">
+                                        <i class="fas fa-times-circle me-1"></i>已拒绝
+                                    </span>
+                                    {% elif invitation.status == 'cancelled' %}
+                                    <span class="badge bg-secondary">
+                                        <i class="fas fa-ban me-1"></i>已取消
+                                    </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if invitation.status == 'rejected' %}
+                                    <!-- 检查被邀请人是否已加入其他团队 -->
+                                    {% set invitee_in_other_team = false %}
+                                    {% for team in major_assignment.teams %}
+                                        {% if team.leader_id == invitation.invitee.id %}
+                                            {% set invitee_in_other_team = true %}
+                                        {% endif %}
+                                        {% for member in team.members %}
+                                            {% if member.user_id == invitation.invitee.id %}
+                                                {% set invitee_in_other_team = true %}
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% endfor %}
+                                    
+                                    {% if invitee_in_other_team %}
+                                    <span class="badge bg-secondary">
+                                        <i class="fas fa-user-check me-1"></i>已加入其他组
+                                    </span>
+                                    {% else %}
+                                    <form action="{{ url_for('major_assignment.resend_team_invitation', invitation_id=invitation.id) }}" 
+                                          method="POST" style="display: inline;">
+                                        <button type="submit" class="btn btn-sm btn-primary" 
+                                                onclick="return confirm('确定要重新发送邀请给 {{ invitation.invitee.real_name }} 吗？');">
+                                            <i class="fas fa-redo me-1"></i>重新邀请
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                    {% elif invitation.status == 'accepted' %}
+                                    <span class="text-muted small">
+                                        <i class="fas fa-check me-1"></i>已加入团队
+                                    </span>
+                                    {% elif invitation.status == 'pending' %}
+                                    <span class="text-muted small">
+                                        <i class="fas fa-hourglass-half me-1"></i>等待回应
+                                    </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">暂无邀请记录</p>
+                </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- 请求确认模态框 -->
+{% if my_team and my_team.leader_id == current_user.id %}
+<div class="modal fade" id="requestConfirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-check-circle me-2"></i>请求确认团队
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('major_assignment.request_team_confirmation', team_id=my_team.id) }}" method="POST" id="confirmationForm">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>提示：</strong>请求确认后，将通知负责老师处理。老师确认后，团队将被锁定，您将无法再调整成员。
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6>团队信息：</h6>
+                        <p><strong>团队名称：</strong>{{ my_team.name }}</p>
+                        <p><strong>团队人数：</strong>{{ my_team.get_member_count() }} 人</p>
+                        
+                        {% if my_team.is_size_valid() %}
+                        <div class="alert alert-success py-2">
+                            <i class="fas fa-check-circle me-1"></i>
+                            人数符合要求（{{ major_assignment.min_team_size }}-{{ major_assignment.max_team_size }}人）
+                        </div>
+                        {% else %}
+                        <div class="alert alert-danger py-2">
+                            <i class="fas fa-exclamation-triangle me-1"></i>
+                            人数不符合要求！需要 {{ major_assignment.min_team_size }}-{{ major_assignment.max_team_size }} 人，当前 {{ my_team.get_member_count() }} 人
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="confirmation_reason" class="form-label">
+                                <i class="fas fa-comment me-1"></i>申请理由 <span class="text-danger">*</span>
+                            </label>
+                            <textarea class="form-control" id="confirmation_reason" name="confirmation_reason" 
+                                      rows="3" required 
+                                      placeholder="人数不符合要求时必须填写申请理由，例如：班级人数限制、无法找到更多成员等"></textarea>
+                            <small class="form-text text-muted">
+                                <i class="fas fa-info-circle"></i> 请详细说明为什么团队人数不符合要求
+                            </small>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <p class="text-muted small">确认您的团队信息无误后，点击“发送请求”按钮。</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-paper-plane me-1"></i>发送请求
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- 更新任务进度模态框 -->
+<div class="modal fade" id="updateProgressModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-tasks me-2"></i>更新任务进度
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="updateProgressForm" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label"><strong>任务标题：</strong></label>
+                        <p id="modal_task_title" class="text-muted"></p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="progress" class="form-label">
+                            进度 <span class="text-danger">*</span>
+                        </label>
+                        <input type="range" class="form-range" id="progress" name="progress" 
+                               min="0" max="100" value="0" oninput="updateProgressValue(this.value)">
+                        <div class="text-center">
+                            <span class="badge bg-primary" id="progress_value">0%</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="status" class="form-label">任务状态</label>
+                        <select class="form-select" id="status" name="status">
+                            <option value="pending">待开始</option>
+                            <option value="in_progress">进行中</option>
+                            <option value="completed">已完成</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="comment" class="form-label">进度说明</label>
+                        <textarea class="form-control" id="comment" name="comment" rows="3" 
+                                  placeholder="请描述当前进度和遇到的问题（可选）"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>保存
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function updateProgress(taskId, taskTitle, currentProgress, currentStatus) {
+    // 设置任务信息
+    document.getElementById('modal_task_title').textContent = taskTitle;
+    document.getElementById('progress').value = currentProgress;
+    document.getElementById('progress_value').textContent = currentProgress + '%';
+    document.getElementById('status').value = currentStatus;
+    
+    // 设置表单提交地址
+    document.getElementById('updateProgressForm').action = `/tasks/${taskId}/update_progress`;
+    
+    // 显示模态框
+    new bootstrap.Modal(document.getElementById('updateProgressModal')).show();
+}
+
+function updateProgressValue(value) {
+    document.getElementById('progress_value').textContent = value + '%';
+    
+    // 自动更新状态
+    const statusSelect = document.getElementById('status');
+    if (value == 0) {
+        statusSelect.value = 'pending';
+    } else if (value == 100) {
+        statusSelect.value = 'completed';
+    } else {
+        statusSelect.value = 'in_progress';
+    }
+}
+
+// 表单提交处理
+document.getElementById('updateProgressForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch(this.action, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('错误：' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('请求失败：' + error);
+    });
+});
+</script>
+{% endblock %}

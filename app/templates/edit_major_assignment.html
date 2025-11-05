@@ -1,0 +1,565 @@
+{% extends "base.html" %}
+
+{% block title %}编辑大作业 - TG作业系统{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-edit me-2"></i>
+                        编辑大作业
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data">
+                        <!-- 作业标题 -->
+                        <div class="mb-3">
+                            <label for="title" class="form-label">
+                                <i class="fas fa-heading me-1"></i>作业标题 <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="title" name="title" 
+                                   value="{{ major_assignment.title }}" required>
+                        </div>
+
+                        <!-- 作业描述 -->
+                        <div class="mb-3">
+                            <label for="description" class="form-label">
+                                <i class="fas fa-align-left me-1"></i>作业描述
+                            </label>
+                            <textarea class="form-control" id="description" name="description" rows="4">{{ major_assignment.description or '' }}</textarea>
+                        </div>
+
+                        <!-- 选择班级 -->
+                        <div class="mb-3">
+                            <label for="class_id" class="form-label">
+                                <i class="fas fa-school me-1"></i>选择班级 <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="class_id" name="class_id" required disabled>
+                                <option value="{{ major_assignment.class_id }}">{{ major_assignment.class_info.name }}</option>
+                            </select>
+                            <small class="text-muted">班级信息不可修改</small>
+                        </div>
+
+                        <!-- 管理教师（仅超级管理员和创建者可见） -->
+                        {% if current_user.is_super_admin or current_user.id == major_assignment.creator_id %}
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-chalkboard-teacher me-1"></i>管理教师
+                            </label>
+                            <small class="text-muted d-block mb-2">可以选择多个教师管理此大作业</small>
+                            
+                            <!-- 搜索框 -->
+                            <div class="input-group mb-2">
+                                <input type="text" class="form-control" id="teacher_search" 
+                                       placeholder="输入教师姓名或用户名搜索..." autocomplete="off">
+                                <button type="button" class="btn btn-outline-secondary" id="clear_search">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            
+                            <!-- 搜索结果下拉列表（点击添加） -->
+                            <div id="search_results" class="list-group mb-3" style="display: none; max-height: 200px; overflow-y: auto;"></div>
+                            
+                            <!-- 已选择的教师（显示为标签） -->
+                            <div class="mb-2">
+                                <label class="form-label small text-muted">已选择的教师:</label>
+                                <div id="selected_teachers" class="d-flex flex-wrap gap-2">
+                                    <span class="text-muted">暂无</span>
+                                </div>
+                            </div>
+                            
+                            <!-- 隐藏的input用于提交表单 -->
+                            <div id="teacher_inputs"></div>
+                            
+                            <!-- 所有教师数据（用于JavaScript搜索） -->
+                            <script>
+                                window.allTeachers = [
+                                    {% for teacher in teachers %}
+                                    {
+                                        id: {{ teacher.id }},
+                                        name: '{{ teacher.real_name }}',
+                                        username: '{{ teacher.username }}'
+                                    }{% if not loop.last %},{% endif %}
+                                    {% endfor %}
+                                ];
+                                
+                                // 已选择的教师
+                                window.initialSelectedTeachers = [
+                                    {% for teacher in major_assignment.teachers %}
+                                    {{ teacher.id }}{% if not loop.last %},{% endif %}
+                                    {% endfor %}
+                                ];
+                            </script>
+                        </div>
+                        {% endif %}
+
+                        <!-- 组队人数设置 -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="min_team_size" class="form-label">
+                                    <i class="fas fa-users me-1"></i>最小组队人数 <span class="text-danger">*</span>
+                                </label>
+                                <input type="number" class="form-control" id="min_team_size" 
+                                       name="min_team_size" value="{{ major_assignment.min_team_size }}" min="1" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="max_team_size" class="form-label">
+                                    <i class="fas fa-users me-1"></i>最大组队人数 <span class="text-danger">*</span>
+                                </label>
+                                <input type="number" class="form-control" id="max_team_size" 
+                                       name="max_team_size" value="{{ major_assignment.max_team_size }}" min="1" required>
+                            </div>
+                        </div>
+
+                        <!-- 已有附件和链接 -->
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-paperclip me-1"></i>当前作业资料
+                            </label>
+                            
+                            {% set all_attachments = major_assignment.get_all_attachments() %}
+                            {% set all_links = major_assignment.get_all_links() %}
+                            
+                            {% if all_attachments or all_links %}
+                            <div class="alert alert-info py-2 mb-3">
+                                <i class="fas fa-info-circle me-1"></i>
+                                <strong>提示：</strong>点击“删除”按钮后，文件/链接会在页面上消失，但需要点击底部的“保存修改”按钮才会真正删除。如果点击“返回”，则不会删除。
+                            </div>
+                            <!-- 附件列表 -->
+                            {% if all_attachments %}
+                            <div class="card mb-3">
+                                <div class="card-header bg-light">
+                                    <strong><i class="fas fa-file me-1"></i>附件文件</strong>
+                                </div>
+                                <div class="card-body">
+                                    <div class="list-group">
+                                        {% for attachment in all_attachments %}
+                                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <i class="fas fa-file me-2"></i>
+                                                {% if not attachment.is_old %}
+                                                <a href="{{ url_for('major_assignment.download_major_assignment_attachment', attachment_id=attachment.id) }}" target="_blank">
+                                                    {{ attachment.original_filename }}
+                                                </a>
+                                                <small class="text-muted ms-2">
+                                                    ({{ attachment.file_size|filesize }})
+                                                </small>
+                                                {% else %}
+                                                <a href="{{ url_for('major_assignment.download_major_assignment_requirement', assignment_id=major_assignment.id) }}" target="_blank">
+                                                    {{ attachment.original_filename }}
+                                                </a>
+                                                <span class="badge bg-secondary ms-2">旧系统</span>
+                                                {% endif %}
+                                            </div>
+                                            {% if not attachment.is_old %}
+                                            <div>
+                                                <input type="checkbox" class="form-check-input d-none" 
+                                                       name="delete_attachments" value="{{ attachment.id }}" id="delete_att_{{ attachment.id }}">
+                                                <button type="button" class="btn btn-sm btn-danger" 
+                                                        onclick="markForDeletion('delete_att_{{ attachment.id }}', this)">
+                                                    <i class="fas fa-trash-alt me-1"></i>删除此文件
+                                                </button>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            <!-- 链接列表 -->
+                            {% if all_links %}
+                            <div class="card mb-3">
+                                <div class="card-header bg-light">
+                                    <strong><i class="fas fa-link me-1"></i>参考链接</strong>
+                                </div>
+                                <div class="card-body">
+                                    <div class="list-group">
+                                        {% for link in all_links %}
+                                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <i class="fas fa-external-link-alt me-2"></i>
+                                                <a href="{{ link.url }}" target="_blank">{{ link.title }}</a>
+                                                {% if not link.is_old %}
+                                                <br><small class="text-muted">{{ link.url }}</small>
+                                                {% else %}
+                                                <span class="badge bg-secondary ms-2">旧系统</span>
+                                                {% endif %}
+                                            </div>
+                                            {% if not link.is_old %}
+                                            <div>
+                                                <input type="checkbox" class="form-check-input d-none" 
+                                                       name="delete_links" value="{{ link.id }}" id="delete_link_{{ link.id }}">
+                                                <button type="button" class="btn btn-sm btn-danger" 
+                                                        onclick="markForDeletion('delete_link_{{ link.id }}', this)">
+                                                    <i class="fas fa-trash-alt me-1"></i>删除此链接
+                                                </button>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% else %}
+                            <div class="alert alert-warning">
+                                <i class="fas fa-info-circle me-2"></i>还没有上传附件或添加链接
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- 添加新附件和链接 -->
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-plus-circle me-1"></i>添加新资料
+                            </label>
+                            
+                            <!-- 上传新附件 -->
+                            <div class="card mb-3">
+                                <div class="card-header bg-light">
+                                    <strong><i class="fas fa-upload me-1"></i>上传新附件</strong>
+                                </div>
+                                <div class="card-body">
+                                    <input type="file" class="form-control mb-2" id="requirement_files" 
+                                           name="requirement_files" multiple>
+                                    <small class="form-text text-muted">
+                                        <i class="fas fa-info-circle"></i> 支持PDF、Word、图片等格式，可以同时选择多个文件
+                                    </small>
+                                    
+                                    <!-- 已选文件列表 -->
+                                    <div id="selected_files_list" class="mt-2" style="display: none;">
+                                        <label class="form-label small text-muted">已选择的文件:</label>
+                                        <ul id="files_preview" class="list-group list-group-flush"></ul>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 添加新链接 -->
+                            <div class="card">
+                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                    <strong><i class="fas fa-link me-1"></i>添加新链接</strong>
+                                    <button type="button" class="btn btn-sm btn-primary" id="add_link_btn">
+                                        <i class="fas fa-plus"></i> 添加链接
+                                    </button>
+                                </div>
+                                <div class="card-body">
+                                    <div id="links_container">
+                                        <!-- 链接输入项将在这里动态添加 -->
+                                    </div>
+                                    <small class="form-text text-muted">
+                                        <i class="fas fa-info-circle"></i> 可以添加多个参考链接，每个链接可以设置标题
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 作业日期设置 -->
+                        <div class="mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-calendar-check me-1"></i>作业时间设置
+                            </label>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="start_date" class="form-label">开始日期 <span class="text-danger">*</span></label>
+                                    <input type="datetime-local" class="form-control" id="start_date" name="start_date"
+                                           value="{% if start_date_beijing %}{{ start_date_beijing.strftime('%Y-%m-%dT%H:%M') }}{% endif %}" required>
+                                    <small class="form-text text-muted">作业开始时间</small>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="end_date" class="form-label">结束日期 <span class="text-danger">*</span></label>
+                                    <input type="datetime-local" class="form-control" id="end_date" name="end_date"
+                                           value="{% if end_date_beijing %}{{ end_date_beijing.strftime('%Y-%m-%dT%H:%M') }}{% endif %}" required>
+                                    <small class="form-text text-muted">作业结束时间</small>
+                                </div>
+                            </div>
+                            <div class="alert alert-info py-2 small mt-2">
+                                <i class="fas fa-info-circle me-1"></i>
+                                <strong>说明：</strong>开始日期必须早于结束日期，所有阶段的日期必须在作业的开始和结束日期之间
+                            </div>
+                        </div>
+
+                        <!-- 提交按钮 -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('major_assignment.major_assignment_dashboard') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-1"></i>返回
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i>保存修改
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 文件选择预览
+const fileInput = document.getElementById('requirement_files');
+const filesListDiv = document.getElementById('selected_files_list');
+const filesPreview = document.getElementById('files_preview');
+
+if (fileInput) {
+    fileInput.addEventListener('change', function() {
+        if (this.files.length > 0) {
+            filesListDiv.style.display = 'block';
+            filesPreview.innerHTML = '';
+            
+            Array.from(this.files).forEach((file, index) => {
+                const li = document.createElement('li');
+                li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                
+                const fileSize = file.size < 1024 * 1024 
+                    ? (file.size / 1024).toFixed(1) + ' KB' 
+                    : (file.size / 1024 / 1024).toFixed(1) + ' MB';
+                
+                li.innerHTML = `
+                    <span>
+                        <i class="fas fa-file me-2"></i>${file.name}
+                        <small class="text-muted ms-2">(${fileSize})</small>
+                    </span>
+                `;
+                filesPreview.appendChild(li);
+            });
+        } else {
+            filesListDiv.style.display = 'none';
+        }
+    });
+}
+
+// 链接管理
+let linkCounter = 0;
+const linksContainer = document.getElementById('links_container');
+const addLinkBtn = document.getElementById('add_link_btn');
+
+function addLinkInput() {
+    linkCounter++;
+    const linkDiv = document.createElement('div');
+    linkDiv.className = 'link-input-group mb-3 p-3 border rounded';
+    linkDiv.id = `link_${linkCounter}`;
+    linkDiv.innerHTML = `
+        <div class="d-flex justify-content-between align-items-start mb-2">
+            <strong class="text-muted">链接 ${linkCounter}</strong>
+            <button type="button" class="btn btn-sm btn-danger" onclick="removeLinkInput(${linkCounter})">
+                <i class="fas fa-trash"></i> 删除
+            </button>
+        </div>
+        <div class="mb-2">
+            <label class="form-label small">链接标题</label>
+            <input type="text" class="form-control" name="requirement_url_titles" 
+                   placeholder="例如：项目要求文档">
+        </div>
+        <div>
+            <label class="form-label small">链接地址 <span class="text-danger">*</span></label>
+            <input type="url" class="form-control" name="requirement_urls" 
+                   placeholder="https://example.com" required>
+        </div>
+    `;
+    linksContainer.appendChild(linkDiv);
+}
+
+function removeLinkInput(id) {
+    const linkDiv = document.getElementById(`link_${id}`);
+    if (linkDiv) {
+        linkDiv.remove();
+    }
+}
+
+// 全局函数，供按钮调用
+window.removeLinkInput = removeLinkInput;
+
+// 标记删除函数（前端隐藏，后端真实删除）
+function markForDeletion(checkboxId, button) {
+    const checkbox = document.getElementById(checkboxId);
+    const listItem = button.closest('.list-group-item');
+    
+    if (checkbox && listItem) {
+        // 勾选隐藏的checkbox
+        checkbox.checked = true;
+        
+        // 添加删除动画并隐藏
+        listItem.style.opacity = '0.5';
+        listItem.style.transition = 'opacity 0.3s';
+        
+        setTimeout(() => {
+            listItem.style.display = 'none';
+        }, 300);
+        
+        // 改变按钮文字提示
+        button.innerHTML = '<i class="fas fa-undo me-1"></i>已标记删除';
+        button.classList.remove('btn-danger');
+        button.classList.add('btn-secondary');
+        button.disabled = true;
+    }
+}
+
+// 全局函数
+window.markForDeletion = markForDeletion;
+
+if (addLinkBtn) {
+    addLinkBtn.addEventListener('click', addLinkInput);
+}
+
+function toggleRequirementType(type) {
+    const fileSection = document.getElementById('file_upload_section');
+    const urlSection = document.getElementById('url_input_section');
+    const fileInput = document.getElementById('requirement_file');
+    const urlInput = document.getElementById('requirement_url');
+    
+    if (type === 'file') {
+        fileSection.style.display = 'block';
+        urlSection.style.display = 'none';
+        fileInput.required = false;
+        urlInput.required = false;
+        urlInput.value = '';
+    } else if (type === 'url') {
+        fileSection.style.display = 'none';
+        urlSection.style.display = 'block';
+        fileInput.required = false;
+        urlInput.required = false;
+        fileInput.value = '';
+    } else {
+        fileSection.style.display = 'none';
+        urlSection.style.display = 'none';
+        fileInput.required = false;
+        urlInput.required = false;
+        fileInput.value = '';
+        urlInput.value = '';
+    }
+}
+
+// 教师选择功能
+if (typeof window.allTeachers !== 'undefined') {
+    const selectedTeachers = new Set(window.initialSelectedTeachers || []);
+    const teacherSearch = document.getElementById('teacher_search');
+    const searchResults = document.getElementById('search_results');
+    const selectedTeachersDiv = document.getElementById('selected_teachers');
+    const teacherInputsDiv = document.getElementById('teacher_inputs');
+    const clearSearchBtn = document.getElementById('clear_search');
+    
+    // 初始化显示已选教师
+    updateSelectedTeachersUI();
+    
+    // 搜索功能
+    teacherSearch.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase().trim();
+        
+        if (searchTerm === '') {
+            searchResults.style.display = 'none';
+            searchResults.innerHTML = '';
+            return;
+        }
+        
+        const filtered = window.allTeachers.filter(t => {
+            return !selectedTeachers.has(t.id) && 
+                   (t.name.toLowerCase().includes(searchTerm) || 
+                    t.username.toLowerCase().includes(searchTerm));
+        });
+        
+        if (filtered.length > 0) {
+            searchResults.innerHTML = filtered.map(t => `
+                <a href="#" class="list-group-item list-group-item-action" data-id="${t.id}" data-name="${t.name}" data-username="${t.username}">
+                    <i class="fas fa-user-plus me-2"></i>${t.name} (${t.username})
+                </a>
+            `).join('');
+            searchResults.style.display = 'block';
+        } else {
+            searchResults.innerHTML = '<div class="list-group-item text-muted">没有找到匹配的教师</div>';
+            searchResults.style.display = 'block';
+        }
+    });
+    
+    // 清空搜索
+    clearSearchBtn.addEventListener('click', function() {
+        teacherSearch.value = '';
+        searchResults.style.display = 'none';
+        searchResults.innerHTML = '';
+    });
+    
+    // 点击搜索结果添加教师
+    searchResults.addEventListener('click', function(e) {
+        e.preventDefault();
+        const item = e.target.closest('a[data-id]');
+        if (!item) return;
+        
+        const id = parseInt(item.dataset.id);
+        const name = item.dataset.name;
+        const username = item.dataset.username;
+        
+        addTeacher(id, name, username);
+        
+        teacherSearch.value = '';
+        searchResults.style.display = 'none';
+        searchResults.innerHTML = '';
+    });
+    
+    // 添加教师
+    function addTeacher(id, name, username) {
+        if (selectedTeachers.has(id)) return;
+        
+        selectedTeachers.add(id);
+        updateSelectedTeachersUI();
+    }
+    
+    // 移除教师
+    function removeTeacher(id) {
+        selectedTeachers.delete(id);
+        updateSelectedTeachersUI();
+    }
+    
+    // 更新UI
+    function updateSelectedTeachersUI() {
+        if (selectedTeachers.size === 0) {
+            selectedTeachersDiv.innerHTML = '<span class="text-muted">暂无</span>';
+            teacherInputsDiv.innerHTML = '';
+            return;
+        }
+        
+        const tags = Array.from(selectedTeachers).map(id => {
+            const teacher = window.allTeachers.find(t => t.id === id);
+            return `
+                <span class="badge bg-primary" style="font-size: 0.9rem; padding: 0.5rem 0.75rem;">
+                    ${teacher.name} (${teacher.username})
+                    <button type="button" class="btn-close btn-close-white ms-2" style="font-size: 0.7rem;" 
+                            onclick="removeTeacher(${id})" aria-label="移除"></button>
+                </span>
+            `;
+        }).join('');
+        
+        const inputs = Array.from(selectedTeachers).map(id => 
+            `<input type="hidden" name="teacher_ids" value="${id}">`
+        ).join('');
+        
+        selectedTeachersDiv.innerHTML = tags;
+        teacherInputsDiv.innerHTML = inputs;
+    }
+    
+    // 全局函数，供标签中的删除按钮调用
+    window.removeTeacher = removeTeacher;
+}
+
+// 验证组队人数
+document.querySelector('form').addEventListener('submit', function(e) {
+    const minSize = parseInt(document.getElementById('min_team_size').value);
+    const maxSize = parseInt(document.getElementById('max_team_size').value);
+    
+    if (minSize > maxSize) {
+        e.preventDefault();
+        alert('最小组队人数不能大于最大组队人数！');
+        return false;
+    }
+    
+    if (minSize < 1 || maxSize < 1) {
+        e.preventDefault();
+        alert('组队人数必须大于0！');
+        return false;
+    }
+});
+</script>
+{% endblock %}

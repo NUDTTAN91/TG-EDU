@@ -1,0 +1,388 @@
+{% extends "base.html" %}
+
+{% block title %}编辑班级 - {{ class_obj.name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <!-- 页面头部 -->
+        <div class="text-center mb-4">
+            <div class="class-icon mb-3">
+                <i class="fas fa-edit" style="font-size: 3.5rem; color: var(--warning-color);"></i>
+            </div>
+            <h2 class="fw-bold">
+                <i class="fas fa-pencil-alt me-2"></i>
+                编辑班级
+            </h2>
+            <p class="text-muted">修改 {{ class_obj.name }} 的信息和设置</p>
+        </div>
+
+        <!-- 编辑表单 -->
+        <div class="card form-card">
+            <div class="card-header bg-gradient">
+                <h5 class="mb-0">
+                    <i class="fas fa-clipboard-list me-2"></i>
+                    班级信息设置
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST" class="needs-validation" novalidate>
+                    <div class="row">
+                        <div class="col-md-6 mb-4">
+                            <label for="name" class="form-label">
+                                <i class="fas fa-tag me-2"></i>
+                                班级名称 <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="name" 
+                                   name="name" 
+                                   value="{{ class_obj.name }}"
+                                   placeholder="如：高三(1)班"
+                                   required>
+                            <div class="invalid-feedback">
+                                请输入班级名称
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-4">
+                            <label for="code" class="form-label">
+                                <i class="fas fa-code me-2"></i>
+                                班级代码 <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="code" 
+                                   name="code" 
+                                   value="{{ class_obj.code }}"
+                                   placeholder="如：G31"
+                                   required>
+                            <div class="invalid-feedback">
+                                请输入班级代码
+                            </div>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                班级代码用于快速识别班级，建议使用简短易记的字符
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12 mb-4">
+                            <label for="description" class="form-label">
+                                <i class="fas fa-align-left me-2"></i>
+                                班级描述
+                            </label>
+                            <textarea class="form-control" 
+                                      id="description" 
+                                      name="description" 
+                                      rows="4" 
+                                      placeholder="输入班级描述信息...">{{ class_obj.description or '' }}</textarea>
+                            <div class="form-text">
+                                <i class="fas fa-lightbulb me-1"></i>
+                                可以描述班级的特色、目标或其他相关信息
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-4">
+                            <label for="grade" class="form-label">
+                                <i class="fas fa-layer-group me-2"></i>
+                                年级
+                            </label>
+                            <select class="form-select" id="grade" name="grade">
+                                <option value="">请选择年级</option>
+                                <option value="小学一年级" {% if class_obj.grade == '小学一年级' %}selected{% endif %}>小学一年级</option>
+                                <option value="小学二年级" {% if class_obj.grade == '小学二年级' %}selected{% endif %}>小学二年级</option>
+                                <option value="小学三年级" {% if class_obj.grade == '小学三年级' %}selected{% endif %}>小学三年级</option>
+                                <option value="小学四年级" {% if class_obj.grade == '小学四年级' %}selected{% endif %}>小学四年级</option>
+                                <option value="小学五年级" {% if class_obj.grade == '小学五年级' %}selected{% endif %}>小学五年级</option>
+                                <option value="小学六年级" {% if class_obj.grade == '小学六年级' %}selected{% endif %}>小学六年级</option>
+                                <option value="初中一年级" {% if class_obj.grade == '初中一年级' %}selected{% endif %}>初中一年级</option>
+                                <option value="初中二年级" {% if class_obj.grade == '初中二年级' %}selected{% endif %}>初中二年级</option>
+                                <option value="初中三年级" {% if class_obj.grade == '初中三年级' %}selected{% endif %}>初中三年级</option>
+                                <option value="高中一年级" {% if class_obj.grade == '高中一年级' %}selected{% endif %}>高中一年级</option>
+                                <option value="高中二年级" {% if class_obj.grade == '高中二年级' %}selected{% endif %}>高中二年级</option>
+                                <option value="高中三年级" {% if class_obj.grade == '高中三年级' %}selected{% endif %}>高中三年级</option>
+                                <option value="大学一年级" {% if class_obj.grade == '大学一年级' %}selected{% endif %}>大学一年级</option>
+                                <option value="大学二年级" {% if class_obj.grade == '大学二年级' %}selected{% endif %}>大学二年级</option>
+                                <option value="大学三年级" {% if class_obj.grade == '大学三年级' %}selected{% endif %}>大学三年级</option>
+                                <option value="大学四年级" {% if class_obj.grade == '大学四年级' %}selected{% endif %}>大学四年级</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-6 mb-4">
+                            <label for="teachers" class="form-label">
+                                <i class="fas fa-chalkboard-teacher me-2"></i>
+                                分配教师
+                            </label>
+                            {% if current_user.is_super_admin %}
+                                <select class="form-select" id="teachers" name="teachers" multiple>
+                                    {% for teacher in teachers %}
+                                        <option value="{{ teacher.id }}" 
+                                                {% if teacher in class_obj.teachers %}selected{% endif %}>
+                                            {{ teacher.real_name }} ({{ teacher.username }})
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">
+                                    <i class="fas fa-users me-1"></i>
+                                    按住 Ctrl 键可选择多个教师
+                                </div>
+                            {% else %}
+                                <div class="assigned-teachers">
+                                    {% if class_obj.teachers %}
+                                        {% for teacher in class_obj.teachers %}
+                                            <div class="teacher-badge">
+                                                <i class="fas fa-user-tie me-2"></i>
+                                                {{ teacher.real_name }} ({{ teacher.username }})
+                                            </div>
+                                        {% endfor %}
+                                    {% else %}
+                                        <div class="text-muted">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            暂无分配教师
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="form-text">
+                                    <i class="fas fa-lock me-1"></i>
+                                    只有超级管理员可以修改教师分配
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-4">
+                            <label class="form-label">
+                                <i class="fas fa-toggle-on me-2"></i>
+                                班级状态
+                            </label>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" 
+                                       type="checkbox" 
+                                       id="is_active" 
+                                       name="is_active" 
+                                       {% if class_obj.is_active %}checked{% endif %}>
+                                <label class="form-check-label" for="is_active">
+                                    <span class="status-text">
+                                        {% if class_obj.is_active %}
+                                            <i class="fas fa-check-circle text-success me-1"></i>激活状态
+                                        {% else %}
+                                            <i class="fas fa-times-circle text-danger me-1"></i>停用状态
+                                        {% endif %}
+                                    </span>
+                                </label>
+                            </div>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                停用的班级将不会显示在班级列表中
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-4">
+                            <label class="form-label">
+                                <i class="fas fa-info-circle me-2"></i>
+                                创建信息
+                            </label>
+                            <div class="creation-info">
+                                <div class="info-item">
+                                    <strong>创建者：</strong> {{ class_obj.creator.real_name }}
+                                </div>
+                                <div class="info-item">
+                                    <strong>创建时间：</strong> {{ class_obj.created_at|beijing_time }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-3 justify-content-end">
+                        <a href="{{ url_for('class_mgmt.manage_classes') }}" class="btn btn-secondary btn-lg">
+                            <i class="fas fa-arrow-left me-2"></i>
+                            返回
+                        </a>
+                        <button type="submit" class="btn btn-warning btn-lg">
+                            <i class="fas fa-save me-2"></i>
+                            保存修改
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- 当前班级统计 -->
+        <div class="card mt-4">
+            <div class="card-header bg-gradient-info">
+                <h5 class="mb-0 text-white">
+                    <i class="fas fa-chart-bar me-2"></i>
+                    班级统计信息
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 text-center">
+                        <div class="stat-item">
+                            <h3 class="text-primary">{{ class_obj.students|length }}</h3>
+                            <p class="text-muted mb-0">学生人数</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <div class="stat-item">
+                            <h3 class="text-success">{{ class_obj.teachers|length }}</h3>
+                            <p class="text-muted mb-0">任课教师</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <div class="stat-item">
+                            <h3 class="text-warning">{{ assignments_count or 0 }}</h3>
+                            <p class="text-muted mb-0">班级作业</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 表单验证
+    const forms = document.querySelectorAll('.needs-validation');
+    Array.from(forms).forEach(form => {
+        form.addEventListener('submit', event => {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        }, false);
+    });
+    
+    // 状态切换动态文本
+    const statusSwitch = document.getElementById('is_active');
+    const statusText = document.querySelector('.status-text');
+    
+    statusSwitch.addEventListener('change', function() {
+        if (this.checked) {
+            statusText.innerHTML = '<i class="fas fa-check-circle text-success me-1"></i>激活状态';
+        } else {
+            statusText.innerHTML = '<i class="fas fa-times-circle text-danger me-1"></i>停用状态';
+        }
+    });
+    
+    // 多选下拉框美化
+    const teacherSelect = document.getElementById('teachers');
+    if (teacherSelect) {
+        teacherSelect.addEventListener('change', function() {
+            const selectedCount = this.selectedOptions.length;
+            if (selectedCount > 0) {
+                this.style.borderColor = 'var(--success-color)';
+            } else {
+                this.style.borderColor = '';
+            }
+        });
+    }
+});
+</script>
+
+<style>
+.form-card {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    border: none;
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.class-icon {
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+.bg-gradient {
+    background: linear-gradient(135deg, var(--warning-color), var(--accent-color));
+    color: white;
+}
+
+.bg-gradient-info {
+    background: linear-gradient(135deg, var(--info-color), var(--accent-color));
+}
+
+.creation-info {
+    background: var(--bg-glass);
+    padding: 1rem;
+    border-radius: 8px;
+    border-left: 4px solid var(--info-color);
+}
+
+.info-item {
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.info-item:last-child {
+    margin-bottom: 0;
+}
+
+.stat-item {
+    padding: 1rem;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.stat-item:hover {
+    background: var(--bg-glass);
+    transform: translateY(-2px);
+}
+
+.form-select[multiple] {
+    min-height: 120px;
+}
+
+.form-check-input:checked {
+    background-color: var(--success-color);
+    border-color: var(--success-color);
+}
+
+.was-validated .form-control:valid,
+.was-validated .form-select:valid {
+    border-color: var(--success-color);
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%2328a745' d='m2.3 6.73.4.37 3.2-3.73L5.54 3zM0 0h8v8H0z'/%3e%3c/svg%3e");
+}
+
+.assigned-teachers {
+    background: var(--bg-glass);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    min-height: 120px;
+}
+
+.teacher-badge {
+    display: inline-block;
+    background: var(--success-color);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    margin: 0.25rem;
+    font-size: 0.9rem;
+}
+
+.teacher-badge i {
+    opacity: 0.8;
+}
+</style>
+{% endblock %}

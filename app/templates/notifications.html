@@ -1,0 +1,407 @@
+{% extends "base.html" %}
+
+{% block title %}通知中心 - TG作业系统{% endblock %}
+
+{% block content %}
+<style>
+/* 修复标签页激活状态的样式问题 */
+.nav-tabs .nav-link {
+    color: #495057 !important;  /* 深灰色，未激活状态 */
+    background-color: transparent;
+    border: 1px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.nav-tabs .nav-link:hover {
+    color: #0d6efd !important;
+    background-color: #f8f9fa;
+    border-color: #e9ecef #e9ecef #dee2e6;
+    isolation: isolate;
+}
+
+.nav-tabs .nav-link.active {
+    color: #0d6efd !important;  /* Bootstrap 主色蓝，激活状态 */
+    background-color: #fff !important;
+    border-color: #dee2e6 #dee2e6 #fff !important;
+    font-weight: 600;
+}
+
+/* 确保徽章在激活标签上也清晰可见 */
+.nav-tabs .nav-link.active .badge {
+    background-color: #dc3545 !important;
+    color: #fff !important;
+}
+
+.nav-tabs .nav-link .badge {
+    background-color: #dc3545;
+    color: #fff;
+    margin-left: 5px;
+}
+</style>
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <!-- 页面标题和操作按钮 -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>
+                    <i class="fas fa-bell"></i> 
+                    {% if show_unread_only %}未读通知{% else %}通知中心{% endif %}
+                </h2>
+                <div>
+                    {% if current_user.is_teacher or current_user.is_super_admin %}
+                    <a href="{{ url_for('notification.create_notification_page') }}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> 发送通知
+                    </a>
+                    {% endif %}
+                    {% if not show_unread_only %}
+                    <form action="{{ url_for('notification.mark_all_read') }}" method="POST" style="display: inline;">
+                        <button type="submit" class="btn btn-secondary">
+                            <i class="fas fa-check-double"></i> 全部标记为已读
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- 筛选标签 -->
+            <ul class="nav nav-tabs mb-3">
+                <li class="nav-item">
+                    <a class="nav-link {% if not show_unread_only %}active{% endif %}" 
+                       href="{{ url_for('notification.notifications') }}">
+                        全部通知
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if show_unread_only %}active{% endif %}" 
+                       href="{{ url_for('notification.unread_notifications') }}">
+                        未读通知
+                        {% if unread_notification_count > 0 %}
+                        <span class="badge bg-danger">{{ unread_notification_count }}</span>
+                        {% endif %}
+                    </a>
+                </li>
+            </ul>
+
+            <!-- 通知列表 -->
+            {% if notifications %}
+            <div class="list-group">
+                {% for notification in notifications %}
+                <div class="list-group-item list-group-item-action {% if not notification.is_read %}bg-light border-primary{% endif %}">
+                    <div class="d-flex w-100 justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center mb-2">
+                                <!-- 通知类型图标 -->
+                                {% if notification.notification_type == 'grade' %}
+                                <i class="fas fa-star text-warning me-2"></i>
+                                {% elif notification.notification_type == 'assignment' %}
+                                <i class="fas fa-tasks text-info me-2"></i>
+                                {% else %}
+                                <i class="fas fa-info-circle text-primary me-2"></i>
+                                {% endif %}
+                                
+                                <!-- 通知标题 -->
+                                <h5 class="mb-0">
+                                    {{ notification.title }}
+                                    {% if not notification.is_read %}
+                                    <span class="badge bg-danger ms-2">新</span>
+                                    {% endif %}
+                                </h5>
+                            </div>
+                            
+                            <!-- 通知内容 -->
+                            <p class="mb-2 text-muted" style="white-space: pre-wrap;">{{ notification.content }}</p>
+                            
+                            <!-- 发送者和时间 -->
+                            <small class="text-muted">
+                                <i class="fas fa-user"></i> {{ notification.sender.real_name }}
+                                <i class="fas fa-clock ms-3"></i> {{ notification.created_at|beijing_time }}
+                            </small>
+                            
+                            <!-- 团队邀请操作按钮 -->
+                            {% if notification.notification_type == 'team_invitation' %}
+                            <div class="mt-3">
+                                {% set invitation = notification.get_team_invitation() %}
+                                {% if invitation and invitation.status == 'pending' %}
+                                <form action="{{ url_for('major_assignment.accept_team_invitation', invitation_id=invitation.id) }}" 
+                                      method="POST" style="display: inline;">
+                                    <button type="submit" class="btn btn-sm btn-success">
+                                        <i class="fas fa-check me-1"></i>接受邀请
+                                    </button>
+                                </form>
+                                <button class="btn btn-sm btn-danger" data-bs-toggle="modal" 
+                                        data-bs-target="#rejectInvitationModal{{ invitation.id }}">
+                                    <i class="fas fa-times me-1"></i>拒绝邀请
+                                </button>
+                                
+                                <!-- 拒绝邀请模态框 -->
+                                <div class="modal fade" id="rejectInvitationModal{{ invitation.id }}" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header bg-danger text-white">
+                                                <h5 class="modal-title">拒绝团队邀请</h5>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <form action="{{ url_for('major_assignment.reject_team_invitation', invitation_id=invitation.id) }}" method="POST">
+                                                <div class="modal-body">
+                                                    <p>确定要拒绝该团队邀请吗？</p>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                                                    <button type="submit" class="btn btn-danger">确认拒绝</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% elif invitation and invitation.status == 'accepted' %}
+                                <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>已接受</span>
+                                {% elif invitation and invitation.status == 'rejected' %}
+                                <span class="badge bg-danger"><i class="fas fa-times-circle me-1"></i>已拒绝</span>
+                                {% elif invitation and invitation.status == 'cancelled' %}
+                                <span class="badge bg-secondary"><i class="fas fa-ban me-1"></i>已取消</span>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                            
+                            <!-- 解散团队申请操作按钮 -->
+                            {% if notification.notification_type == 'dissolve_request' and (current_user.is_teacher or current_user.is_super_admin) %}
+                            <div class="mt-3">
+                                {% set dissolve_request = notification.get_dissolve_request() %}
+                                {% if dissolve_request and dissolve_request.status == 'pending' %}
+                                <form action="{{ url_for('major_assignment.approve_dissolve_request', request_id=dissolve_request.id) }}" 
+                                      method="POST" style="display: inline;">
+                                    <button type="submit" class="btn btn-sm btn-success">
+                                        <i class="fas fa-check me-1"></i>批准解散
+                                    </button>
+                                </form>
+                                <button class="btn btn-sm btn-danger" data-bs-toggle="modal" 
+                                        data-bs-target="#rejectDissolveModal{{ dissolve_request.id }}">
+                                    <i class="fas fa-times me-1"></i>拒绝申请
+                                </button>
+                                
+                                <!-- 拒绝解散申请模态框 -->
+                                <div class="modal fade" id="rejectDissolveModal{{ dissolve_request.id }}" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header bg-danger text-white">
+                                                <h5 class="modal-title">拒绝解散申请</h5>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <form action="{{ url_for('major_assignment.reject_dissolve_request', request_id=dissolve_request.id) }}" method="POST">
+                                                <div class="modal-body">
+                                                    <div class="mb-3">
+                                                        <label for="review_comment{{ dissolve_request.id }}" class="form-label">拒绝理由：</label>
+                                                        <textarea class="form-control" id="review_comment{{ dissolve_request.id }}" 
+                                                                  name="review_comment" rows="3" 
+                                                                  placeholder="请输入拒绝理由（选填）"></textarea>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                                                    <button type="submit" class="btn btn-danger">确认拒绝</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% elif dissolve_request and dissolve_request.status == 'approved' %}
+                                <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>已批准解散</span>
+                                {% elif dissolve_request and dissolve_request.status == 'rejected' %}
+                                <span class="badge bg-danger"><i class="fas fa-times-circle me-1"></i>已拒绝</span>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                            
+                            <!-- 退组申请操作按钮 -->
+                            {% if notification.notification_type == 'leave_request' %}
+                            <div class="mt-3">
+                                {% set leave_request = notification.get_leave_request() %}
+                                {% if leave_request and leave_request.status == 'pending' %}
+                                <!-- 组长处理退组 -->
+                                <form action="{{ url_for('major_assignment.approve_leave_request_by_leader', request_id=leave_request.id) }}" 
+                                      method="POST" style="display: inline;">
+                                    <button type="submit" class="btn btn-sm btn-success">
+                                        <i class="fas fa-check me-1"></i>批准退组
+                                    </button>
+                                </form>
+                                <button class="btn btn-sm btn-danger" data-bs-toggle="modal" 
+                                        data-bs-target="#rejectLeaveModal{{ leave_request.id }}">
+                                    <i class="fas fa-times me-1"></i>拒绝申请
+                                </button>
+                                
+                                <!-- 拒绝退组申请模态框 -->
+                                <div class="modal fade" id="rejectLeaveModal{{ leave_request.id }}" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header bg-danger text-white">
+                                                <h5 class="modal-title">拒绝退组申请</h5>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <form action="{{ url_for('major_assignment.reject_leave_request_by_leader', request_id=leave_request.id) }}" method="POST">
+                                                <div class="modal-body">
+                                                    <p>确定要拒绝该退组申请吗？</p>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                                                    <button type="submit" class="btn btn-danger">确认拒绝</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% elif leave_request and leave_request.status == 'pending_teacher' and (current_user.is_teacher or current_user.is_super_admin) %}
+                                <!-- 教师处理退组 -->
+                                <form action="{{ url_for('major_assignment.approve_leave_request_by_teacher', request_id=leave_request.id) }}" 
+                                      method="POST" style="display: inline;">
+                                    <button type="submit" class="btn btn-sm btn-success">
+                                        <i class="fas fa-check me-1"></i>批准退组
+                                    </button>
+                                </form>
+                                <button class="btn btn-sm btn-danger" data-bs-toggle="modal" 
+                                        data-bs-target="#rejectLeaveByTeacherModal{{ leave_request.id }}">
+                                    <i class="fas fa-times me-1"></i>拒绝申请
+                                </button>
+                                
+                                <!-- 教师拒绝退组申请模态框 -->
+                                <div class="modal fade" id="rejectLeaveByTeacherModal{{ leave_request.id }}" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header bg-danger text-white">
+                                                <h5 class="modal-title">拒绝退组申请</h5>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <form action="{{ url_for('major_assignment.reject_leave_request_by_teacher', request_id=leave_request.id) }}" method="POST">
+                                                <div class="modal-body">
+                                                    <p>确定要拒绝该退组申请吗？</p>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                                                    <button type="submit" class="btn btn-danger">确认拒绝</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% elif leave_request and leave_request.status in ['approved', 'leader_approved'] %}
+                                <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>已批准退组</span>
+                                {% elif leave_request and leave_request.status in ['rejected', 'leader_rejected'] %}
+                                <span class="badge bg-danger"><i class="fas fa-times-circle me-1"></i>已拒绝</span>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                            
+                            <!-- 相关链接 -->
+                            {% if notification.related_assignment_id %}
+                            <div class="mt-2">
+                                <a href="{{ url_for('submission.student_submission_history', assignment_id=notification.related_assignment_id) }}" 
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-eye"></i> 查看作业详情
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- 操作按钮 -->
+                        <div class="ms-3">
+                            {% if not notification.is_read %}
+                            <button class="btn btn-sm btn-success mark-read-btn" 
+                                    data-notification-id="{{ notification.id }}">
+                                <i class="fas fa-check"></i> 标记已读
+                            </button>
+                            {% endif %}
+                            <form action="{{ url_for('notification.delete_notification', notification_id=notification.id) }}" 
+                                  method="POST" style="display: inline;" 
+                                  onsubmit="return confirm('确定要删除这条通知吗？');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- 分页 -->
+            {% if pagination.pages > 1 %}
+            <nav aria-label="通知分页" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if pagination.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ pagination.prev_num }}">上一页</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">上一页</span>
+                    </li>
+                    {% endif %}
+                    
+                    {% for page in pagination.iter_pages() %}
+                        {% if page %}
+                            {% if page == pagination.page %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ page }}</span>
+                            </li>
+                            {% else %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page }}">{{ page }}</a>
+                            </li>
+                            {% endif %}
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if pagination.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ pagination.next_num }}">下一页</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">下一页</span>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+
+            {% else %}
+            <div class="alert alert-info text-center">
+                <i class="fas fa-inbox fa-3x mb-3"></i>
+                <p class="mb-0">{% if show_unread_only %}暂无未读通知{% else %}暂无通知{% endif %}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+// 标记通知为已读
+document.querySelectorAll('.mark-read-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const notificationId = this.dataset.notificationId;
+        
+        fetch(`/notifications/${notificationId}/read`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 刷新页面以更新显示
+                location.reload();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('操作失败，请重试');
+        });
+    });
+});
+</script>
+{% endblock %}

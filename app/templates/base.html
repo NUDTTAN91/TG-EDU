@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}作业收集系统{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="{{ url_for('static', filename='css/vendor/bootstrap.min.css') }}" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="{{ url_for('static', filename='css/vendor/font-awesome.min.css') }}" rel="stylesheet">
+    <!-- 自定义样式 -->
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    
+    <!-- 页面图标 -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg fixed-top">
+        <div class="container-fluid">
+            <!-- 侧边栏切换按钮 -->
+            {% if current_user.is_authenticated and request.endpoint != 'index' %}
+            <button class="btn btn-outline-light d-lg-none me-2" type="button" id="sidebarToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+            {% endif %}
+            
+            <a class="navbar-brand" href="{{ url_for('main.index') }}">
+                <i class="fas fa-graduation-cap me-2"></i>
+                TG作业系统
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <div class="navbar-nav ms-auto d-flex align-items-center">
+                    {% if current_user.is_authenticated %}
+                        <!-- 通知铃铛图标 -->
+                        <div class="nav-item dropdown me-3">
+                            <a class="nav-link position-relative" href="#" id="notificationDropdown" 
+                               role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-bell fs-5"></i>
+                                {% if unread_notification_count > 0 %}
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                    {{ unread_notification_count }}
+                                    <span class="visually-hidden">未读通知</span>
+                                </span>
+                                {% endif %}
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end notification-dropdown" 
+                                aria-labelledby="notificationDropdown" style="min-width: 320px; max-height: 400px; overflow-y: auto;">
+                                <li class="dropdown-header d-flex justify-content-between align-items-center">
+                                    <span><i class="fas fa-bell me-2"></i>通知中心</span>
+                                    {% if unread_notification_count > 0 %}
+                                    <span class="badge bg-danger">{{ unread_notification_count }}</span>
+                                    {% endif %}
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                
+                                <!-- 显示最近3条未读通知 -->
+                                {% if current_user.is_authenticated %}
+                                    {% set all_unread = current_user.received_notifications|selectattr('is_read', 'equalto', False)|list|sort(attribute='created_at', reverse=True) %}
+                                    {% if all_unread %}
+                                        {% for notification in all_unread[:3] %}
+                                        <li>
+                                            <a class="dropdown-item notification-item" href="{{ url_for('notification.notifications') }}">
+                                                <div class="d-flex">
+                                                    <div class="flex-shrink-0">
+                                                        {% if notification.notification_type == 'grade' %}
+                                                        <i class="fas fa-star text-warning"></i>
+                                                        {% elif notification.notification_type == 'assignment' %}
+                                                        <i class="fas fa-tasks text-info"></i>
+                                                        {% else %}
+                                                        <i class="fas fa-info-circle text-primary"></i>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="flex-grow-1 ms-2">
+                                                        <h6 class="mb-1 small">{{ notification.title }}</h6>
+                                                        <p class="mb-1 text-muted small" style="font-size: 0.85rem;">
+                                                            {{ notification.content[:50] }}{% if notification.content|length > 50 %}...{% endif %}
+                                                        </p>
+                                                        <small class="text-muted" style="font-size: 0.75rem;">
+                                                            {{ notification.created_at|beijing_short }}
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </a>
+                                        </li>
+                                        {% endfor %}
+                                    {% else %}
+                                        <li class="dropdown-item text-center text-muted">
+                                            <i class="fas fa-inbox"></i> 暂无未读通知
+                                        </li>
+                                    {% endif %}
+                                {% endif %}
+                                
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <a class="dropdown-item text-center text-primary" href="{{ url_for('notification.notifications') }}">
+                                        <i class="fas fa-list me-1"></i>查看所有通知
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                        
+                        <!-- 显示当前用户信息 -->
+                        <span class="nav-text text-light mx-2">
+                            <i class="fas fa-user me-1"></i>{{ current_user.real_name }}
+                        </span>
+                        
+                        <a class="nav-link" href="{{ url_for('auth.logout') }}">
+                            <i class="fas fa-sign-out-alt me-1"></i>退出
+                        </a>
+                    {% else %}
+                        <a class="nav-link" href="{{ url_for('auth.login') }}">
+                            <i class="fas fa-user me-1"></i>用户登录
+                        </a>
+                    {% endif %}
+
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    {% if current_user.is_authenticated and request.endpoint != 'index' %}
+    <!-- 全局左侧菜单栏（首页除外） -->
+    <div class="global-sidebar" id="globalSidebar">
+        <div class="sidebar-header">
+            <div class="user-info">
+                <div class="user-avatar">
+                    {% if current_user.is_super_admin %}
+                        <i class="fas fa-crown"></i>
+                    {% elif current_user.is_teacher %}
+                        <i class="fas fa-chalkboard-teacher"></i>
+                    {% else %}
+                        <i class="fas fa-user-graduate"></i>
+                    {% endif %}
+                </div>
+                <div class="user-details">
+                    <h6 class="user-name">{{ current_user.real_name }}</h6>
+                    <p class="user-role">
+                        {% if current_user.is_super_admin %}
+                            超级管理员
+                        {% elif current_user.is_teacher %}
+                            教师
+                        {% else %}
+                            学生
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="sidebar-content">
+            <!-- 主页快捷方式 -->
+            <div class="sidebar-section">
+                <h6 class="section-title">
+                    <i class="fas fa-home me-2"></i>
+                    主页导航
+                </h6>
+                <div class="menu-list">
+                    <a href="{{ url_for('main.index') }}" class="menu-item">
+                        <div class="menu-icon">
+                            <i class="fas fa-home"></i>
+                        </div>
+                        <span class="menu-title">系统首页</span>
+                    </a>
+                    
+                    {% if current_user.is_super_admin %}
+                        <a href="{{ url_for('admin.super_admin_dashboard') }}" class="menu-item">
+                            <div class="menu-icon">
+                                <i class="fas fa-tachometer-alt"></i>
+                            </div>
+                            <span class="menu-title">超级管理员</span>
+                        </a>
+                    {% elif current_user.is_teacher %}
+                        <a href="{{ url_for('admin.teacher_dashboard') }}" class="menu-item">
+                            <div class="menu-icon">
+                                <i class="fas fa-chalkboard-teacher"></i>
+                            </div>
+                            <span class="menu-title">教师后台</span>
+                        </a>
+                    {% else %}
+                        <a href="{{ url_for('student.dashboard') }}" class="menu-item">
+                            <div class="menu-icon">
+                                <i class="fas fa-user-graduate"></i>
+                            </div>
+                            <span class="menu-title">学生中心</span>
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- 快捷操作 -->
+            {% if current_user.is_super_admin or current_user.is_teacher %}
+            <div class="sidebar-section">
+                <h6 class="section-title">
+                    <i class="fas fa-rocket me-2"></i>
+                    快捷操作
+                </h6>
+                <div class="menu-list">
+                    {% if current_user.is_super_admin %}
+                        <!-- 1. 用户管理 -->
+                        <a href="{{ url_for('user_mgmt.manage_users') }}" class="menu-item primary">
+                            <div class="menu-icon">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <span class="menu-title">用户管理</span>
+                        </a>
+                        
+                        <!-- 2. 班级管理 -->
+                        <a href="{{ url_for('class_mgmt.manage_classes') }}" class="menu-item warning">
+                            <div class="menu-icon">
+                                <i class="fas fa-school"></i>
+                            </div>
+                            <span class="menu-title">班级管理</span>
+                        </a>
+                        
+                        <!-- 3. 创建作业 -->
+                        <a href="{{ url_for('assignment.create_assignment') }}" class="menu-item success">
+                            <div class="menu-icon">
+                                <i class="fas fa-plus-circle"></i>
+                            </div>
+                            <span class="menu-title">创建作业</span>
+                        </a>
+                        
+                        <!-- 4. 作业管理 -->
+                        <a href="{{ url_for('admin.super_admin_dashboard') }}" class="menu-item info">
+                            <div class="menu-icon">
+                                <i class="fas fa-tasks"></i>
+                            </div>
+                            <span class="menu-title">作业管理</span>
+                        </a>
+                        
+                        <!-- 5. 大作业管理 -->
+                        <a href="{{ url_for('major_assignment.major_assignment_dashboard') }}" class="menu-item purple">
+                            <div class="menu-icon">
+                                <i class="fas fa-project-diagram"></i>
+                            </div>
+                            <span class="menu-title">大作业管理</span>
+                        </a>
+                        
+                        <!-- 6. 补交管理 -->
+                        <a href="{{ url_for('makeup.manage_requests') }}" class="menu-item warning">
+                            <div class="menu-icon">
+                                <i class="fas fa-file-upload"></i>
+                            </div>
+                            <span class="menu-title">补交管理</span>
+                        </a>
+                        
+                        <div class="menu-item secondary" onclick="showBatchImport()">
+                            <div class="menu-icon">
+                                <i class="fas fa-file-excel"></i>
+                            </div>
+                            <span class="menu-title">批量导入</span>
+                        </div>
+                        
+                        <!-- 7. 系统重置 -->
+                        <div class="menu-item danger" onclick="showSystemReset()">
+                            <div class="menu-icon">
+                                <i class="fas fa-undo"></i>
+                            </div>
+                            <span class="menu-title">系统重置</span>
+                        </div>
+                    {% endif %}
+                    
+                    {% if current_user.is_teacher %}
+                        <a href="{{ url_for('assignment.create_assignment') }}" class="menu-item success">
+                            <div class="menu-icon">
+                                <i class="fas fa-plus-circle"></i>
+                            </div>
+                            <span class="menu-title">创建作业</span>
+                        </a>
+                        
+                        <a href="{{ url_for('admin.teacher_dashboard') }}" class="menu-item info">
+                            <div class="menu-icon">
+                                <i class="fas fa-tasks"></i>
+                            </div>
+                            <span class="menu-title">作业管理</span>
+                        </a>
+                        
+                        <!-- 大作业管理 -->
+                        <a href="{{ url_for('major_assignment.major_assignment_dashboard') }}" class="menu-item purple">
+                            <div class="menu-icon">
+                                <i class="fas fa-project-diagram"></i>
+                            </div>
+                            <span class="menu-title">大作业管理</span>
+                        </a>
+                        
+                        <!-- 补交管理 -->
+                        {# 暂时禁用补交功能
+                        <a href="{{ url_for('makeup.manage_requests') }}" class="menu-item warning">
+                            <div class="menu-icon">
+                                <i class="fas fa-file-upload"></i>
+                            </div>
+                            <span class="menu-title">补交管理</span>
+                        </a>
+                        #}
+                        
+                        <a href="{{ url_for('user_mgmt.manage_users') }}" class="menu-item info">
+                            <div class="menu-icon">
+                                <i class="fas fa-user-graduate"></i>
+                            </div>
+                            <span class="menu-title">学生管理</span>
+                        </a>
+                        
+                        <a href="{{ url_for('class_mgmt.manage_classes') }}" class="menu-item warning">
+                            <div class="menu-icon">
+                                <i class="fas fa-school"></i>
+                            </div>
+                            <span class="menu-title">班级管理</span>
+                        </a>
+                        
+                        <div class="menu-item secondary" onclick="showBatchImport()">
+                            <div class="menu-icon">
+                                <i class="fas fa-file-excel"></i>
+                            </div>
+                            <span class="menu-title">批量导入</span>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- 学生快捷操作 -->
+            {% if not current_user.is_teacher and not current_user.is_super_admin %}
+            <div class="sidebar-section">
+                <h6 class="section-title">
+                    <i class="fas fa-rocket me-2"></i>
+                    学生功能
+                </h6>
+                <div class="menu-list">
+                    <a href="{{ url_for('student.dashboard') }}" class="menu-item primary">
+                        <div class="menu-icon">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                        <span class="menu-title">我的作业</span>
+                    </a>
+                    
+                    <a href="{{ url_for('makeup.my_requests') }}" class="menu-item warning">
+                        <div class="menu-icon">
+                            <i class="fas fa-file-upload"></i>
+                        </div>
+                        <span class="menu-title">补交申请</span>
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- 通知中心 -->
+            <div class="sidebar-section">
+                <h6 class="section-title">
+                    <i class="fas fa-bell me-2"></i>
+                    通知中心
+                </h6>
+                <div class="menu-list">
+                    <a href="{{ url_for('notification.notifications') }}" class="menu-item info">
+                        <div class="menu-icon">
+                            <i class="fas fa-bell"></i>
+                        </div>
+                        <span class="menu-title">
+                            我的通知
+                            {% if unread_notification_count > 0 %}
+                            <span class="badge bg-danger ms-2">{{ unread_notification_count }}</span>
+                            {% endif %}
+                        </span>
+                    </a>
+                    
+                    {% if current_user.is_teacher or current_user.is_super_admin %}
+                    <a href="{{ url_for('notification.create_notification_page') }}" class="menu-item success">
+                        <div class="menu-icon">
+                            <i class="fas fa-paper-plane"></i>
+                        </div>
+                        <span class="menu-title">发送通知</span>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 批量导入模态框 -->
+    <div class="modal fade" id="batchImportModal" tabindex="-1" aria-labelledby="batchImportModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="batchImportModalLabel">
+                        <i class="fas fa-file-excel me-2"></i>
+                        批量导入用户
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" style="background-color: #ffffff; color: #212529;">
+                    <form id="batchImportForm" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="csvFile" class="form-label" style="color: #212529; font-weight: 600;">
+                                <i class="fas fa-file-csv me-2" style="color: #0d6efd;"></i>
+                                选择CSV/TSV文件
+                            </label>
+                            <input type="file" class="form-control" id="csvFile" name="file" accept=".csv,.tsv,.txt" required>
+                        </div>
+                        <div class="mb-3">
+                            <a href="{{ url_for('static', filename='sample_users.csv') }}" class="btn btn-outline-primary btn-sm" download>
+                                <i class="fas fa-download me-1"></i>
+                                下载示例文件
+                            </a>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer" style="background-color: #f8f9fa; border-top: 1px solid #dee2e6;">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>
+                        取消
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="importUsers()">
+                        <i class="fas fa-upload me-2"></i>
+                        开始导入
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="{% if current_user.is_authenticated and request.endpoint != 'index' %}main-wrapper{% else %}container{% endif %}" style="{% if not current_user.is_authenticated or request.endpoint == 'index' %}margin-top: 100px; {% endif %}min-height: calc(100vh - 200px);">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-info alert-dismissible fade show" role="alert">
+                        <i class="fas fa-info-circle me-2"></i>
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="footer mt-5">
+        <div class="container">
+            <div class="text-center author-section">
+                <div class="author-badge mb-3">
+                    <div class="author-avatar">
+                        <img src="{{ url_for('static', filename='images/avatar.svg') }}" alt="作者头像" class="avatar-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <i class="fas fa-user-graduate avatar-fallback"></i>
+                    </div>
+                    <div class="author-info ms-3">
+                        <h5 class="author-name mb-1">
+                            <i class="fas fa-crown me-2"></i>
+                            作者: <strong>tan91</strong>
+                        </h5>
+                        <div class="author-links">
+                            <a href="https://github.com/NUDTTAN91" target="_blank" class="author-link github-link">
+                                <i class="fab fa-github me-1"></i>
+                                GitHub
+                            </a>
+                            <span class="link-separator">|</span>
+                            <a href="https://blog.csdn.net/ZXW_NUDT" target="_blank" class="author-link blog-link">
+                                <i class="fas fa-blog me-1"></i>
+                                CSDN博客
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="author-quote">
+                    <i class="fas fa-quote-left quote-icon"></i>
+                    <p class="quote-text">TG作业系统 - 让教学更轻松，让学习更高效</p>
+                    <i class="fas fa-quote-right quote-icon"></i>
+                </div>
+                <div class="copyright-info">
+                    <p class="mb-0">
+                        <i class="fas fa-copyright me-1"></i>
+                        2025 tan91 版权所有
+                    </p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="{{ url_for('static', filename='js/vendor/bootstrap.bundle.min.js') }}"></script>
+    <!-- 页面动画和交互效果 -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    
+    <!-- 全局侧边栏控制JS -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const globalSidebar = document.getElementById('globalSidebar');
+        const mainWrapper = document.querySelector('.main-wrapper');
+        
+        if (sidebarToggle && globalSidebar) {
+            sidebarToggle.addEventListener('click', function() {
+                globalSidebar.classList.toggle('active');
+                if (mainWrapper) {
+                    mainWrapper.classList.toggle('expanded');
+                }
+            });
+            
+            // 点击主内容区域时隐藏侧边栏（移动端）
+            if (window.innerWidth <= 992 && mainWrapper) {
+                mainWrapper.addEventListener('click', function() {
+                    globalSidebar.classList.remove('active');
+                    mainWrapper.classList.remove('expanded');
+                });
+            }
+            
+            // 窗口大小改变时的处理
+            window.addEventListener('resize', function() {
+                if (window.innerWidth > 992) {
+                    globalSidebar.classList.remove('active');
+                    if (mainWrapper) {
+                        mainWrapper.classList.remove('expanded');
+                    }
+                }
+            });
+        }
+        
+        // 菜单项目动画
+        const menuItems = document.querySelectorAll('.menu-item');
+        menuItems.forEach((item, index) => {
+            item.style.opacity = '0';
+            item.style.transform = 'translateX(-20px)';
+            setTimeout(() => {
+                item.style.transition = 'all 0.3s ease';
+                item.style.opacity = '1';
+                item.style.transform = 'translateX(0)';
+            }, index * 100);
+        });
+    });
+    
+    // 快捷操作函数
+    function showBatchImport() {
+        const modal = new bootstrap.Modal(document.getElementById('batchImportModal'));
+        modal.show();
+    }
+    
+    function showDownloadOptions() {
+        alert('下载作业功能正在开发中，敬请期待...');
+    }
+    
+    function importUsers() {
+        const fileInput = document.getElementById('csvFile');
+        const file = fileInput.files[0];
+        
+        if (!file) {
+            alert('请选择一个CSV文件');
+            return;
+        }
+        
+        // 显示加载状态
+        const importBtn = document.querySelector('#batchImportModal .btn-primary');
+        const originalText = importBtn.textContent;
+        importBtn.textContent = '导入中...';
+        importBtn.disabled = true;
+        
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        fetch('/admin/users/batch-import', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                let message = `导入完成！\n✅ 成功导入: ${data.success_count} 个用户`;
+                if (data.error_count > 0) {
+                    message += `\n❌ 失败: ${data.error_count} 个用户`;
+                    if (data.errors && data.errors.length > 0) {
+                        message += '\n\n错误详情:';
+                        data.errors.slice(0, 5).forEach(error => {
+                            message += '\n- ' + error;
+                        });
+                        if (data.errors.length > 5) {
+                            message += `\n... 还有 ${data.errors.length - 5} 个错误`;
+                        }
+                    }
+                }
+                alert(message);
+                
+                // 关闭模态框
+                const modal = bootstrap.Modal.getInstance(document.getElementById('batchImportModal'));
+                modal.hide();
+                
+                // 如果有成功导入的用户，刷新页面
+                if (data.success_count > 0) {
+                    location.reload();
+                }
+            } else {
+                alert('❌ 导入失败: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('导入错误:', error);
+            alert('❌ 导入过程中发生网络错误，请检查网络连接后重试');
+        })
+        .finally(() => {
+            // 恢复按钮状态
+            importBtn.textContent = originalText;
+            importBtn.disabled = false;
+        });
+    }
+    
+    function showSystemReset() {
+        window.location.href = "{{ url_for('advanced.reset_system') }}";
+    }
+    
+    // ========================
+    // 全局滚动位置保持功能
+    // ========================
+    
+    // 保存滚动位置
+    function saveScrollPosition() {
+        sessionStorage.setItem('scrollPosition', window.scrollY);
+    }
+    
+    // 恢复滚动位置
+    function restoreScrollPosition() {
+        const savedPosition = sessionStorage.getItem('scrollPosition');
+        if (savedPosition !== null) {
+            window.scrollTo(0, parseInt(savedPosition));
+            // 清除保存的位置，避免影响其他页面
+            sessionStorage.removeItem('scrollPosition');
+        }
+    }
+    
+    // 页面加载时恢复滚动位置
+    window.addEventListener('DOMContentLoaded', function() {
+        restoreScrollPosition();
+    });
+    
+    // 为所有带有 href 的链接添加点击事件，保存滚动位置
+    document.addEventListener('click', function(e) {
+        const target = e.target.closest('a[href]');
+        if (target && target.href && !target.hasAttribute('target')) {
+            // 排除附件下载和外部链接
+            const url = new URL(target.href);
+            if (url.hostname === window.location.hostname && 
+                !target.href.includes('/download/') && 
+                !target.href.includes('/attachment/')) {
+                saveScrollPosition();
+            }
+        }
+    });
+    
+    // 为表单提交添加事件
+    document.addEventListener('submit', function(e) {
+        // 如果是GET请求，保存滚动位置
+        if (e.target.method.toLowerCase() === 'get') {
+            saveScrollPosition();
+        }
+    });
+    </script>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}大作业管理 - TG作业系统{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2>
+                    <i class="fas fa-project-diagram me-2"></i>
+                    大作业管理
+                </h2>
+                {% if current_user.is_super_admin or current_user.is_teacher %}
+                <a href="{{ url_for('major_assignment.create_major_assignment') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>布置大作业
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {% if major_assignments %}
+    <div class="row">
+        {% for ma in major_assignments %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-project-diagram me-2"></i>
+                        {{ ma.title }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="card-text text-muted">
+                        <i class="fas fa-school me-2"></i>
+                        <strong>班级：</strong>{{ ma.class_info.name }}
+                    </p>
+                    <p class="card-text text-muted">
+                        <i class="fas fa-user me-2"></i>
+                        <strong>创建者：</strong>{{ ma.creator.real_name }}
+                    </p>
+                    <p class="card-text text-muted">
+                        <i class="fas fa-chalkboard-teacher me-2"></i>
+                        <strong>管理教师：</strong>
+                        {% if ma.teachers %}
+                            {% for teacher in ma.teachers %}
+                                {{ teacher.real_name }}{% if not loop.last %}, {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            无
+                        {% endif %}
+                    </p>
+                    <p class="card-text text-muted">
+                        <i class="fas fa-users me-2"></i>
+                        <strong>组队人数：</strong>{{ ma.min_team_size }} - {{ ma.max_team_size }} 人
+                    </p>
+                    <p class="card-text text-muted">
+                        <i class="fas fa-calendar-alt me-2"></i>
+                        <strong>截止时间：</strong>{{ ma.due_date|beijing_time if ma.due_date else '无' }}
+                    </p>
+                    
+                    {% if current_user.is_super_admin or current_user.is_teacher %}
+                    <!-- 教师视图：显示团队统计 -->
+                    <hr>
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <h6>{{ ma.teams|length }}</h6>
+                            <small class="text-muted">团队总数</small>
+                        </div>
+                        <div class="col-6">
+                            <h6>{{ ma.teams|selectattr('status', 'equalto', 'confirmed')|list|length }}</h6>
+                            <small class="text-muted">已确认</small>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="card-footer bg-light">
+                    <div class="btn-group w-100" role="group">
+                        {% if current_user.is_super_admin or current_user.is_teacher %}
+                            <a href="{{ url_for('major_assignment.view_major_assignment_teams', assignment_id=ma.id) }}" 
+                               class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-eye me-1"></i>查看分组
+                            </a>
+                            <a href="{{ url_for('major_assignment.edit_major_assignment', assignment_id=ma.id) }}" 
+                               class="btn btn-sm btn-outline-secondary">
+                                <i class="fas fa-edit me-1"></i>编辑
+                            </a>
+                            {% if ma.can_manage(current_user) %}
+                            <button class="btn btn-sm btn-outline-danger" 
+                                    onclick="deleteMajorAssignment({{ ma.id }}, '{{ ma.title }}')">
+                                <i class="fas fa-trash me-1"></i>删除
+                            </button>
+                            {% endif %}
+                        {% else %}
+                            <a href="{{ url_for('major_assignment.student_major_assignment_detail', assignment_id=ma.id) }}" 
+                               class="btn btn-sm btn-primary w-100">
+                                <i class="fas fa-users me-1"></i>管理我的团队
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-info text-center">
+        <i class="fas fa-info-circle fa-3x mb-3"></i>
+        <p class="mb-0">暂无大作业</p>
+        {% if current_user.is_super_admin or current_user.is_teacher %}
+        <a href="{{ url_for('major_assignment.create_major_assignment') }}" class="btn btn-primary mt-3">
+            <i class="fas fa-plus me-2"></i>立即布置
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function deleteMajorAssignment(id, title) {
+    if (confirm(`确定要删除大作业「${title}」吗？\n\n注意：这将删除：\n- 所有团队和成员\n- 所有邀请和请求\n- 所有阶段和分工\n- 作业要求文件\n\n此操作不可恢复！`)) {
+        fetch(`/major_assignments/${id}/delete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('错误：' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('请求失败：' + error);
+        });
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,344 @@
+{% extends "base.html" %}
+
+{% block title %}班级成绩统计 - {{ class_obj.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 页面头部 -->
+    <div class="hero-section mb-4">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="display-6 fw-bold mb-2 fade-in-up">
+                    <i class="fas fa-chart-bar me-3" style="color: var(--accent-color);"></i>
+                    {{ class_obj.name }} - 成绩统计
+                </h1>
+                <p class="lead mb-0 fade-in-up" style="animation-delay: 0.2s;">
+                    <span class="badge bg-primary me-2">{{ class_obj.code }}</span>
+                    查看班级所有作业的成绩统计和排名
+                </p>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{{ url_for('class_mgmt.class_students', class_id=class_obj.id) }}" class="btn btn-secondary me-2">
+                    <i class="fas fa-users me-1"></i>
+                    学生管理
+                </a>
+                <a href="{{ url_for('class_mgmt.export_class_grades', class_id=class_obj.id) }}" class="btn btn-success">
+                    <i class="fas fa-file-excel me-1"></i>
+                    导出Excel
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card stat-card text-center">
+                <div class="card-body">
+                    <div class="shortcut-icon-wrapper mb-3">
+                        <div class="shortcut-icon primary-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="shortcut-glow primary-glow"></div>
+                    </div>
+                    <h4 class="stat-number primary-text">{{ grade_stats|length }}</h4>
+                    <p class="stat-label mb-0">学生人数</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card stat-card text-center">
+                <div class="card-body">
+                    <div class="shortcut-icon-wrapper mb-3">
+                        <div class="shortcut-icon success-icon">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                        <div class="shortcut-glow success-glow"></div>
+                    </div>
+                    <h4 class="stat-number success-text">{{ assignments|length }}</h4>
+                    <p class="stat-label mb-0">作业数量</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card stat-card text-center">
+                <div class="card-body">
+                    <div class="shortcut-icon-wrapper mb-3">
+                        <div class="shortcut-icon warning-icon">
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <div class="shortcut-glow warning-glow"></div>
+                    </div>
+                    <h4 class="stat-number warning-text">
+                        {% if grade_stats|length > 0 and assignments|length > 0 %}
+                            {% set total_avg = grade_stats|sum(attribute='average') %}
+                            {{ "%.2f"|format(total_avg / grade_stats|length) }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </h4>
+                    <p class="stat-label mb-0">班级平均分</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card stat-card text-center">
+                <div class="card-body">
+                    <div class="shortcut-icon-wrapper mb-3">
+                        <div class="shortcut-icon info-icon">
+                            <i class="fas fa-trophy"></i>
+                        </div>
+                        <div class="shortcut-glow info-glow"></div>
+                    </div>
+                    <h4 class="stat-number info-text">
+                        {% if grade_stats and grade_stats[0].average > 0 %}
+                            {{ grade_stats[0].average }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </h4>
+                    <p class="stat-label mb-0">最高平均分</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 成绩等级说明图例 -->
+    <div class="card mb-4">
+        <div class="card-body py-3">
+            <h6 class="mb-3">
+                <i class="fas fa-info-circle me-2"></i>
+                成绩等级说明
+            </h6>
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="d-flex flex-wrap gap-3 align-items-center">
+                        <span class="badge bg-success px-3 py-2">
+                            <i class="fas fa-star me-1"></i>优秀 90-100分
+                        </span>
+                        <span class="badge bg-info px-3 py-2">
+                            <i class="fas fa-check me-1"></i>良好 80-89分
+                        </span>
+                        <span class="badge bg-warning px-3 py-2">
+                            <i class="fas fa-minus me-1"></i>中等 70-79分
+                        </span>
+                        <span class="badge bg-secondary px-3 py-2">
+                            <i class="fas fa-check-circle me-1"></i>及格 60-69分
+                        </span>
+                        <span class="badge bg-danger px-3 py-2">
+                            <i class="fas fa-times me-1"></i>不及格 &lt;60分
+                        </span>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="d-flex flex-wrap gap-3 align-items-center">
+                        <span class="badge bg-dark px-3 py-2">
+                            <i class="fas fa-times-circle me-1"></i>未交作业
+                        </span>
+                        <span class="badge bg-primary px-3 py-2">
+                            <i class="fas fa-clock me-1"></i>待评分
+                        </span>
+                        <span class="badge px-3 py-2" style="background: #6c9a8b;">
+                            <i class="fas fa-redo me-1"></i>补交作业
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 成绩统计表格 -->
+    {% if grade_stats %}
+    <div class="card">
+        <div class="card-header bg-gradient">
+            <h5 class="mb-0">
+                <i class="fas fa-list me-2"></i>
+                学生成绩排名表
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped mb-0" id="gradesTable">
+                    <thead>
+                        <tr>
+                            <th width="6%">排名</th>
+                            <th width="10%">姓名</th>
+                            <th width="10%">学号</th>
+                            {% for assignment in assignments %}
+                            <th width="{{ 50 // assignments|length if assignments|length > 0 else 50 }}%" 
+                                title="{{ assignment.title }}">
+                                作业{{ loop.index }}
+                            </th>
+                            {% endfor %}
+                            <th width="8%">总分</th>
+                            <th width="8%">平均分</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student_data in grade_stats %}
+                        <tr>
+                            <td>
+                                {% if student_data.rank <= 3 and student_data.average > 0 %}
+                                    {% if student_data.rank == 1 %}
+                                        <span class="badge" style="background: linear-gradient(135deg, #FFD700, #FFF4A3, #FFD700); color: #8B4513; box-shadow: 0 4px 15px rgba(255, 215, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.4), inset 0 -1px 0 rgba(0, 0, 0, 0.2); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 215, 0, 0.6); font-weight: bold;">
+                                            <i class="fas fa-trophy me-1"></i>
+                                            第{{ student_data.rank }}名
+                                        </span>
+                                    {% elif student_data.rank == 2 %}
+                                        <span class="badge" style="background: linear-gradient(135deg, #C0C0C0, #E8E8E8, #C0C0C0); color: #404040; box-shadow: 0 4px 15px rgba(192, 192, 192, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.4), inset 0 -1px 0 rgba(0, 0, 0, 0.2); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); border: 1px solid rgba(192, 192, 192, 0.6); font-weight: bold;">
+                                            <i class="fas fa-medal me-1"></i>
+                                            第{{ student_data.rank }}名
+                                        </span>
+                                    {% else %}
+                                        <span class="badge" style="background: linear-gradient(135deg, #CD7F32, #E8A87C, #CD7F32); color: white; box-shadow: 0 4px 15px rgba(205, 127, 50, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 -1px 0 rgba(0, 0, 0, 0.2); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); border: 1px solid rgba(205, 127, 50, 0.6); font-weight: bold;">
+                                            <i class="fas fa-award me-1"></i>
+                                            第{{ student_data.rank }}名
+                                        </span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="badge bg-light text-dark">第{{ student_data.rank }}名</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong>{{ student_data.student.real_name }}</strong>
+                            </td>
+                            <td>{{ student_data.student.student_id or student_data.student.username }}</td>
+                            {% for assignment in assignments %}
+                            <td>
+                                {% set grade_info = student_data.grades.get(assignment.id) %}
+                                {% if grade_info is not none %}
+                                    {% if grade_info is mapping %}
+                                        {# 新的格式：字典包含grade、status和is_makeup #}
+                                        {% if grade_info.status == 'not_submitted' %}
+                                            <span class="badge bg-dark" title="未提交作业">
+                                                <i class="fas fa-times-circle"></i>
+                                            </span>
+                                        {% elif grade_info.status == 'submitted_not_graded' %}
+                                            <span class="badge bg-primary" title="已提交但未评分">
+                                                <i class="fas fa-clock"></i>
+                                            </span>
+                                        {% elif grade_info.status == 'graded' %}
+                                            {% set grade = grade_info.grade %}
+                                            {% set is_makeup = grade_info.get('is_makeup', False) %}
+                                            {% if is_makeup %}
+                                                {# 补交作业显示折扣后的分数，不显示图标 #}
+                                                <span class="badge" style="background: #6c9a8b; color: white;">
+                                                    {{ grade }}
+                                                </span>
+                                            {% else %}
+                                                {# 普通作业按分数颜色显示 #}
+                                                {% if grade >= 90 %}
+                                                    <span class="badge bg-success">{{ grade }}</span>
+                                                {% elif grade >= 80 %}
+                                                    <span class="badge bg-info">{{ grade }}</span>
+                                                {% elif grade >= 70 %}
+                                                    <span class="badge bg-warning">{{ grade }}</span>
+                                                {% elif grade >= 60 %}
+                                                    <span class="badge bg-secondary">{{ grade }}</span>
+                                                {% else %}
+                                                    <span class="badge bg-danger">{{ grade }}</span>
+                                                {% endif %}
+                                            {% endif %}
+                                        {% endif %}
+                                    {% else %}
+                                        {# 旧的格式：直接是分数 #}
+                                        {% set grade = grade_info %}
+                                        {% if grade >= 90 %}
+                                            <span class="badge bg-success">{{ grade }}</span>
+                                        {% elif grade >= 80 %}
+                                            <span class="badge bg-info">{{ grade }}</span>
+                                        {% elif grade >= 70 %}
+                                            <span class="badge bg-warning">{{ grade }}</span>
+                                        {% elif grade >= 60 %}
+                                            <span class="badge bg-secondary">{{ grade }}</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">{{ grade }}</span>
+                                        {% endif %}
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">未评分</span>
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                            <td>
+                                {% if student_data.total_score > 0 %}
+                                    <span class="badge" style="background: linear-gradient(135deg, #b76e79, #d4a5a5, #b76e79); color: white; box-shadow: 0 4px 15px rgba(183, 110, 121, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 -1px 0 rgba(0, 0, 0, 0.2); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); border: 1px solid rgba(183, 110, 121, 0.6);">{{ student_data.total_score }}</span>
+                                {% else %}
+                                    <span class="badge" style="background: linear-gradient(135deg, #b76e79, #d4a5a5, #b76e79); color: white; box-shadow: 0 4px 15px rgba(183, 110, 121, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 -1px 0 rgba(0, 0, 0, 0.2); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); border: 1px solid rgba(183, 110, 121, 0.6);">0</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if student_data.average > 0 %}
+                                    <span class="badge" style="background: linear-gradient(135deg, #000080, #1E3A8A, #000080); color: white; box-shadow: 0 4px 15px rgba(0, 0, 128, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 -1px 0 rgba(0, 0, 0, 0.3); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); border: 1px solid rgba(0, 0, 128, 0.6); font-weight: bold; display: inline-block; white-space: normal;">
+                                        {{ student_data.average }}<br>
+                                        <small style="display: block; margin-top: 2px;">({{ student_data.graded_count }}/{{ assignments|length }})</small>
+                                    </span>
+                                {% else %}
+                                    <span class="badge" style="background: linear-gradient(135deg, #000080, #1E3A8A, #000080); color: white; box-shadow: 0 4px 15px rgba(0, 0, 128, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 -1px 0 rgba(0, 0, 0, 0.3); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); border: 1px solid rgba(0, 0, 128, 0.6); font-weight: bold; display: inline-block; white-space: normal;">
+                                        -<br>
+                                        <small style="display: block; margin-top: 2px;">(0/{{ assignments|length }})</small>
+                                    </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <div class="empty-state">
+                <i class="fas fa-chart-line" style="font-size: 4rem; color: var(--text-secondary); opacity: 0.5;"></i>
+                <h3 class="mt-4 mb-2">暂无成绩数据</h3>
+                <p class="text-muted mb-4">该班级还没有学生或作业成绩。</p>
+                <a href="{{ url_for('class_mgmt.class_students', class_id=class_obj.id) }}" 
+                   class="btn btn-primary me-2">
+                    <i class="fas fa-users me-2"></i>
+                    管理学生
+                </a>
+                <a href="{{ url_for('assignment.create_assignment') }}" class="btn btn-success">
+                    <i class="fas fa-plus me-2"></i>
+                    创建作业
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 操作按钮 -->
+    <div class="text-center mt-4">
+        <a href="{{ url_for('class_mgmt.manage_classes') }}" class="btn btn-secondary me-2">
+            <i class="fas fa-arrow-left me-2"></i>
+            返回班级列表
+        </a>
+        {% if assignments %}
+        <a href="{{ url_for('class_mgmt.export_class_grades', class_id=class_obj.id) }}" class="btn btn-success">
+            <i class="fas fa-download me-2"></i>
+            下载成绩单
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+/* 禁用所有动画和过渡效果 */
+#gradesTable *, 
+#gradesTable *::before, 
+#gradesTable *::after,
+.badge,
+.badge::before,
+.badge::after {
+    transition: none !important;
+    animation: none !important;
+    transform: none !important;
+}
+</style>
+<script>
+// 无动画效果，保持页面流畅
+</script>
+{% endblock %}

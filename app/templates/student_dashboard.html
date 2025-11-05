@@ -1,0 +1,734 @@
+{% extends "base.html" %}
+
+{% block title %}学生中心 - TG作业系统{% endblock %}
+
+{% block content %}
+<!-- 学生欢迎页 -->
+<div class="hero-section mb-5">
+    <div class="text-center">
+        <div class="admin-icon mb-3">
+            <i class="fas fa-user-graduate" style="font-size: 4rem; color: var(--accent-color);"></i>
+        </div>
+        <h1 class="display-5 fw-bold mb-3 fade-in-up">
+            <i class="fas fa-book-reader me-3"></i>
+            学生中心
+        </h1>
+        <p class="lead mb-4 fade-in-up" style="animation-delay: 0.2s;">
+            <i class="fas fa-hand-sparkles me-2"></i>
+            欢迎，{{ current_user.real_name }}同学！
+        </p>
+    </div>
+</div>
+
+<!-- 快速统计 -->
+<div class="row mb-5">
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card text-center">
+            <div class="card-body">
+                <div class="shortcut-icon-wrapper mb-3">
+                    <div class="shortcut-icon">
+                        <i class="fas fa-tasks"></i>
+                    </div>
+                    <div class="shortcut-glow"></div>
+                </div>
+                <h3 class="stat-number">{{ assignments|length }}</h3>
+                <p class="stat-label mb-0">可用作业</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card text-center">
+            <div class="card-body">
+                <div class="shortcut-icon-wrapper mb-3">
+                    <div class="shortcut-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                        <i class="fas fa-project-diagram"></i>
+                    </div>
+                    <div class="shortcut-glow" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></div>
+                </div>
+                <h3 class="stat-number" style="color: #667eea;">{{ major_assignments|length }}</h3>
+                <p class="stat-label mb-0">大作业</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card text-center">
+            <div class="card-body">
+                <div class="shortcut-icon-wrapper mb-3">
+                    <div class="shortcut-icon success-icon">
+                        <i class="fas fa-upload"></i>
+                    </div>
+                    <div class="shortcut-glow success-glow"></div>
+                </div>
+                <h3 class="stat-number success-text">{{ my_submissions|length }}</h3>
+                <p class="stat-label mb-0">已提交</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card text-center">
+            <div class="card-body">
+                <div class="shortcut-icon-wrapper mb-3">
+                    <div class="shortcut-icon warning-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="shortcut-glow warning-glow"></div>
+                </div>
+                {% set pending_count = assignments|length - my_submissions|length %}
+                <h3 class="stat-number warning-text">{{ pending_count if pending_count > 0 else 0 }}</h3>
+                <p class="stat-label mb-0">待提交</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 大作业列表（置顶显示） -->
+{% if major_assignments %}
+<div class="alert alert-info border-0 shadow-sm mb-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+    <div class="d-flex align-items-center">
+        <div class="me-3">
+            <i class="fas fa-bullhorn fa-2x"></i>
+        </div>
+        <div>
+            <h5 class="mb-1"><i class="fas fa-star me-1"></i>重要提醒：有 {{ major_assignments|length }} 个大作业需要组队完成</h5>
+            <p class="mb-0">大作业需要团队协作完成，请尽快组建或加入团队！</p>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <h2 class="fw-bold" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+            <i class="fas fa-star me-2" style="color: #667eea;"></i>
+            大作业（团队任务）
+        </h2>
+    </div>
+</div>
+
+<div class="row">
+    {% for ma in major_assignments %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card assignment-card h-100" style="border: 2px solid #667eea; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);">
+                <div class="card-header text-white d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <h6 class="mb-0 fw-bold">
+                        <i class="fas fa-users me-1"></i>{{ ma.title }}
+                        <span class="badge bg-warning ms-1" style="font-size: 0.7rem;">团队</span>
+                    </h6>
+                    <span class="badge bg-light text-dark">进行中</span>
+                </div>
+                <div class="card-body">
+                    {% if ma.description %}
+                        <p class="card-text text-muted mb-3">
+                            {{ ma.description[:100] }}{% if ma.description|length > 100 %}...{% endif %}
+                        </p>
+                    {% endif %}
+                    
+                    <div class="mb-2">
+                        <small class="text-muted">
+                            <i class="fas fa-school me-1"></i>
+                            <strong>班级:</strong> {{ ma.class_info.name }}
+                        </small>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <small class="text-muted">
+                            <i class="fas fa-users me-1"></i>
+                            <strong>组队人数:</strong> {{ ma.min_team_size }} - {{ ma.max_team_size }} 人
+                        </small>
+                    </div>
+                    
+                    {% if ma.due_date %}
+                        <div class="mb-3">
+                            <small class="text-muted">
+                                <i class="fas fa-clock me-1"></i>
+                                <strong>截止时间:</strong> {{ ma.due_date|beijing_time }}
+                            </small>
+                        </div>
+                    {% endif %}
+                    
+                    <!-- 查找我的团队 -->
+                    {% set ns = namespace(my_team=None) %}
+                    {% for team in ma.teams %}
+                        {% if team.leader_id == current_user.id %}
+                            {% set ns.my_team = team %}
+                        {% else %}
+                            {% for member in team.members %}
+                                {% if member.user_id == current_user.id %}
+                                    {% set ns.my_team = team %}
+                                {% endif %}
+                            {% endfor %}
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if ns.my_team %}
+                        <div class="alert alert-success py-2 mb-2">
+                            <i class="fas fa-check-circle me-1"></i>
+                            已加入团队: {{ ns.my_team.name }}
+                            {% if ns.my_team.status == 'confirmed' %}
+                                <span class="badge bg-success ms-1">已确认</span>
+                            {% else %}
+                                <span class="badge bg-warning ms-1">待确认</span>
+                            {% endif %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-warning py-2 mb-2">
+                            <i class="fas fa-exclamation-triangle me-1"></i>
+                            尚未组队，请尽快创建或加入团队
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="card-footer bg-transparent">
+                    <a href="{{ url_for('major_assignment.student_major_assignment_detail', assignment_id=ma.id) }}" 
+                       class="btn w-100" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: bold;">
+                        <i class="fas fa-arrow-right me-2"></i>
+                        {% if ns.my_team %}查看团队{% else %}立即组队{% endif %}
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+
+<!-- 分隔线 -->
+<hr class="my-5" style="border-top: 2px dashed #dee2e6;">
+{% endif %}
+
+<!-- 可用作业列表 -->
+<div class="row mb-4">
+    <div class="col-12">
+        <h2 class="fw-bold">
+            <i class="fas fa-list-alt me-2" style="color: var(--accent-color);"></i>
+            可用作业
+        </h2>
+    </div>
+</div>
+
+{% if assignments %}
+    <div class="row">
+        {% for assignment in assignments %}
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card assignment-card h-100" data-assignment-id="{{ assignment.id }}">
+                    <div class="card-header bg-gradient d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0 fw-bold">{{ assignment.title }}</h6>
+                        {% if assignment.due_date %}
+                            {% if assignment.is_overdue() %}
+                                <span class="badge bg-danger">已截止</span>
+                            {% else %}
+                                <span class="badge bg-warning">有截止时间</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="badge bg-success">无时间限制</span>
+                        {% endif %}
+                    </div>
+                    <div class="card-body">
+                        {% if assignment.description %}
+                            <p class="card-text text-muted mb-3">
+                                {{ assignment.description|nl2br|safe }}
+                            </p>
+                        {% endif %}
+                        
+                        {% if assignment.due_date %}
+                            <div class="mb-3">
+                                <small class="text-muted">
+                                    <i class="fas fa-clock me-1"></i>
+                                    截止时间: {{ assignment.due_date|beijing_time }}
+                                </small>
+                                {% if not assignment.is_overdue() %}
+                                    <div class="countdown-container mt-2" data-due-time="{{ assignment.due_date.strftime('%Y-%m-%d %H:%M:%S') }}" data-assignment-id="{{ assignment.id }}">
+                                        <div class="countdown-display">
+                                            <i class="fas fa-hourglass-half me-1"></i>
+                                            倒计时: <span class="countdown-timer fw-bold text-primary"></span>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                        
+                        <div class="mb-3">
+                            <small class="text-muted">
+                                <i class="fas fa-file-alt me-1"></i>
+                                允许的文件类型: 
+                                {% for ext in assignment.get_allowed_extensions() %}
+                                    <span class="badge bg-light text-dark me-1">{{ ext }}</span>
+                                {% endfor %}
+                            </small>
+                        </div>
+                        
+                        <!-- 附件信息 -->
+                        {% if assignment.attachment_file_path %}
+                            <div class="mb-3">
+                                <a href="{{ url_for('download.download_assignment_attachment', assignment_id=assignment.id) }}" 
+                                   class="btn btn-sm btn-outline-info">
+                                    <i class="fas fa-paperclip me-1"></i>
+                                    下载附件
+                                </a>
+                            </div>
+                        {% endif %}
+                        
+                        <!-- 检查是否已提交（只统计正常提交，排除补交提交） -->
+                        {% set submitted = my_submissions|selectattr('assignment_id', 'equalto', assignment.id)|selectattr('is_makeup', 'equalto', False)|list %}
+                        {% if submitted %}
+                            <!-- 检查是否有教师评分 -->
+                            {% set has_grade = submitted|selectattr('grade', 'ne', None)|list|length > 0 %}
+                            {% if has_grade %}
+                                <div class="alert alert-success py-2 mb-2">
+                                    <i class="fas fa-check-circle me-1"></i>
+                                    已提交 ({{ submitted[0].submitted_at|beijing_short }})
+                                    <span class="badge bg-success ms-2">
+                                        <i class="fas fa-star me-1"></i>已评分
+                                    </span>
+                                </div>
+                            {% else %}
+                                <div class="alert alert-info py-2 mb-2">
+                                    <i class="fas fa-check-circle me-1"></i>
+                                    已提交 ({{ submitted[0].submitted_at|beijing_short }})
+                                    <span class="badge bg-warning ms-2">
+                                        <i class="fas fa-clock me-1"></i>待评分
+                                    </span>
+                                </div>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                    <div class="card-footer bg-transparent">
+                        <div class="d-flex flex-wrap gap-2">
+                            {% if not assignment.is_overdue() %}
+                                {% if submitted %}
+                                    {% set has_grade = submitted|selectattr('grade', 'ne', None)|list|length > 0 %}
+                                    <a href="{{ url_for('submission.submit_assignment', assignment_id=assignment.id) }}" 
+                                       class="btn btn-outline-primary flex-fill">
+                                        <i class="fas fa-edit me-2"></i>
+                                        重新提交
+                                    </a>
+                                    <a href="{{ url_for('submission.student_submission_history', assignment_id=assignment.id) }}" 
+                                       class="btn {% if has_grade %}btn-success{% else %}btn-outline-info{% endif %} flex-fill" 
+                                       title="{% if has_grade %}查看提交记录和评分{% else %}查看提交记录{% endif %}">
+                                        <i class="fas fa-{% if has_grade %}star{% else %}clock{% endif %} me-2"></i>
+                                        {% if has_grade %}查看评分{% else %}待评分{% endif %}
+                                    </a>
+                                {% else %}
+                                    <a href="{{ url_for('submission.submit_assignment', assignment_id=assignment.id) }}" 
+                                       class="btn btn-success flex-fill">
+                                        <i class="fas fa-upload me-2"></i>
+                                        提交作业
+                                    </a>
+                                {% endif %}
+                            {% else %}
+                                {% if submitted %}
+                                    {% set has_grade = submitted|selectattr('grade', 'ne', None)|list|length > 0 %}
+                                    <a href="{{ url_for('submission.student_submission_history', assignment_id=assignment.id) }}" 
+                                       class="btn {% if has_grade %}btn-success{% else %}btn-outline-info{% endif %} flex-fill" 
+                                       title="{% if has_grade %}查看提交记录和评分{% else %}查看提交记录{% endif %}">
+                                        <i class="fas fa-{% if has_grade %}star{% else %}clock{% endif %} me-2"></i>
+                                        {% if has_grade %}查看评分{% else %}待评分{% endif %}
+                                    </a>
+                                {% else %}
+                                    <button class="btn btn-secondary flex-fill" disabled>
+                                        <i class="fas fa-times me-2"></i>
+                                        已截止
+                                    </button>
+                                    {% if makeup_grade_dict and assignment.id in makeup_grade_dict %}
+                                        {# 已经打了补交评分 #}
+                                        <a href="{{ url_for('submission.student_submission_history', assignment_id=assignment.id) }}" 
+                                           class="btn flex-fill" style="background-color: #6c9a8b; color: white;">
+                                            <i class="fas fa-check-circle me-2"></i>
+                                            已补交评分
+                                        </a>
+                                    {% elif makeup_submission_dict and assignment.id in makeup_submission_dict %}
+                                        {# 已提交补交作业但还没评分 #}
+                                        <a href="{{ url_for('submission.student_submission_history', assignment_id=assignment.id) }}" 
+                                           class="btn btn-info flex-fill">
+                                            <i class="fas fa-hourglass-half me-2"></i>
+                                            补交作业待评分
+                                        </a>
+                                    {% elif approved_request_dict and assignment.id in approved_request_dict %}
+                                        {# 有已批准的补交申请，检查是否过期 #}
+                                        {% set makeup_req = approved_request_dict[assignment.id] %}
+                                        {% if makeup_req.deadline and makeup_req.deadline > current_time %}
+                                            {# 补交申请未过期 #}
+                                            <a href="{{ url_for('submission.submit_assignment', assignment_id=assignment.id) }}" 
+                                               class="btn btn-primary flex-fill">
+                                                <i class="fas fa-upload me-2"></i>
+                                                补交作业
+                                            </a>
+                                        {% else %}
+                                            {# 补交申请已过期 #}
+                                            <a href="{{ url_for('makeup.request_makeup', assignment_id=assignment.id) }}" 
+                                               class="btn btn-danger flex-fill">
+                                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                                未按规定提交，重新申请补交
+                                            </a>
+                                        {% endif %}
+                                    {% elif pending_request_dict and assignment.id in pending_request_dict %}
+                                        {# 有待审批的补交申请 #}
+                                        <button class="btn btn-info flex-fill" disabled>
+                                            <i class="fas fa-clock me-2"></i>
+                                            补交申请已提交
+                                        </button>
+                                    {% else %}
+                                        {# 还没有申请补交 #}
+                                        <a href="{{ url_for('makeup.request_makeup', assignment_id=assignment.id) }}" 
+                                           class="btn btn-warning flex-fill">
+                                            <i class="fas fa-file-upload me-2"></i>
+                                            申请补交
+                                        </a>
+                                    {% endif %}
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="text-center py-5">
+        <div class="empty-state">
+            <i class="fas fa-inbox" style="font-size: 4rem; color: var(--text-secondary); opacity: 0.5;"></i>
+            <h3 class="mt-4 mb-2">暂无可用作业</h3>
+            <p class="text-muted mb-4">请等待老师发布新的作业。</p>
+        </div>
+    </div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 学生仪表板交互功能
+document.addEventListener('DOMContentLoaded', function() {
+    // 为统计卡片添加进入动画
+    const statCards = document.querySelectorAll('.stat-card');
+    statCards.forEach((card, index) => {
+        setTimeout(() => {
+            card.classList.add('fade-in-up');
+        }, index * 100);
+    });
+    
+    // 为统计数字添加动画
+    const statNumbers = document.querySelectorAll('.stat-number');
+    statNumbers.forEach(num => {
+        const target = parseInt(num.textContent);
+        let current = 0;
+        const increment = Math.max(1, Math.ceil(target / 30));
+        
+        const timer = setInterval(() => {
+            current += increment;
+            if (current >= target) {
+                num.textContent = target;
+                clearInterval(timer);
+            } else {
+                num.textContent = current;
+            }
+        }, 50);
+    });
+    
+    // 为作业卡片添加悬停效果
+    const assignmentCards = document.querySelectorAll('.assignment-card');
+    assignmentCards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'scale(1.02)';
+            this.style.boxShadow = '0 8px 30px var(--shadow-color)';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'scale(1)';
+            this.style.boxShadow = '';
+        });
+    });
+    
+    // 初始化倒计时
+    initCountdowns();
+    
+    // 每阰5分钟检查一次作业信息更新（防止教师修改截止时间）
+    setInterval(checkAssignmentUpdates, 5 * 60 * 1000); // 5分钟
+});
+
+// 倒计时功能
+function initCountdowns() {
+    const countdownContainers = document.querySelectorAll('.countdown-container');
+    
+    countdownContainers.forEach(container => {
+        const dueTimeStr = container.getAttribute('data-due-time');
+        const timer = container.querySelector('.countdown-timer');
+        
+        if (dueTimeStr && timer) {
+            // 服务器传来的是UTC时间，格式为 'YYYY-MM-DD HH:MM:SS'
+            // 直接创建UTC时间对象，然后用于对比当前时间
+            const utcTime = new Date(dueTimeStr.replace(' ', 'T') + 'Z'); // Z表示UTC时间
+            const dueTime = utcTime.getTime();
+            
+            function updateCountdown() {
+                const now = new Date().getTime();
+                const timeLeft = dueTime - now;
+                
+                if (timeLeft > 0) {
+                    const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+                    
+                    let countdownText = '';
+                    if (days > 0) {
+                        countdownText = `${days}天 ${hours}小时 ${minutes}分钟`;
+                    } else if (hours > 0) {
+                        countdownText = `${hours}小时 ${minutes}分钟 ${seconds}秒`;
+                    } else if (minutes > 0) {
+                        countdownText = `${minutes}分钟 ${seconds}秒`;
+                    } else {
+                        countdownText = `${seconds}秒`;
+                    }
+                    
+                    timer.textContent = countdownText;
+                    
+                    // 根据剩余时间改变颜色
+                    if (timeLeft < 24 * 60 * 60 * 1000) { // 少于1天
+                        timer.className = 'countdown-timer fw-bold text-danger';
+                    } else if (timeLeft < 3 * 24 * 60 * 60 * 1000) { // 少于3天
+                        timer.className = 'countdown-timer fw-bold text-warning';
+                    } else {
+                        timer.className = 'countdown-timer fw-bold text-primary';
+                    }
+                } else {
+                    timer.textContent = '已截止';
+                    timer.className = 'countdown-timer fw-bold text-danger';
+                    container.style.display = 'none'; // 隐藏已截止的倒计时
+                    
+                    // 不再动态更新按钮，由服务端模板渲染时处理
+                    // 因为补交逻辑较复杂，需要检查makeup_grade_dict等数据
+                }
+            }
+            
+            // 立即更新一次
+            updateCountdown();
+            
+            // 每秒更新
+            setInterval(updateCountdown, 1000);
+        }
+    });
+}
+
+// 检查作业信息更新（用于实时更新截止时间）
+function checkAssignmentUpdates() {
+    const assignmentCards = document.querySelectorAll('.assignment-card');
+    
+    assignmentCards.forEach(card => {
+        const countdownContainer = card.querySelector('.countdown-container');
+        if (countdownContainer) {
+            const currentDueTimeStr = countdownContainer.getAttribute('data-due-time');
+            const assignmentId = countdownContainer.getAttribute('data-assignment-id') || card.getAttribute('data-assignment-id');
+            
+            if (currentDueTimeStr && assignmentId) {
+                // 发起API请求获取最新作业信息
+                fetch(`/api/assignment/${assignmentId}/info`)
+                    .then(response => response.json())
+                    .then(data => {
+                        // 检查截止时间是否有更新（对比UTC时间）
+                        if (data.due_date && data.due_date !== currentDueTimeStr) {
+                            // 截止时间有更新，刷新页面
+                            console.log(`作业 ${assignmentId} 截止时间已更新：${currentDueTimeStr} -> ${data.due_date}，正在刷新页面...`);
+                            location.reload();
+                        } else {
+                            console.log(`作业 ${assignmentId} 截止时间未变化: ${currentDueTimeStr}`);
+                        }
+                    })
+                    .catch(error => {
+                        console.log('检查作业更新失败:', error);
+                    });
+            }
+        }
+    });
+}
+</script>
+
+<style>
+.assignment-card {
+    transition: all 0.3s ease;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+}
+
+.assignment-card:hover {
+    border-color: var(--accent-color);
+}
+
+.countdown-container {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    border-radius: 8px;
+    border-left: 4px solid var(--primary);
+}
+
+.countdown-display {
+    font-size: 0.875rem;
+    color: var(--bs-gray-700);
+}
+
+.countdown-timer {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    padding: 0.2rem 0.4rem;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 4px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 2rem;
+    height: 100%;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(30px);
+}
+
+.stat-card.fade-in-up {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.stat-card:hover {
+    transform: translateY(-10px) scale(1.02);
+    box-shadow: 0 25px 50px var(--shadow-color);
+    border-color: var(--accent-color);
+}
+
+.shortcut-icon-wrapper {
+    position: relative;
+    display: inline-block;
+    margin-bottom: 1.5rem;
+}
+
+.shortcut-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-color), #17a2b8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    color: white;
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    transition: all 0.3s ease;
+    position: relative;
+    z-index: 2;
+}
+
+.shortcut-icon.success-icon {
+    background: linear-gradient(135deg, var(--success-color), #68d391);
+    box-shadow: 0 10px 30px rgba(72, 187, 120, 0.3);
+}
+
+.shortcut-icon.warning-icon {
+    background: linear-gradient(135deg, var(--warning-color), #fbb040);
+    box-shadow: 0 10px 30px rgba(237, 137, 54, 0.3);
+}
+
+.shortcut-glow {
+    position: absolute;
+    top: -10px;
+    left: -10px;
+    right: -10px;
+    bottom: -10px;
+    background: linear-gradient(135deg, var(--accent-color), #17a2b8);
+    border-radius: 50%;
+    opacity: 0;
+    filter: blur(20px);
+    transition: opacity 0.3s ease;
+    z-index: 1;
+}
+
+.shortcut-glow.success-glow {
+    background: linear-gradient(135deg, var(--success-color), #68d391);
+}
+
+.shortcut-glow.warning-glow {
+    background: linear-gradient(135deg, var(--warning-color), #fbb040);
+}
+
+.stat-card:hover .shortcut-icon {
+    transform: scale(1.1) rotate(10deg);
+}
+
+.stat-card:hover .shortcut-glow {
+    opacity: 0.3;
+}
+
+.stat-number {
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin: 0;
+    background: linear-gradient(135deg, var(--accent-color), #17a2b8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-number.success-text {
+    background: linear-gradient(135deg, var(--success-color), #68d391);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-number.warning-text {
+    background: linear-gradient(135deg, var(--warning-color), #fbb040);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-label {
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.empty-state {
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 3rem;
+}
+
+.hero-section {
+    padding: 2rem 0;
+    margin-bottom: 2rem;
+}
+
+@media (max-width: 768px) {
+    .stat-card {
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .shortcut-icon {
+        width: 60px;
+        height: 60px;
+        font-size: 2rem;
+    }
+    
+    .stat-number {
+        font-size: 2rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .stat-number {
+        font-size: 1.8rem;
+    }
+    
+    .shortcut-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.5rem;
+    }
+}
+</style>
+{% endblock %}

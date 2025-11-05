@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}申请补交 - {{ assignment.title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 页面头部 -->
+    <div class="hero-section mb-4">
+        <div class="row align-items-center">
+            <div class="col-md-12">
+                <h1 class="display-6 fw-bold mb-2 fade-in-up">
+                    <i class="fas fa-file-upload me-3" style="color: var(--accent-color);"></i>
+                    申请补交作业
+                </h1>
+                <p class="lead mb-0 fade-in-up" style="animation-delay: 0.2s;">
+                    向老师申请补交逾期作业
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 作业信息 -->
+    <div class="card mb-4">
+        <div class="card-header bg-gradient">
+            <h5 class="mb-0">
+                <i class="fas fa-info-circle me-2"></i>
+                作业信息
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>作业标题：</strong>{{ assignment.title }}</p>
+                    <p><strong>所属班级：</strong>{{ assignment.class_info.name if assignment.class_info else '公共作业' }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>截止时间：</strong>{{ assignment.deadline.strftime('%Y-%m-%d %H:%M') if assignment.deadline else '无' }}</p>
+                    <p><strong>满分：</strong>{{ assignment.total_score }}分</p>
+                </div>
+            </div>
+            {% if assignment.description %}
+            <hr>
+            <p><strong>作业说明：</strong></p>
+            <div class="assignment-description">
+                {{ assignment.description|safe }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 补交申请表单 -->
+    <div class="card">
+        <div class="card-header bg-gradient">
+            <h5 class="mb-0">
+                <i class="fas fa-edit me-2"></i>
+                填写补交理由
+            </h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('makeup.request_makeup', assignment_id=assignment.id) }}">
+                <div class="mb-3">
+                    <label for="reason" class="form-label">
+                        <i class="fas fa-comment-dots me-1"></i>
+                        补交理由 <span class="text-danger">*</span>
+                    </label>
+                    <textarea class="form-control" id="reason" name="reason" rows="5" 
+                              placeholder="请详细说明您需要补交作业的原因..." required></textarea>
+                    <small class="text-muted">请认真填写补交理由，老师将根据您的理由决定是否批准</small>
+                </div>
+
+                <div class="alert alert-info">
+                    <i class="fas fa-lightbulb me-2"></i>
+                    <strong>温馨提示：</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>提交申请后，需要等待老师审批</li>
+                        <li>老师批准后会设置补交截止时间，您需要在截止时间前完成提交</li>
+                        <li>补交作业可能会有分数折扣，具体由老师决定</li>
+                    </ul>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2">
+                    <a href="{{ url_for('student.dashboard') }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>
+                        返回
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-paper-plane me-1"></i>
+                        提交申请
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

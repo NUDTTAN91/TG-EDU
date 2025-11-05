@@ -1,0 +1,448 @@
+{% extends "base.html" %}
+
+{% block title %}阶段管理 - {{ major_assignment.title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- 页面标题 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2>
+                        <i class="fas fa-layer-group me-2"></i>
+                        {{ major_assignment.title }} - 阶段管理
+                    </h2>
+                    <p class="text-muted">
+                        <i class="fas fa-school me-2"></i>{{ major_assignment.class_info.name }}
+                    </p>
+                </div>
+                <div>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addStageModal">
+                        <i class="fas fa-plus me-1"></i>添加阶段
+                    </button>
+                    <a href="{{ url_for('major_assignment.view_assignment_tasks', assignment_id=major_assignment.id) }}" 
+                       class="btn btn-success">
+                        <i class="fas fa-list-check me-1"></i>查看所有任务
+                    </a>
+                    <button class="btn btn-warning" onclick="updateStageStatus()">
+                        <i class="fas fa-sync me-1"></i>更新阶段状态
+                    </button>
+                    <a href="{{ url_for('major_assignment.view_major_assignment_teams', assignment_id=major_assignment.id) }}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>返回
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 大作业时间信息 -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-calendar-alt me-2"></i>大作业时间范围</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-0">
+                                <i class="fas fa-play-circle me-2 text-success"></i>
+                                <strong>开始时间：</strong>
+                                {% if major_assignment.start_date %}
+                                {{ major_assignment.start_date|beijing_time }}
+                                {% else %}
+                                <span class="text-muted">未设置</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-0">
+                                <i class="fas fa-stop-circle me-2 text-danger"></i>
+                                <strong>结束时间：</strong>
+                                {% if major_assignment.end_date %}
+                                {{ major_assignment.end_date|beijing_time }}
+                                {% else %}
+                                <span class="text-muted">未设置</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    {% if not major_assignment.start_date or not major_assignment.end_date %}
+                    <div class="alert alert-warning mt-3 mb-0">
+                        <i class="fas fa-exclamation-triangle me-1"></i>
+                        请先在编辑大作业页面设置开始和结束日期，才能创建阶段
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 阶段列表 -->
+    <div class="row">
+        <div class="col-12">
+            {% if stages %}
+            <div class="timeline">
+                {% for stage in stages %}
+                <div class="card mb-3 shadow-sm">
+                    <div class="card-header 
+                        {% if stage.stage_type == 'team_formation' %}bg-primary
+                        {% elif stage.stage_type == 'division' %}bg-info
+                        {% elif stage.stage_type == 'task' %}bg-success
+                        {% else %}bg-secondary{% endif %} text-white">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <span class="badge bg-light text-dark me-2">#{{ stage.order }}</span>
+                                {% if stage.stage_type == 'team_formation' %}
+                                <i class="fas fa-users me-2"></i>
+                                {% elif stage.stage_type == 'division' %}
+                                <i class="fas fa-tasks me-2"></i>
+                                {% elif stage.stage_type == 'task' %}
+                                <i class="fas fa-list-check me-2"></i>
+                                {% else %}
+                                <i class="fas fa-th-list me-2"></i>
+                                {% endif %}
+                                {{ stage.name }}
+                                {% if stage.is_locked %}
+                                <i class="fas fa-lock ms-2" title="已锁定"></i>
+                                {% endif %}
+                            </h5>
+                            <div>
+                                <span class="badge 
+                                    {% if stage.status == 'pending' %}bg-warning
+                                    {% elif stage.status == 'active' %}bg-success
+                                    {% elif stage.status == 'completed' %}bg-secondary
+                                    {% else %}bg-light text-dark{% endif %}">
+                                    {% if stage.status == 'pending' %}待开始
+                                    {% elif stage.status == 'active' %}进行中
+                                    {% elif stage.status == 'completed' %}已完成
+                                    {% else %}{{ stage.status }}{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <p class="mb-2">
+                                    <strong>类型：</strong>
+                                    {% if stage.stage_type == 'team_formation' %}
+                                    <span class="badge bg-primary">组队阶段</span>
+                                    {% elif stage.stage_type == 'division' %}
+                                    <span class="badge bg-info">分工阶段</span>
+                                    {% elif stage.stage_type == 'task' %}
+                                    <span class="badge bg-success">任务阶段</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">自定义阶段</span>
+                                    {% endif %}
+                                </p>
+                                {% if stage.description %}
+                                <p class="mb-2">
+                                    <strong>描述：</strong>{{ stage.description }}
+                                </p>
+                                {% endif %}
+                                <p class="mb-2">
+                                    <i class="fas fa-calendar-alt me-2"></i>
+                                    <strong>时间：</strong>
+                                    {{ stage.start_date|beijing_time }} 至 {{ stage.end_date|beijing_time }}
+                                </p>
+                            </div>
+                            <div class="col-md-4 text-end">
+                                <div class="btn-group-vertical w-100">
+                                    {% if stage.status == 'pending' %}
+                                    <button class="btn btn-sm btn-success" 
+                                            onclick="activateStage({{ stage.id }}, '{{ stage.name }}')">
+                                        <i class="fas fa-play me-1"></i>立即激活
+                                    </button>
+                                    {% elif stage.status == 'active' %}
+                                    <button class="btn btn-sm btn-danger" 
+                                            onclick="completeStage({{ stage.id }}, '{{ stage.name }}')">
+                                        <i class="fas fa-stop me-1"></i>立即结束
+                                    </button>
+                                    {% elif stage.status == 'completed' %}
+                                    <button class="btn btn-sm btn-warning" 
+                                            onclick="restartStage({{ stage.id }}, '{{ stage.name }}')">
+                                        <i class="fas fa-redo me-1"></i>重新开始
+                                    </button>
+                                    {% endif %}
+                                    {% if stage.stage_type == 'division' %}
+                                    <a href="{{ url_for('major_assignment.manage_division_roles', stage_id=stage.id) }}" 
+                                       class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-user-tag me-1"></i>管理分工角色
+                                    </a>
+                                    {% elif stage.stage_type == 'task' %}
+                                    <a href="{{ url_for('major_assignment.view_stage_tasks', stage_id=stage.id) }}" 
+                                       class="btn btn-sm btn-outline-success">
+                                        <i class="fas fa-list-check me-1"></i>查看任务
+                                    </a>
+                                    {% endif %}
+                                    <button class="btn btn-sm btn-outline-warning" 
+                                            onclick="editStage({{ stage.id }}, '{{ stage.name }}', '{{ stage.description or '' }}', '{{ stage.stage_type }}', '{{ stage.start_date.strftime('%Y-%m-%dT%H:%M') if stage.start_date else '' }}', '{{ stage.end_date.strftime('%Y-%m-%dT%H:%M') if stage.end_date else '' }}')">
+                                        <i class="fas fa-edit me-1"></i>编辑
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" 
+                                            onclick="deleteStage({{ stage.id }}, '{{ stage.name }}')">
+                                        <i class="fas fa-trash me-1"></i>删除
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="alert alert-info text-center">
+                <i class="fas fa-info-circle fa-3x mb-3"></i>
+                <p class="mb-0">暂无阶段，请点击"添加阶段"按钮创建</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- 添加阶段模态框 -->
+<div class="modal fade" id="addStageModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus me-2"></i>添加阶段
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('major_assignment.create_stage', assignment_id=major_assignment.id) }}" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="stage_name" class="form-label">阶段名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="stage_name" name="name" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="stage_type" class="form-label">阶段类型 <span class="text-danger">*</span></label>
+                        <select class="form-select" id="stage_type" name="stage_type" required onchange="updateStageTypeHelp()">
+                            <option value="">请选择...</option>
+                            <option value="team_formation">组队阶段</option>
+                            <option value="division">分工阶段</option>
+                            <option value="task">任务阶段</option>
+                            <option value="custom">自定义阶段</option>
+                        </select>
+                        <div id="stage_type_help" class="form-text"></div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">阶段描述</label>
+                        <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="start_date" class="form-label">开始时间 <span class="text-danger">*</span></label>
+                            <input type="datetime-local" class="form-control" id="start_date" name="start_date" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="end_date" class="form-label">结束时间 <span class="text-danger">*</span></label>
+                            <input type="datetime-local" class="form-control" id="end_date" name="end_date" required>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info small">
+                        <i class="fas fa-info-circle me-1"></i>
+                        <strong>注意：</strong>阶段时间必须在大作业的开始和结束时间范围内
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>创建阶段
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑阶段模态框 -->
+<div class="modal fade" id="editStageModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title">
+                    <i class="fas fa-edit me-2"></i>编辑阶段
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editStageForm" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="edit_stage_name" class="form-label">阶段名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="edit_stage_name" name="name" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit_stage_type" class="form-label">阶段类型 <span class="text-danger">*</span></label>
+                        <select class="form-select" id="edit_stage_type" name="stage_type" required disabled>
+                            <option value="team_formation">组队阶段</option>
+                            <option value="division">分工阶段</option>
+                            <option value="task">任务阶段</option>
+                            <option value="custom">自定义阶段</option>
+                        </select>
+                        <small class="text-muted">阶段类型不可修改</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit_description" class="form-label">阶段描述</label>
+                        <textarea class="form-control" id="edit_description" name="description" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_start_date" class="form-label">开始时间 <span class="text-danger">*</span></label>
+                            <input type="datetime-local" class="form-control" id="edit_start_date" name="start_date" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_end_date" class="form-label">结束时间 <span class="text-danger">*</span></label>
+                            <input type="datetime-local" class="form-control" id="edit_end_date" name="end_date" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-save me-1"></i>保存修改
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function updateStageTypeHelp() {
+    const stageType = document.getElementById('stage_type').value;
+    const helpDiv = document.getElementById('stage_type_help');
+    
+    if (stageType === 'team_formation') {
+        helpDiv.innerHTML = '<i class="fas fa-info-circle me-1"></i>组队阶段：学生可以自由组队，阶段结束后未组队的学生将被随机分组';
+    } else if (stageType === 'division') {
+        helpDiv.innerHTML = '<i class="fas fa-info-circle me-1"></i>分工阶段：组长分配团队成员的分工角色，阶段结束后未分配的将被随机分配';
+    } else if (stageType === 'task') {
+        helpDiv.innerHTML = '<i class="fas fa-info-circle me-1"></i>任务阶段：组长创建并分配任务，组员可以更新任务进度';
+    } else if (stageType === 'custom') {
+        helpDiv.innerHTML = '<i class="fas fa-info-circle me-1"></i>自定义阶段：用于标记大作业的不同阶段或里程碑';
+    } else {
+        helpDiv.innerHTML = '';
+    }
+}
+
+function editStage(id, name, description, stageType, startDate, endDate) {
+    document.getElementById('edit_stage_name').value = name;
+    document.getElementById('edit_description').value = description;
+    document.getElementById('edit_stage_type').value = stageType;
+    document.getElementById('edit_start_date').value = startDate;
+    document.getElementById('edit_end_date').value = endDate;
+    
+    document.getElementById('editStageForm').action = `/major_assignments/stages/${id}/edit`;
+    
+    new bootstrap.Modal(document.getElementById('editStageModal')).show();
+}
+
+function deleteStage(id, name) {
+    if (confirm(`确定要删除阶段「${name}」吗？此操作不可撤销。`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/major_assignments/stages/${id}/delete`;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function updateStageStatus() {
+    if (confirm('是否立即更新所有阶段的状态？\n\n注意：这将检查所有阶段的开始/结束时间，并执行相应的自动处理逻辑（如自动分组、自动分配角色）。')) {
+        fetch('/major_assignments/stages/update_status', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('错误：' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('请求失败：' + error);
+        });
+    }
+}
+
+function activateStage(id, name) {
+    if (confirm(`确定要立即激活阶段「${name}」吗？`)) {
+        fetch(`/major_assignments/stages/${id}/activate`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('错误：' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('请求失败：' + error);
+        });
+    }
+}
+
+function completeStage(id, name) {
+    if (confirm(`确定要立即结束阶段「${name}」吗？\n\n注意：结束后将执行自动处理逻辑（组队阶段将自动分组，分工阶段将自动分配角色）。`)) {
+        fetch(`/major_assignments/stages/${id}/complete`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('错误：' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('请求失败：' + error);
+        });
+    }
+}
+
+function restartStage(id, name) {
+    if (confirm(`确定要重新开始阶段「${name}」吗？\n\n注意：重新开始后，阶段将重置为“待开始”状态，但不会删除已分配的团队或分工。`)) {
+        fetch(`/major_assignments/stages/${id}/restart`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('错误：' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('请求失败：' + error);
+        });
+    }
+}
+</script>
+
+<style>
+.timeline {
+    position: relative;
+}
+</style>
+{% endblock %}

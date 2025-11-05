@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+
+{% block title %}分配团队分工 - {{ stage.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-10 offset-md-1">
+            <!-- 页面标题 -->
+            <div class="card shadow mb-4">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">
+                            <i class="fas fa-tasks me-2"></i>
+                            分配团队分工
+                        </h4>
+                        <a href="{{ url_for('major_assignment.student_major_assignment_detail', assignment_id=stage.major_assignment_id) }}" 
+                           class="btn btn-light btn-sm">
+                            <i class="fas fa-arrow-left me-1"></i>返回
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-2">
+                                <i class="fas fa-layer-group me-2"></i>
+                                <strong>阶段：</strong>{{ stage.name }}
+                            </p>
+                            <p class="mb-2">
+                                <i class="fas fa-users me-2"></i>
+                                <strong>团队：</strong>{{ team.name }}
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-2">
+                                <i class="fas fa-calendar-alt me-2"></i>
+                                <strong>开始时间：</strong>{{ stage.start_date|beijing_time }}
+                            </p>
+                            <p class="mb-2">
+                                <i class="fas fa-calendar-alt me-2"></i>
+                                <strong>结束时间：</strong>{{ stage.end_date|beijing_time }}
+                            </p>
+                        </div>
+                    </div>
+                    {% if stage.description %}
+                    <div class="alert alert-info mt-2 mb-0">
+                        <i class="fas fa-info-circle me-1"></i>
+                        <strong>阶段说明：</strong>{{ stage.description }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- 分工分配表单 -->
+            <div class="card shadow">
+                <div class="card-header bg-info text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-user-tag me-2"></i>
+                            团队分工安排
+                        </h5>
+                        <button type="button" class="btn btn-light btn-sm" onclick="addDivisionRow()">
+                            <i class="fas fa-plus me-1"></i>添加角色
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('major_assignment.save_team_divisions', team_id=team.id, stage_id=stage.id) }}" 
+                          method="POST" id="divisionForm">
+                        
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-1"></i>
+                            <strong>说明：</strong>
+                            <ul class="mb-0 mt-2">
+                                <li>点击"添加角色"按钮，自由定义角色名称和描述</li>
+                                <li>每个角色可以分配<strong>一个或多个</strong>成员（多选）</li>
+                                <li>每个成员可以担任<strong>多个</strong>角色</li>
+                                <li>保存后可以随时修改（阶段结束前）</li>
+                            </ul>
+                        </div>
+                        
+                        <div id="divisionsContainer">
+                            <!-- 现有分工 -->
+                            {% if existing_divisions|length > 0 %}
+                            {% for div in existing_divisions %}
+                            <div class="division-row card mb-3">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <label class="form-label">角色名称 <span class="text-danger">*</span></label>
+                                            <input type="text" class="form-control" name="role_name[]" 
+                                                   value="{{ div.role_name }}" placeholder="例如：项目经理" required>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label">角色描述</label>
+                                            <textarea class="form-control" name="role_description[]" rows="1" 
+                                                      placeholder="描述该角色的职责">{{ div.role_description or '' }}</textarea>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label">分配成员 <span class="text-danger">*</span></label>
+                                            <select class="form-select" name="role_members_{{ loop.index0 }}[]" multiple required 
+                                                    style="height: auto;">
+                                                {% for member in team_members %}
+                                                <option value="{{ member.id }}" 
+                                                    {% if member.id in div.member_ids %}selected{% endif %}>
+                                                    {{ member.real_name }} ({{ member.student_id }})
+                                                </option>
+                                                {% endfor %}
+                                            </select>
+                                            <small class="text-muted">按住Ctrl/Cmd可多选</small>
+                                        </div>
+                                        <div class="col-md-1 d-flex align-items-end">
+                                            <button type="button" class="btn btn-danger btn-sm w-100" 
+                                                    onclick="removeDivisionRow(this)">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                            {% else %}
+                            <!-- 默认显示一个空行 -->
+                            <div class="division-row card mb-3">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <label class="form-label">角色名称 <span class="text-danger">*</span></label>
+                                            <input type="text" class="form-control" name="role_name[]" 
+                                                   placeholder="例如：项目经理" required>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label">角色描述</label>
+                                            <textarea class="form-control" name="role_description[]" rows="1" 
+                                                      placeholder="描述该角色的职责"></textarea>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label">分配成员 <span class="text-danger">*</span></label>
+                                            <select class="form-select" name="role_members_0[]" multiple required 
+                                                    style="height: auto;">
+                                                {% for member in team_members %}
+                                                <option value="{{ member.id }}">
+                                                    {{ member.real_name }} ({{ member.student_id }})
+                                                </option>
+                                                {% endfor %}
+                                            </select>
+                                            <small class="text-muted">按住Ctrl/Cmd可多选</small>
+                                        </div>
+                                        <div class="col-md-1 d-flex align-items-end">
+                                            <button type="button" class="btn btn-danger btn-sm w-100" 
+                                                    onclick="removeDivisionRow(this)">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="d-flex justify-content-between mt-3">
+                            <a href="{{ url_for('major_assignment.student_major_assignment_detail', assignment_id=stage.major_assignment_id) }}" 
+                               class="btn btn-secondary">
+                                <i class="fas fa-times me-1"></i>取消
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i>保存分工
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+<script>
+// 团队成员数据
+const teamMembers = [
+    {% for member in team_members %}
+    {id: {{ member.id }}, name: '{{ member.real_name }}', studentId: '{{ member.student_id }}'}{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+
+// 添加分工行
+function addDivisionRow() {
+    const container = document.getElementById('divisionsContainer');
+    const rows = container.querySelectorAll('.division-row');
+    const newIndex = rows.length;
+    const newRow = document.createElement('div');
+    newRow.className = 'division-row card mb-3';
+    
+    let memberOptions = '';
+    teamMembers.forEach(member => {
+        memberOptions += `<option value="${member.id}">${member.name} (${member.studentId})</option>`;
+    });
+    
+    newRow.innerHTML = `
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <label class="form-label">角色名称 <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" name="role_name[]" 
+                           placeholder="例如：项目经理" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">角色描述</label>
+                    <textarea class="form-control" name="role_description[]" rows="1" 
+                              placeholder="描述该角色的职责"></textarea>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">分配成员 <span class="text-danger">*</span></label>
+                    <select class="form-select" name="role_members_${newIndex}[]" multiple required 
+                            style="height: auto;">
+                        ${memberOptions}
+                    </select>
+                    <small class="text-muted">按住Ctrl/Cmd可多选</small>
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button type="button" class="btn btn-danger btn-sm w-100" 
+                            onclick="removeDivisionRow(this)">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    container.appendChild(newRow);
+}
+
+// 删除分工行
+function removeDivisionRow(button) {
+    const container = document.getElementById('divisionsContainer');
+    const rows = container.querySelectorAll('.division-row');
+    
+    // 至少保留一个分工
+    if (rows.length <= 1) {
+        alert('至少需要保留一个角色分工！');
+        return;
+    }
+    
+    if (confirm('确定要删除这个角色吗？')) {
+        button.closest('.division-row').remove();
+    }
+}
+
+// 表单提交验证
+document.getElementById('divisionForm').addEventListener('submit', function(e) {
+    const container = document.getElementById('divisionsContainer');
+    const rows = container.querySelectorAll('.division-row');
+    
+    if (rows.length === 0) {
+        e.preventDefault();
+        alert('请至少添加一个角色分工！');
+        return false;
+    }
+});
+</script>
+
+            <!-- 团队成员列表 -->
+            <div class="card shadow mt-4">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0">
+                        <i class="fas fa-users me-2"></i>
+                        团队成员列表
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="fas fa-crown text-warning me-2"></i>
+                                <strong>{{ team.leader.real_name }}</strong>
+                                <span class="badge bg-warning text-dark ms-2">组长</span>
+                            </div>
+                        </div>
+                        {% for member in team.members %}
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="fas fa-user me-2"></i>
+                                <span>{{ member.user.real_name }}</span>
+                                <span class="text-muted ms-2 small">({{ member.user.student_id }})</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

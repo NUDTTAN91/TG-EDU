@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+{% block title %}作业提交列表 - {{ assignment.title }}{% endblock %}
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1>{{ assignment.title }} - 提交列表</h1>
+                <p class="text-muted">共 {{ student_stats|length }} 名学生提交，总计 {{ student_stats|sum(attribute='submission_count') }} 份提交</p>
+            </div>
+            <div>
+                {% if student_stats %}
+                <div class="btn-group me-2" role="group">
+                    <a href="{{ url_for('grading.export_grading_template', assignment_id=assignment.id) }}" 
+                       class="btn btn-success">
+                        <i class="fas fa-file-excel me-1"></i>下载评分模板
+                    </a>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#importGradeModal">
+                        <i class="fas fa-file-upload me-1"></i>导入评分
+                    </button>
+                    {% if assignment.class_id %}
+                    <a href="{{ url_for('assignment.makeup_grading', assignment_id=assignment.id) }}" 
+                       class="btn btn-warning">
+                        <i class="fas fa-user-clock me-1"></i>补交评分
+                    </a>
+                    {% endif %}
+                </div>
+                {% endif %}
+                <a href="{% if current_user.is_super_admin %}{{ url_for('admin.super_admin_dashboard') }}{% else %}{{ url_for('admin.teacher_dashboard') }}{% endif %}" class="btn btn-secondary">返回管理后台</a>
+            </div>
+        </div>
+        {% if assignment.description %}
+            <div class="alert alert-info mb-4">
+                <h6>作业要求:</h6>
+                <p class="mb-0">{{ assignment.description|nl2br|safe }}</p>
+            </div>
+        {% endif %}
+        <!-- 附件信息 -->
+        {% if assignment.attachment_file_path %}
+            <div class="alert alert-success mb-4">
+                <h6>作业附件:</h6>
+                <p class="mb-2">此作业包含附件供参考:</p>
+                <a href="{{ url_for('download.download_assignment_attachment', assignment_id=assignment.id) }}" 
+                   class="btn btn-sm btn-outline-success">
+                    <i class="fas fa-paperclip me-1"></i>
+                    下载附件 ({{ assignment.attachment_original_filename or assignment.attachment_filename }})
+                </a>
+            </div>
+        {% endif %}
+        {% if student_stats %}
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>学生姓名</th>
+                            <th>学号</th>
+                            <th>提交次数</th>
+                            <th>最新提交时间</th>
+                            <th>最新评分</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student_stat in student_stats %}
+                            <tr class="clickable-row" data-href="{{ url_for('grading.grade_assignment_overall', assignment_id=assignment.id, student_id=student_stat.student_id) }}">
+                                <td>
+                                    <strong>{{ student_stat.student_name }}</strong>
+                                </td>
+                                <td>{{ student_stat.student_number }}</td>
+                                <td>
+                                    <span class="badge bg-info">
+                                        <i class="fas fa-upload me-1"></i>
+                                        {{ student_stat.submission_count }} 次
+                                    </span>
+                                </td>
+                                <td>
+                                    <small class="text-muted">
+                                        <i class="fas fa-clock me-1"></i>
+                                        {{ student_stat.latest_submission.submitted_at|beijing_time }}
+                                    </small>
+                                    <br>
+                                    <small class="text-muted">
+                                        {{ student_stat.latest_submission.original_filename }}
+                                    </small>
+                                </td>
+                                <td>
+                                    {% if student_stat.latest_grade is not none %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-star me-1"></i>
+                                            {{ student_stat.latest_grade }}分
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">
+                                            <i class="fas fa-hourglass-half me-1"></i>
+                                            未评分
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a href="{{ url_for('grading.grade_assignment_overall', assignment_id=assignment.id, student_id=student_stat.student_id) }}" 
+                                           class="btn btn-sm btn-primary" 
+                                           title="评分">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <a href="{{ url_for('submission.download_file', submission_id=student_stat.latest_submission.id) }}" 
+                                           class="btn btn-sm btn-outline-primary" 
+                                           title="下载最新提交">
+                                            <i class="fas fa-download"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center">
+                <p class="lead">该作业暂无提交</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 导入评分模态框 -->
+<div class="modal fade" id="importGradeModal" tabindex="-1" aria-labelledby="importGradeModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="importGradeModalLabel">
+                    <i class="fas fa-file-upload me-2"></i>批量导入评分
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <h6 class="alert-heading"><i class="fas fa-info-circle me-1"></i>使用说明</h6>
+                    <ol class="mb-0">
+                        <li>点击「下载评分模板」获取Excel文件</li>
+                        <li>模板中仅包含已提交作业的学生</li>
+                        <li>在「分数」和「评语」列中填写评分信息</li>
+                        <li>分数范围：0-100，可为空</li>
+                        <li>请勿修改学号和姓名</li>
+                        <li>保存并上传填写好的Excel文件</li>
+                    </ol>
+                </div>
+                <form id="importGradeForm" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="gradeFile" class="form-label">选择Excel文件</label>
+                        <input type="file" class="form-control" id="gradeFile" name="file" accept=".xlsx,.xls" required>
+                        <div class="form-text">支持.xlsx和.xls格式</div>
+                    </div>
+                    <div id="importProgress" class="progress mb-3" style="display:none;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%">正在导入...</div>
+                    </div>
+                    <div id="importResult" class="alert" style="display:none;"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="uploadGradeBtn">
+                    <i class="fas fa-upload me-1"></i>开始导入
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 批量导入评分
+document.getElementById('uploadGradeBtn').addEventListener('click', function() {
+    const form = document.getElementById('importGradeForm');
+    const fileInput = document.getElementById('gradeFile');
+    const uploadBtn = this;
+    const progress = document.getElementById('importProgress');
+    const result = document.getElementById('importResult');
+    
+    if (!fileInput.files.length) {
+        alert('请选择Excel文件');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    
+    // 禁用按钮并显示进度
+    uploadBtn.disabled = true;
+    progress.style.display = 'block';
+    result.style.display = 'none';
+    
+    fetch('{{ url_for("grading.import_grades", assignment_id=assignment.id) }}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        uploadBtn.disabled = false;
+        progress.style.display = 'none';
+        result.style.display = 'block';
+        
+        if (data.success) {
+            result.className = 'alert alert-success';
+            result.innerHTML = '<i class="fas fa-check-circle me-2"></i>' + data.message;
+            
+            // 3秒后刷新页面
+            setTimeout(function() {
+                location.reload();
+            }, 3000);
+        } else {
+            result.className = 'alert alert-danger';
+            result.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>' + data.message;
+        }
+    })
+    .catch(error => {
+        uploadBtn.disabled = false;
+        progress.style.display = 'none';
+        result.style.display = 'block';
+        result.className = 'alert alert-danger';
+        result.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>导入失败：' + error.message;
+    });
+});
+
+// 清理模态框状态
+document.getElementById('importGradeModal').addEventListener('hidden.bs.modal', function() {
+    document.getElementById('importGradeForm').reset();
+    document.getElementById('importProgress').style.display = 'none';
+    document.getElementById('importResult').style.display = 'none';
+});
+</script>
+{% endblock %}

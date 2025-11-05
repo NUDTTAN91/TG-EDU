@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+
+{% block title %}创建作业 - TG作业系统{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card">
+            <div class="card-header bg-gradient">
+                <h4 class="mb-0">
+                    <i class="fas fa-plus-circle me-2"></i>
+                    创建新作业
+                </h4>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST" class="needs-validation" novalidate enctype="multipart/form-data">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="title" class="form-label">
+                                    <i class="fas fa-tag me-1"></i>
+                                    作业标题 <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="title" name="title" required 
+                                       placeholder="请输入作业标题...">
+                                <div class="invalid-feedback">请输入作业标题</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="due_date" class="form-label">
+                                    <i class="fas fa-calendar-alt me-1"></i>
+                                    截止时间
+                                </label>
+                                <input type="datetime-local" class="form-control" id="due_date" name="due_date">
+                                <div class="form-text">留空表示无截止时间限制</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="class_id" class="form-label">
+                                    <i class="fas fa-school me-1"></i>
+                                    指定班级 <span class="text-info">(可选)</span>
+                                </label>
+                                <select class="form-select" id="class_id" name="class_id">
+                                    <option value="">不指定班级 (全校公共作业)</option>
+                                    {% for class_obj in available_classes %}
+                                        <option value="{{ class_obj.id }}">
+                                            {{ class_obj.name }} ({{ class_obj.code }})
+                                            {% if class_obj.grade %} - {{ class_obj.grade }}{% endif %}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    选择班级后，只有该班级的学生能看到此作业
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    创建者信息
+                                </label>
+                                <div class="creator-info">
+                                    <div class="info-item">
+                                        <strong>教师：</strong> {{ current_user.real_name }}
+                                    </div>
+                                    <div class="info-item">
+                                        <strong>用户名：</strong> {{ current_user.username }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">
+                            <i class="fas fa-file-alt me-1"></i>
+                            作业描述
+                        </label>
+                        <textarea class="form-control" id="description" name="description" rows="4" 
+                                  placeholder="请输入作业要求和说明...\n例如：\n1. 请完成第三章的练习题\n2. 要求使用Python编程\n3. 需要包含注释说明"></textarea>
+                    </div>
+                    
+                    <!-- 附件上传 -->
+                    <div class="mb-3">
+                        <label for="attachment" class="form-label">
+                            <i class="fas fa-paperclip me-1"></i>
+                            作业附件 <span class="text-info">(可选)</span>
+                        </label>
+                        <input type="file" class="form-control" id="attachment" name="attachment">
+                        <div class="form-text">
+                            <i class="fas fa-info-circle me-1"></i>
+                            可上传一个附件供学生下载，如参考资料、模板文件等
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="mb-3">
+                                <label for="allowed_file_types" class="form-label">
+                                    <i class="fas fa-file-check me-1"></i>
+                                    允许的文件扩展名：
+                                </label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="allowed_file_types" name="allowed_file_types" 
+                                           placeholder="例如：pdf,doc,docx,txt,zip" 
+                                           value="pdf,doc,docx,txt,zip,py,java,cpp">
+                                    <button type="button" class="btn btn-outline-secondary" onclick="addCommonTypes()">
+                                        <i class="fas fa-magic"></i> 常用类型
+                                    </button>
+                                </div>
+                                <div class="form-text">
+                                    用逗号分隔，不需要加点号。留空将使用默认类型。
+                                    <br><strong>常用类型：</strong> pdf, doc, docx, txt, zip, rar, py, java, cpp, c, html, css, js
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="max_file_size" class="form-label">
+                                    <i class="fas fa-weight-hanging me-1"></i>
+                                    最大文件大小 (MB)
+                                </label>
+                                <input type="number" class="form-control" id="max_file_size" name="max_file_size" 
+                                       value="50" min="1" max="10240" step="0.1">
+                                <div class="form-text">可设置1MB到10GB (10240MB)，建议根据作业类型设置合适的大小</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="max_submissions" class="form-label">
+                                    <i class="fas fa-redo me-1"></i>
+                                    提交次数限制
+                                </label>
+                                <select class="form-select" id="max_submissions" name="max_submissions">
+                                    <option value="0" selected>无限制</option>
+                                    <option value="1">1次</option>
+                                    <option value="2">2次</option>
+                                    <option value="3">3次</option>
+                                    <option value="5">5次</option>
+                                    <option value="10">10次</option>
+                                </select>
+                                <div class="form-text">限制学生可以提交的次数，选择“无限制”允许多次提交</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 文件类型预设选择 -->
+                    <div class="mb-4">
+                        <label class="form-label">
+                            <i class="fas fa-layer-group me-1"></i>
+                            快速选择文件类型
+                        </label>
+                        <div class="row">
+                            <div class="col-md-3">
+                                <button type="button" class="btn btn-outline-primary btn-sm w-100 mb-2" 
+                                        onclick="setFileTypes('pdf,doc,docx')">
+                                    <i class="fas fa-file-pdf"></i> 文档类型
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button type="button" class="btn btn-outline-success btn-sm w-100 mb-2" 
+                                        onclick="setFileTypes('py,java,cpp,c,js,html,css')">
+                                    <i class="fas fa-code"></i> 编程文件
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button type="button" class="btn btn-outline-warning btn-sm w-100 mb-2" 
+                                        onclick="setFileTypes('zip,rar,7z,tar')">
+                                    <i class="fas fa-file-archive"></i> 压缩文件
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button type="button" class="btn btn-outline-info btn-sm w-100 mb-2" 
+                                        onclick="setFileTypes('jpg,png,gif,bmp,svg')">
+                                    <i class="fas fa-image"></i> 图片文件
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-2 justify-content-end">
+                        <a href="{{ url_for('admin.teacher_dashboard') if current_user.is_teacher else url_for('admin.super_admin_dashboard') }}" 
+                           class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>
+                            取消
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-plus-circle me-1"></i>
+                            创建作业
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// 表单验证
+document.addEventListener('DOMContentLoaded', function() {
+    const forms = document.querySelectorAll('.needs-validation');
+    Array.from(forms).forEach(form => {
+        form.addEventListener('submit', event => {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        }, false);
+    });
+});
+
+// 设置文件类型
+function setFileTypes(types) {
+    document.getElementById('allowed_file_types').value = types;
+}
+
+// 添加常用类型
+function addCommonTypes() {
+    const input = document.getElementById('allowed_file_types');
+    const commonTypes = 'pdf,doc,docx,txt,zip,rar,py,java,cpp,c,html,css,js';
+    input.value = commonTypes;
+}
+
+// 实时预览选择的文件类型
+document.getElementById('allowed_file_types').addEventListener('input', function() {
+    const types = this.value.split(',').map(t => t.trim()).filter(t => t);
+    const preview = types.map(t => `<span class="badge bg-secondary me-1">.${t}</span>`).join('');
+    
+    // 创建或更新预览元素
+    let previewElement = document.getElementById('file-types-preview');
+    if (!previewElement) {
+        previewElement = document.createElement('div');
+        previewElement.id = 'file-types-preview';
+        previewElement.className = 'mt-2';
+        this.parentNode.appendChild(previewElement);
+    }
+    
+    if (types.length > 0) {
+        previewElement.innerHTML = '<small class="text-muted">允许的文件扩展名：</small><br>' + preview;
+    } else {
+        previewElement.innerHTML = '';
+    }
+});
+
+// 触发初始预览
+document.getElementById('allowed_file_types').dispatchEvent(new Event('input'));
+</script>
+
+<style>
+.creator-info {
+    background: var(--bg-glass);
+    padding: 1rem;
+    border-radius: 8px;
+    border-left: 4px solid var(--info-color);
+}
+
+.info-item {
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.info-item:last-child {
+    margin-bottom: 0;
+}
+
+.form-select:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 0.2rem rgba(var(--accent-color-rgb), 0.25);
+}
+
+.badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+</style>
+{% endblock %}
