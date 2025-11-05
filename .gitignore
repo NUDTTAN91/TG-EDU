@@ -1,0 +1,24 @@
+# ====================================
+# TG-EDU 作业收集系统 .gitignore
+# ====================================
+
+# === 核心存储目录（保留目录结构，但不上传内容）===
+# 统一存储目录
+storage/*
+!storage/.gitkeep
+!storage/data/
+!storage/uploads/
+!storage/appendix/
+
+# 数据库文件（包含用户信息、密码哈希、成绩等）
+storage/data/*
+!storage/data/.gitkeep
+
+# 学生作业上传（包含学生个人信息）
+storage/uploads/*
+!storage/uploads/.gitkeep
+
+# 作业附件（包含教师教学资料）
+storage/appendix/*
+!storage/appendix/.gitkeep
+storage.bak/
