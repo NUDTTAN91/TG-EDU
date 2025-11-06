@@ -37,18 +37,9 @@ RUN pip3 config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple &&
 COPY app.py .
 COPY wsgi.py .
 COPY config.py .
-COPY init_db.py .
-COPY migrate_db.py .
-COPY migrate_stage_system.py .
-COPY migrate_remove_teacher_id.py .
-COPY migrate_team_division_free_roles.py .
-COPY migrate_task_stage.py .
-COPY migrate_task_stage_nullable.py .
-COPY migrate_major_assignment_attachments.py .
-COPY migrate_team_confirmation_reason.py .
-COPY migrate_remove_due_date.py .
-COPY update_stage_status.py .
 COPY start.sh .
+COPY migrations/ ./migrations/
+COPY scripts/ ./scripts/
 COPY app/ ./app/
 RUN find /app -name "*.pyc" -delete && \
     find /app -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true

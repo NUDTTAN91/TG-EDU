@@ -15,9 +15,10 @@ def init_scheduler(app):
     import time
     import sys
     
-    # 检查是否是迁移脚本（不启动调度器）
+    # 检查是否是迁移脚本或工具脚本（不启动调度器）
     script_name = os.path.basename(sys.argv[0] if sys.argv else '')
-    if script_name.startswith('migrate_') or script_name in ['init_db.py', 'update_stage_status.py']:
+    # 迁移脚本和工具脚本都可能在 migrations/ 或 scripts/ 目录下
+    if script_name.startswith('migrate_') or script_name in ['init_db.py', 'update_stage_status.py', 'enable_wal_mode.py']:
         return
     
     # 检查是否已有其他worker启动了调度器

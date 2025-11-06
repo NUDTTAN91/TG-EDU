@@ -13,28 +13,28 @@ export SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
 cd /app
 
 # 先运行数据库迁移
-python3 migrate_db.py
+python3 migrations/migrate_db.py
 
 # 运行阶段系统迁移
-python3 migrate_stage_system.py
+python3 migrations/migrate_stage_system.py
 
 # 运行任务阶段迁移
-python3 migrate_task_stage.py
+python3 migrations/migrate_task_stage.py
 
 # 运行任务阶段stage_id可空迁移
-python3 migrate_task_stage_nullable.py
+python3 migrations/migrate_task_stage_nullable.py
 
 # 运行大作业附件系统迁移
-python3 migrate_major_assignment_attachments.py
+python3 migrations/migrate_major_assignment_attachments.py
 
 # 运行团队确认理由字段迁移
-python3 migrate_team_confirmation_reason.py
+python3 migrations/migrate_team_confirmation_reason.py
 
 # 运行删除due_date字段迁移
-python3 migrate_remove_due_date.py
+python3 migrations/migrate_remove_due_date.py
 
 # 运行解散团队请求表迁移
-python3 migrate_dissolve_team_request.py
+python3 migrations/migrate_dissolve_team_request.py
 
 # 然后初始化管理员账户
 python3 -c "
