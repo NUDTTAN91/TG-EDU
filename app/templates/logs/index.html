@@ -201,12 +201,12 @@
                                         </td>
                                         <td>
                                             {% if log.ip_location %}
-                                                <span class="badge bg-secondary">
+                                                <span class="badge badge-ip-location">
                                                     <i class="fas fa-map-marker-alt me-1"></i>
                                                     {{ log.ip_location }}
                                                 </span>
                                             {% else %}
-                                                <span class="badge bg-secondary">
+                                                <span class="badge badge-ip-location">
                                                     <i class="fas fa-map-marker-alt me-1"></i>
                                                     {{ log.ip_address or '-' }}
                                                 </span>
@@ -406,6 +406,24 @@ function formatBeijingTime(utcTimeStr) {
 <style>
 .opacity-50 {
     opacity: 0.5;
+}
+
+/* IP地址彩色边框样式 */
+.badge-ip-location {
+    background-color: #ffffff;
+    color: #0d6efd;
+    border: 2px solid #0d6efd;
+    font-weight: 500;
+    padding: 0.35em 0.65em;
+}
+
+.badge-ip-location:hover {
+    background-color: #e7f1ff;
+    transition: background-color 0.2s ease;
+}
+
+.badge-ip-location i {
+    color: #0d6efd;
 }
 </style>
 {% endblock %}
