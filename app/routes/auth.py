@@ -3,6 +3,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
 from app.models import User, UserRole
 from app.extensions import db
+from app.services.log_service import LogService
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
@@ -24,6 +25,13 @@ def login():
         if user and user.check_password(password) and user.is_active:
             login_user(user)
             
+            # 记录登录日志
+            LogService.log_operation(
+                operation_type='login',
+                operation_desc=f'用户 {user.username} ({user.real_name}) 登录系统',
+                result='success'
+            )
+            
             # 检查是否需要强制修改密码
             if user.must_change_password and not user.is_super_admin:
                 flash('您是首次登录，必须修改密码后才能继续使用系统')
@@ -37,6 +45,13 @@ def login():
             else:
                 return redirect(url_for('student.dashboard'))
         else:
+            # 记录登录失败日志
+            LogService.log_operation(
+                operation_type='login',
+                operation_desc=f'用户名 {username} 登录失败',
+                result='failed',
+                error_msg='用户名或密码错误，或者账户已被禁用'
+            )
             flash('用户名或密码错误，或者账户已被禁用')
     
     return render_template('login.html')
@@ -46,6 +61,11 @@ def login():
 @login_required
 def logout():
     """登出"""
+    # 记录登出日志
+    LogService.log_operation(
+        operation_type='logout',
+        operation_desc=f'用户 {current_user.username} ({current_user.real_name}) 登出系统'
+    )
     logout_user()
     return redirect(url_for('main.index'))
 

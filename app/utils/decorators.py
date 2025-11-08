@@ -42,3 +42,33 @@ def require_login(f):
             return redirect(url_for('auth.login'))
         return f(*args, **kwargs)
     return decorated_function
+
+
+def log_operation(operation_type, operation_desc=None):
+    """
+    记录操作日志的装饰器
+    
+    Args:
+        operation_type: 操作类型（login, submit, view, apply等）
+        operation_desc: 操作描述（可选，如果不提供则使用函数名）
+    """
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            from app.services.log_service import LogService
+            
+            # 执行函数
+            try:
+                result = f(*args, **kwargs)
+                # 记录成功日志
+                desc = operation_desc if operation_desc else f"{f.__name__}"
+                LogService.log_operation(operation_type, desc, result='success')
+                return result
+            except Exception as e:
+                # 记录失败日志
+                desc = operation_desc if operation_desc else f"{f.__name__}"
+                LogService.log_operation(operation_type, desc, result='failed', error_msg=str(e))
+                raise  # 重新抛出异常
+        
+        return decorated_function
+    return decorator

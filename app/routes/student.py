@@ -5,6 +5,7 @@ from sqlalchemy import or_
 from app.models import Assignment, Submission, UserRole, AssignmentGrade, MakeupRequest
 from app.models.team import MajorAssignment
 from app.utils import require_role
+from app.services.log_service import LogService
 
 bp = Blueprint('student', __name__, url_prefix='/student')
 
@@ -84,6 +85,13 @@ def dashboard():
     # 传递当前时间用于模板判断
     from datetime import datetime
     current_time = datetime.utcnow()
+    
+    # 记录查看日志
+    LogService.log_operation(
+        operation_type='view',
+        operation_desc=f'查看学生中心（作业数：{len(assignments)}）',
+        result='success'
+    )
     
     return render_template('student_dashboard.html',
                          assignments=assignments,

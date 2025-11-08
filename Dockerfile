@@ -38,6 +38,9 @@ COPY app.py .
 COPY wsgi.py .
 COPY config.py .
 COPY start.sh .
+COPY ip2region/ip2region.xdb ./data/
+COPY ip2region/ip2region_v4.xdb ./data/
+COPY ip2region/ip2region_v6.xdb ./data/
 COPY migrations/ ./migrations/
 COPY scripts/ ./scripts/
 COPY app/ ./app/

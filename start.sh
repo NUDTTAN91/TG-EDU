@@ -36,6 +36,12 @@ python3 migrations/migrate_remove_due_date.py
 # 运行解散团队请求表迁移
 python3 migrations/migrate_dissolve_team_request.py
 
+# 运行操作日志表迁移
+python3 migrations/migrate_operation_log.py
+
+# 运行IP地理位置字段迁移
+python3 migrations/add_ip_location.py
+
 # 然后初始化管理员账户
 python3 -c "
 import os

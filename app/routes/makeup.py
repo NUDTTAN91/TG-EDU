@@ -7,6 +7,7 @@ from datetime import datetime
 from app import db
 from app.models import Assignment, User, Submission, MakeupRequest
 from app.utils.decorators import require_teacher_or_admin
+from app.services.log_service import LogService
 
 bp = Blueprint('makeup', __name__, url_prefix='/makeup')
 
@@ -44,6 +45,13 @@ def request_makeup(assignment_id):
         
         db.session.add(makeup_request)
         db.session.commit()
+        
+        # 记录申请日志
+        LogService.log_operation(
+            operation_type='apply',
+            operation_desc=f'申请补交作业「{assignment.title}」',
+            result='success'
+        )
         
         flash('补交申请已提交，请等待老师审批', 'success')
         return redirect(url_for('student.dashboard'))
@@ -132,6 +140,15 @@ def approve_request(request_id):
     makeup_request.updated_at = datetime.utcnow()
     
     db.session.commit()
+    
+    # 记录批准日志
+    student = User.query.get(makeup_request.student_id)
+    assignment = Assignment.query.get(makeup_request.assignment_id)
+    LogService.log_operation(
+        operation_type='approve',
+        operation_desc=f'批准 {student.real_name} 的补交申请：{assignment.title}',
+        result='success'
+    )
     
     return jsonify({'success': True, 'message': '已批准补交申请'})
 

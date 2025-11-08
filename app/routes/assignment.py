@@ -6,6 +6,7 @@ from collections import defaultdict
 from app.extensions import db
 from app.models import Assignment, Class, User, UserRole, Submission, AssignmentGrade
 from app.services import FileService, NotificationService
+from app.services.log_service import LogService
 from app.utils import require_teacher_or_admin, to_beijing_time
 from sqlalchemy import func
 
@@ -122,6 +123,14 @@ def create_assignment():
         
         db.session.add(assignment)
         db.session.commit()
+        
+        # 记录创建作业日志
+        class_name = Class.query.get(class_id).name if class_id else '公共'
+        LogService.log_operation(
+            operation_type='create',
+            operation_desc=f'创建作业「{title}」（班级：{class_name}）',
+            result='success'
+        )
         
         # 发送通知给学生
         if class_id:
@@ -459,6 +468,14 @@ def edit_assignment(assignment_id):
         assignment.class_id = class_id if class_id else None
         
         db.session.commit()
+        
+        # 记录编辑作业日志
+        LogService.log_operation(
+            operation_type='update',
+            operation_desc=f'编辑作业「{title}」',
+            result='success'
+        )
+        
         flash('作业信息已成功更新')
         
         if current_user.is_super_admin:
@@ -498,6 +515,13 @@ def delete_assignment(assignment_id):
     assignment_title = assignment.title
     db.session.delete(assignment)
     db.session.commit()
+    
+    # 记录删除作业日志
+    LogService.log_operation(
+        operation_type='delete',
+        operation_desc=f'删除作业「{assignment_title}」及所有提交',
+        result='success'
+    )
     
     flash(f'作业 "{assignment_title}" 及其所有提交已成功删除')
     

@@ -5,6 +5,7 @@ from app.models.assignment import Assignment, AssignmentGrade
 from app.models.submission import Submission
 from app.models.notification import Notification
 from app.models.makeup_request import MakeupRequest
+from app.models.operation_log import OperationLog
 from app.models.team import (
     MajorAssignment, Team, TeamMember,
     TeamInvitation, LeaveTeamRequest, DissolveTeamRequest,
@@ -20,6 +21,7 @@ __all__ = [
     'Submission',
     'Notification',
     'MakeupRequest',
+    'OperationLog',
     'MajorAssignment', 'Team', 'TeamMember',
     'TeamInvitation', 'LeaveTeamRequest', 'DissolveTeamRequest',
     'Stage', 'DivisionRole', 'TeamDivision',

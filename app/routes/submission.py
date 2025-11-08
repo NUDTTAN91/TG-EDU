@@ -11,6 +11,7 @@ from app.models import Assignment, Submission, User, Class, UserRole
 from app.utils import safe_chinese_filename, to_beijing_time, BEIJING_TZ
 from app.utils.decorators import require_teacher_or_admin, require_role
 from app.services import NotificationService
+from app.services.log_service import LogService
 
 bp = Blueprint('submission', __name__)
 
@@ -212,6 +213,13 @@ def submit_assignment(assignment_id):
                 
                 db.session.add(submission)
                 db.session.commit()
+                
+                # 记录提交日志
+                LogService.log_operation(
+                    operation_type='submit',
+                    operation_desc=f'学生 {student_name} ({student_number}) 提交作业「{assignment.title}」{"（补交）" if is_makeup_submission else ""}',
+                    result='success'
+                )
                 
                 # 根据请求类型返回不同响应
                 if request.headers.get('Content-Type', '').startswith('multipart/form-data'):
@@ -429,6 +437,14 @@ def download_file(submission_id):
             download_name=safe_download_name
         )
         logger.warning(f"File sent successfully")
+        
+        # 记录下载日志
+        LogService.log_operation(
+            operation_type='download',
+            operation_desc=f'下载作业提交文件：{submission.student_name} - {assignment.title}',
+            result='success'
+        )
+        
         return response
     except Exception as e:
         logger.error(f"Error sending file: {e}")

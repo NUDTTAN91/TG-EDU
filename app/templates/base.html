@@ -248,6 +248,14 @@
                             <span class="menu-title">补交管理</span>
                         </a>
                         
+                        <!-- 7. 系统日志 -->
+                        <a href="{{ url_for('logs.index') }}" class="menu-item info">
+                            <div class="menu-icon">
+                                <i class="fas fa-clipboard-list"></i>
+                            </div>
+                            <span class="menu-title">系统日志</span>
+                        </a>
+                        
                         <div class="menu-item secondary" onclick="showBatchImport()">
                             <div class="menu-icon">
                                 <i class="fas fa-file-excel"></i>
@@ -255,7 +263,7 @@
                             <span class="menu-title">批量导入</span>
                         </div>
                         
-                        <!-- 7. 系统重置 -->
+                        <!-- 8. 系统重置 -->
                         <div class="menu-item danger" onclick="showSystemReset()">
                             <div class="menu-icon">
                                 <i class="fas fa-undo"></i>

@@ -125,7 +125,7 @@ def register_blueprints(app):
     # 延迟导入避免循环依赖
     from app.routes import (main, auth, admin, student, user_mgmt, 
                             class_mgmt, assignment, submission, grading,
-                            download, notification, advanced, import_export, major_assignment, makeup)
+                            download, notification, advanced, import_export, major_assignment, makeup, logs)
     
     app.register_blueprint(main.bp)
     app.register_blueprint(auth.bp)
@@ -142,6 +142,7 @@ def register_blueprints(app):
     app.register_blueprint(import_export.bp)
     app.register_blueprint(major_assignment.bp)
     app.register_blueprint(makeup.bp)
+    app.register_blueprint(logs.bp)
 
 
 def init_scheduler(app):

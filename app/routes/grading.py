@@ -10,6 +10,7 @@ from app.models import Assignment, Submission, User, Class, UserRole
 from app.models.assignment import AssignmentGrade
 from app.utils.decorators import require_teacher_or_admin
 from app.services import NotificationService
+from app.services.log_service import LogService
 from app.utils import to_beijing_time
 
 bp = Blueprint('grading', __name__, url_prefix='/admin')
@@ -146,6 +147,17 @@ def grade_assignment_overall(assignment_id, student_id):
             db.session.add(existing_grade)
         
         db.session.commit()
+        
+        # 记录评分日志
+        grade_type = '补交评分' if is_makeup else '正常评分'
+        grade_info = f'{grade_float}分' if grade_float is not None else '无评分'
+        if is_makeup and original_grade:
+            grade_info = f'{original_grade}分×{discount_rate}%={grade_float}分'
+        LogService.log_operation(
+            operation_type='grade',
+            operation_desc=f'{grade_type}：学生 {student.real_name} 的作业「{assignment.title}」，分数：{grade_info}',
+            result='success'
+        )
         
         current_app.logger.info(f"[SAVE_GRADE] Student={student_id}, Grade={grade_float}, Makeup={is_makeup}, Original={original_grade}, Discount={discount_rate}")
         

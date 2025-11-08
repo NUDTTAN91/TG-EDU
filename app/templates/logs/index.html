@@ -1,0 +1,411 @@
+{% extends "base.html" %}
+
+{% block title %}系统操作日志 - TG-EDU综合教育平台{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-clipboard-list me-2"></i>系统操作日志</h2>
+            </div>
+
+            <!-- 统计卡片 -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card text-white bg-primary">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="card-title">总日志数</h6>
+                                    <h3 class="mb-0">{{ stats.total_logs }}</h3>
+                                </div>
+                                <i class="fas fa-database fa-3x opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-success">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="card-title">今日操作</h6>
+                                    <h3 class="mb-0">{{ stats.today_logs }}</h3>
+                                </div>
+                                <i class="fas fa-calendar-day fa-3x opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-info">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="card-title">操作类型</h6>
+                                    <h3 class="mb-0">{{ stats.operation_type_stats|length }}</h3>
+                                </div>
+                                <i class="fas fa-list fa-3x opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-warning">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="card-title">活跃用户</h6>
+                                    <h3 class="mb-0">{{ stats.user_stats|length }}</h3>
+                                </div>
+                                <i class="fas fa-users fa-3x opacity-50"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 筛选区域 -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-filter me-2"></i>筛选条件</h5>
+                </div>
+                <div class="card-body">
+                    <form method="GET" action="{{ url_for('logs.index') }}" class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">用户</label>
+                            <select name="user_id" class="form-select">
+                                <option value="">全部用户</option>
+                                {% for user in users %}
+                                <option value="{{ user.id }}" {% if current_user_id == user.id %}selected{% endif %}>
+                                    {{ user.real_name }} ({{ user.username }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">操作类型</label>
+                            <select name="operation_type" class="form-select">
+                                <option value="">全部类型</option>
+                                {% for type_key, type_name in operation_types %}
+                                <option value="{{ type_key }}" {% if current_operation_type == type_key %}selected{% endif %}>
+                                    {{ type_name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">开始日期</label>
+                            <input type="date" name="start_date" class="form-control" value="{{ current_start_date }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">结束日期</label>
+                            <input type="date" name="end_date" class="form-control" value="{{ current_end_date }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">每页显示</label>
+                            <select name="per_page" class="form-select">
+                                <option value="10" {% if current_per_page == 10 %}selected{% endif %}>10</option>
+                                <option value="25" {% if current_per_page == 25 %}selected{% endif %}>25</option>
+                                <option value="50" {% if current_per_page == 50 %}selected{% endif %}>50</option>
+                                <option value="100" {% if current_per_page == 100 %}selected{% endif %}>100</option>
+                                <option value="200" {% if current_per_page == 200 %}selected{% endif %}>200</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search me-2"></i>筛选
+                            </button>
+                            <a href="{{ url_for('logs.index') }}" class="btn btn-secondary">
+                                <i class="fas fa-redo me-2"></i>重置
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 日志列表 -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>操作记录
+                        <span class="badge bg-secondary">共 {{ pagination.total }} 条</span>
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 60px;">ID</th>
+                                    <th style="width: 150px;">时间</th>
+                                    <th style="width: 120px;">用户</th>
+                                    <th style="width: 80px;">角色</th>
+                                    <th style="width: 100px;">操作类型</th>
+                                    <th>操作描述</th>
+                                    <th style="width: 120px;">IP地址</th>
+                                    <th style="width: 80px;">结果</th>
+                                    <th style="width: 100px;">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if logs %}
+                                    {% for log in logs %}
+                                    <tr>
+                                        <td>{{ log.id }}</td>
+                                        <td>
+                                            <small class="text-muted">{{ log.created_at|beijing_time }}</small>
+                                        </td>
+                                        <td>
+                                            <strong>{{ log.username }}</strong>
+                                        </td>
+                                        <td>
+                                            {% if log.user_role == 'super_admin' %}
+                                                <span class="badge bg-danger">超管</span>
+                                            {% elif log.user_role == 'teacher' %}
+                                                <span class="badge bg-primary">教师</span>
+                                            {% elif log.user_role == 'student' %}
+                                                <span class="badge bg-info">学生</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">{{ log.user_role }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if log.operation_type == 'login' %}
+                                                <span class="badge bg-success">登录</span>
+                                            {% elif log.operation_type == 'logout' %}
+                                                <span class="badge bg-secondary">登出</span>
+                                            {% elif log.operation_type == 'submit' %}
+                                                <span class="badge bg-primary">提交</span>
+                                            {% elif log.operation_type == 'view' %}
+                                                <span class="badge bg-info">查看</span>
+                                            {% elif log.operation_type == 'apply' %}
+                                                <span class="badge bg-warning">申请</span>
+                                            {% elif log.operation_type == 'create' %}
+                                                <span class="badge bg-success">创建</span>
+                                            {% elif log.operation_type == 'update' %}
+                                                <span class="badge bg-primary">更新</span>
+                                            {% elif log.operation_type == 'delete' %}
+                                                <span class="badge bg-danger">删除</span>
+                                            {% elif log.operation_type == 'download' %}
+                                                <span class="badge bg-info">下载</span>
+                                            {% elif log.operation_type == 'grade' %}
+                                                <span class="badge bg-warning">评分</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">{{ log.operation_type }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <small>{{ log.operation_desc }}</small>
+                                        </td>
+                                        <td>
+                                            {% if log.ip_location %}
+                                                <span class="badge bg-secondary">
+                                                    <i class="fas fa-map-marker-alt me-1"></i>
+                                                    {{ log.ip_location }}
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">
+                                                    <i class="fas fa-map-marker-alt me-1"></i>
+                                                    {{ log.ip_address or '-' }}
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if log.result == 'success' %}
+                                                <span class="badge bg-success">成功</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">失败</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-sm btn-info" 
+                                                    onclick="showLogDetail({{ log.id }})"
+                                                    data-id="{{ log.id }}"
+                                                    data-created-at="{{ log.created_at }}"
+                                                    data-username="{{ log.username }}"
+                                                    data-user-id="{{ log.user_id or 'N/A' }}"
+                                                    data-user-role="{{ log.user_role }}"
+                                                    data-operation-type="{{ log.operation_type }}"
+                                                    data-operation-desc="{{ log.operation_desc or '-' }}"
+                                                    data-ip-address="{{ log.ip_address or '-' }}"
+                                                    data-ip-location="{{ log.ip_location or '' }}"
+                                                    data-request-method="{{ log.request_method or '-' }}"
+                                                    data-request-path="{{ log.request_path or '-' }}"
+                                                    data-request-params="{{ log.request_params or '' }}"
+                                                    data-user-agent="{{ log.user_agent or '' }}"
+                                                    data-result="{{ log.result }}"
+                                                    data-error-msg="{{ log.error_msg or '' }}">
+                                                <i class="fas fa-info-circle"></i> 详情
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="9" class="text-center py-5">
+                                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                            <p class="text-muted">暂无日志记录</p>
+                                        </td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- 分页 -->
+                {% if pagination.pages > 1 %}
+                <div class="card-footer">
+                    <nav>
+                        <ul class="pagination justify-content-center mb-0">
+                            <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                                <a class="page-link" href="{{ url_for('logs.index', page=pagination.prev_num, per_page=current_per_page, user_id=current_user_id, operation_type=current_operation_type, start_date=current_start_date, end_date=current_end_date) if pagination.has_prev else '#' }}">
+                                    上一页
+                                </a>
+                            </li>
+                            
+                            {% for page_num in pagination.iter_pages(left_edge=2, right_edge=2, left_current=2, right_current=2) %}
+                                {% if page_num %}
+                                    <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                                        <a class="page-link" href="{{ url_for('logs.index', page=page_num, per_page=current_per_page, user_id=current_user_id, operation_type=current_operation_type, start_date=current_start_date, end_date=current_end_date) }}">
+                                            {{ page_num }}
+                                        </a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                                <a class="page-link" href="{{ url_for('logs.index', page=pagination.next_num, per_page=current_per_page, user_id=current_user_id, operation_type=current_operation_type, start_date=current_start_date, end_date=current_end_date) if pagination.has_next else '#' }}">
+                                    下一页
+                                </a>
+                            </li>
+                        </ul>
+                    </nav>
+                    <p class="text-center text-muted mt-2 mb-0">
+                        第 {{ pagination.page }} / {{ pagination.pages }} 页，共 {{ pagination.total }} 条记录
+                    </p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 日志详情模态框 -->
+<div class="modal fade" id="logDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">日志详情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="logDetailContent">
+                <!-- 动态填充 -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function showLogDetail(logId) {
+    // 从按钮获取日志数据
+    const button = event.target.closest('button');
+    
+    const logData = {
+        id: button.getAttribute('data-id'),
+        created_at: button.getAttribute('data-created-at'),
+        username: button.getAttribute('data-username'),
+        user_id: button.getAttribute('data-user-id'),
+        user_role: button.getAttribute('data-user-role'),
+        operation_type: button.getAttribute('data-operation-type'),
+        operation_desc: button.getAttribute('data-operation-desc'),
+        ip_address: button.getAttribute('data-ip-address'),
+        ip_location: button.getAttribute('data-ip-location'),
+        request_method: button.getAttribute('data-request-method'),
+        request_path: button.getAttribute('data-request-path'),
+        request_params: button.getAttribute('data-request-params'),
+        user_agent: button.getAttribute('data-user-agent'),
+        result: button.getAttribute('data-result'),
+        error_msg: button.getAttribute('data-error-msg')
+    };
+    
+    // 构建详情HTML
+    let html = '<dl class="row">';
+    html += `<dt class="col-sm-3">ID</dt><dd class="col-sm-9">${logData.id}</dd>`;
+    html += `<dt class="col-sm-3">时间</dt><dd class="col-sm-9">${formatBeijingTime(logData.created_at)}</dd>`;
+    html += `<dt class="col-sm-3">用户</dt><dd class="col-sm-9">${logData.username} (ID: ${logData.user_id})</dd>`;
+    html += `<dt class="col-sm-3">角色</dt><dd class="col-sm-9">${logData.user_role}</dd>`;
+    html += `<dt class="col-sm-3">操作类型</dt><dd class="col-sm-9">${logData.operation_type}</dd>`;
+    html += `<dt class="col-sm-3">操作描述</dt><dd class="col-sm-9">${logData.operation_desc}</dd>`;
+    
+    // IP地址和地理位置
+    if (logData.ip_location && logData.ip_location !== '') {
+        html += `<dt class="col-sm-3">IP地址</dt><dd class="col-sm-9"><code>${logData.ip_location}</code></dd>`;
+    } else {
+        html += `<dt class="col-sm-3">IP地址</dt><dd class="col-sm-9"><code>${logData.ip_address}</code></dd>`;
+    }
+    
+    html += `<dt class="col-sm-3">请求方法</dt><dd class="col-sm-9">${logData.request_method}</dd>`;
+    html += `<dt class="col-sm-3">请求路径</dt><dd class="col-sm-9"><code>${logData.request_path}</code></dd>`;
+    
+    if (logData.request_params && logData.request_params !== '') {
+        try {
+            const params = JSON.parse(logData.request_params);
+            html += `<dt class="col-sm-3">请求参数</dt><dd class="col-sm-9"><pre class="bg-light p-2">${JSON.stringify(params, null, 2)}</pre></dd>`;
+        } catch (e) {
+            html += `<dt class="col-sm-3">请求参数</dt><dd class="col-sm-9">${logData.request_params}</dd>`;
+        }
+    }
+    
+    if (logData.user_agent && logData.user_agent !== '') {
+        html += `<dt class="col-sm-3">浏览器</dt><dd class="col-sm-9"><small>${logData.user_agent}</small></dd>`;
+    }
+    
+    html += `<dt class="col-sm-3">结果</dt><dd class="col-sm-9">`;
+    if (logData.result === 'success') {
+        html += '<span class="badge bg-success">成功</span>';
+    } else {
+        html += '<span class="badge bg-danger">失败</span>';
+    }
+    html += '</dd>';
+    
+    if (logData.error_msg && logData.error_msg !== '') {
+        html += `<dt class="col-sm-3">错误信息</dt><dd class="col-sm-9"><div class="alert alert-danger">${logData.error_msg}</div></dd>`;
+    }
+    
+    html += '</dl>';
+    
+    document.getElementById('logDetailContent').innerHTML = html;
+    new bootstrap.Modal(document.getElementById('logDetailModal')).show();
+}
+
+function formatBeijingTime(utcTimeStr) {
+    if (!utcTimeStr) return '-';
+    const date = new Date(utcTimeStr);
+    // 转换为北京时间（UTC+8）
+    const beijingTime = new Date(date.getTime() + 8 * 60 * 60 * 1000);
+    return beijingTime.toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+    });
+}
+</script>
+
+<style>
+.opacity-50 {
+    opacity: 0.5;
+}
+</style>
+{% endblock %}
