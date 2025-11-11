@@ -396,8 +396,22 @@ def download_file(submission_id):
             return redirect(url_for('student.dashboard'))
     
     logger.warning(f"Checking file existence: {submission.file_path}")
-    # 检查文件是否存在（转换为绝对路径）
-    file_path = os.path.abspath(submission.file_path) if not os.path.isabs(submission.file_path) else submission.file_path
+    # 路径处理：数据库中可能是相对路径(uploads/...)或绝对路径
+    raw_path = submission.file_path or ''
+    
+    # 如果是相对路径且以uploads/开头，添加storage/前缀
+    if not os.path.isabs(raw_path):
+        if raw_path.startswith('uploads/'):
+            file_path = os.path.join('storage', raw_path)
+        else:
+            file_path = raw_path
+        file_path = os.path.abspath(file_path)
+    else:
+        # 绝对路径：宿主机路径需要映射为容器路径
+        if raw_path.startswith('/root/TG-EDU-20251021/'):
+            file_path = raw_path.replace('/root/TG-EDU-20251021/', '/app/', 1)
+        else:
+            file_path = raw_path
     
     if not os.path.exists(file_path):
         logger.warning(f"File NOT found: {file_path}")
@@ -458,6 +472,9 @@ def download_file(submission_id):
 @login_required
 def preview_file(submission_id):
     """预览文件（主要用于PDF）"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
     submission = Submission.query.get_or_404(submission_id)
     assignment = Assignment.query.get(submission.assignment_id)
     
@@ -480,10 +497,28 @@ def preview_file(submission_id):
         else:
             return redirect(url_for('student.dashboard'))
     
-    # 检查文件是否存在（转换为绝对路径）
-    file_path = os.path.abspath(submission.file_path) if not os.path.isabs(submission.file_path) else submission.file_path
+    # 路径处理：数据库中可能是相对路径(uploads/...)或绝对路径
+    raw_path = submission.file_path or ''
+    logger.warning(f"[PREVIEW] submission_id={submission_id}, raw_path={raw_path}")
+    
+    # 如果是相对路径且以uploads/开头，添加storage/前缀
+    if not os.path.isabs(raw_path):
+        if raw_path.startswith('uploads/'):
+            file_path = os.path.join('storage', raw_path)
+        else:
+            file_path = raw_path
+        file_path = os.path.abspath(file_path)
+    else:
+        # 绝对路径：宿主机路径需要映射为容器路径
+        if raw_path.startswith('/root/TG-EDU-20251021/'):
+            file_path = raw_path.replace('/root/TG-EDU-20251021/', '/app/', 1)
+        else:
+            file_path = raw_path
+    
+    logger.warning(f"[PREVIEW] processed file_path={file_path}, exists={os.path.exists(file_path)}")
     
     if not os.path.exists(file_path):
+        logger.error(f"[PREVIEW] File NOT found: {file_path}")
         flash('文件不存在或已被删除')
         return redirect(url_for('assignment.view_submissions', assignment_id=assignment.id))
     
@@ -491,14 +526,32 @@ def preview_file(submission_id):
     file_directory = os.path.dirname(file_path)
     filename = os.path.basename(file_path)
     
+    logger.warning(f"[PREVIEW] Sending file: dir={file_directory}, filename={filename}")
+    
     # 如果是PDF文件，返回适合浏览器预览的格式
     if submission.is_pdf():
-        return send_from_directory(
-            file_directory,
-            filename,
-            as_attachment=False,  # 不作为附件下载
-            mimetype='application/pdf'
-        )
+        try:
+            response = send_from_directory(
+                file_directory,
+                filename,
+                as_attachment=False,  # 不作为附件下载
+                mimetype='application/pdf'
+            )
+            # 使用URL编码处理中文文件名，避免HTTP头编码错误
+            from urllib.parse import quote
+            try:
+                safe_filename = quote(submission.original_filename.encode('utf-8'))
+            except:
+                safe_filename = quote(filename.encode('utf-8'))
+            
+            # 设置Content-Disposition为inline，确保浏览器预览
+            response.headers['Content-Disposition'] = f'inline; filename="{safe_filename}"'
+            logger.warning(f"[PREVIEW] PDF preview success")
+            return response
+        except Exception as e:
+            logger.error(f"[PREVIEW] Error: {str(e)}")
+            flash(f'预览失败: {str(e)}')
+            return redirect(url_for('submission.download_file', submission_id=submission_id))
     else:
         # 非PDF文件仍然作为下载
         return redirect(url_for('submission.download_file', submission_id=submission_id))
