@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}提交记录 - {{ major_assignment.title }} / {{ stage.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0">
+            <i class="fas fa-upload me-2"></i>提交记录
+            <small class="text-muted ms-2">{{ major_assignment.title }} - {{ stage.name }}</small>
+        </h4>
+        <a href="{{ url_for('major_assignment.manage_stages', assignment_id=major_assignment.id) }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-1"></i>返回阶段管理
+        </a>
+    </div>
+
+    <div class="card shadow">
+        <div class="card-body">
+            {% if submissions %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>团队</th>
+                            <th>类型</th>
+                            <th>内容</th>
+                            <th>大小</th>
+                            <th>提交人</th>
+                            <th>提交时间</th>
+                            <th>状态</th>
+                            <th>审核</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for sub in submissions %}
+                        <tr>
+                            <td>
+                                <i class="fas fa-users me-1"></i>{{ sub.team.name if sub.team else ('团队'+sub.team_id|string) }}
+                            </td>
+                            <td>
+                                <span class="badge {% if sub.submit_type=='file' %}bg-info{% else %}bg-success{% endif %}">
+                                    {{ '文件' if sub.submit_type=='file' else '链接' }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if sub.submit_type == 'file' %}
+                                    <a href="{{ url_for('major_assignment.download_stage_submission_file', submission_id=sub.id) }}">
+                                        {{ sub.original_filename or '下载文件' }}
+                                    </a>
+                                {% else %}
+                                    <a href="{{ sub.url }}" target="_blank">{{ sub.url }}</a>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if sub.file_size %}{{ sub.file_size|filesize }}{% else %}-{% endif %}
+                            </td>
+                            <td>
+                                <i class="fas fa-user me-1"></i>{{ sub.submitter.real_name if sub.submitter else sub.submitted_by }}
+                            </td>
+                            <td>
+                                <small class="text-muted">{{ sub.submitted_at|beijing_time }}</small>
+                            </td>
+                            <td>
+                                <span class="badge {% if sub.status=='approved' %}bg-success{% elif sub.status=='rejected' %}bg-danger{% else %}bg-secondary{% endif %}">
+                                    {% if sub.status=='approved' %}已通过{% elif sub.status=='rejected' %}已驳回{% else %}待审核{% endif %}
+                                </span>
+                            </td>
+                            <td>
+                                {% if sub.reviewed_by %}
+                                    <div class="small text-muted">
+                                        {{ sub.reviewer.real_name if sub.reviewer else sub.reviewed_by }}
+                                        <br>{{ sub.reviewed_at|beijing_time if sub.reviewed_at else '' }}
+                                        {% if sub.review_comment %}<br>“{{ sub.review_comment }}”{% endif %}
+                                    </div>
+                                {% else %}-{% endif %}
+                            </td>
+                            <td>
+                                <form action="{{ url_for('major_assignment.approve_stage_submission', submission_id=sub.id) }}" method="POST" class="d-inline">
+                                    <input type="text" name="review_comment" class="form-control form-control-sm mb-1" placeholder="审核意见（可选）">
+                                    <button type="submit" class="btn btn-sm btn-success"><i class="fas fa-check me-1"></i>通过</button>
+                                </form>
+                                <form action="{{ url_for('major_assignment.reject_stage_submission', submission_id=sub.id) }}" method="POST" class="d-inline ms-2">
+                                    <input type="text" name="review_comment" class="form-control form-control-sm mb-1" placeholder="审核意见（可选）">
+                                    <button type="submit" class="btn btn-sm btn-danger"><i class="fas fa-times me-1"></i>驳回</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                <p class="text-muted mb-0">暂无提交记录</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

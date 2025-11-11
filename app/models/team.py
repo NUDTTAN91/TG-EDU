@@ -203,13 +203,15 @@ class Stage(db.Model):
     major_assignment_id = db.Column(db.Integer, db.ForeignKey('major_assignment.id'), nullable=False)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
-    stage_type = db.Column(db.String(50), nullable=False)  # team_formation/division/custom
+    stage_type = db.Column(db.String(50), nullable=False)  # team_formation/division/custom/submission
     start_date = db.Column(db.DateTime)
     end_date = db.Column(db.DateTime)
     order = db.Column(db.Integer, default=0)  # 阶段顺序
     status = db.Column(db.String(50), default='pending')  # pending/active/completed
     is_locked = db.Column(db.Boolean, default=False)  # 是否锁定
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # 提交阶段配置：由超级管理员设置 file/link
+    submission_mode = db.Column(db.String(20))  # 可选: 'file' 或 'link'
     
     # 关系
     major_assignment = db.relationship('MajorAssignment', backref='stages')
@@ -373,3 +375,30 @@ class MajorAssignmentLink(db.Model):
     
     def __repr__(self):
         return f'<MajorAssignmentLink {self.title or self.url}>'
+
+class StageSubmission(db.Model):
+    """阶段提交模型（团队在某阶段提交文件或链接）"""
+    id = db.Column(db.Integer, primary_key=True)
+    stage_id = db.Column(db.Integer, db.ForeignKey('stage.id'), nullable=False)
+    team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=False)
+    submit_type = db.Column(db.String(20), nullable=False)  # 'file' 或 'link'
+    file_path = db.Column(db.String(500))
+    original_filename = db.Column(db.String(255))
+    file_size = db.Column(db.Integer)
+    url = db.Column(db.String(500))
+    submitted_by = db.Column(db.Integer, db.ForeignKey('user.id'))
+    submitted_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # 审核相关
+    status = db.Column(db.String(20), default='pending')  # 'pending','approved','rejected'
+    reviewed_by = db.Column(db.Integer, db.ForeignKey('user.id'))
+    reviewed_at = db.Column(db.DateTime)
+    review_comment = db.Column(db.Text)
+    
+    # 关系
+    stage = db.relationship('Stage', backref='submissions')
+    team = db.relationship('Team', backref='stage_submissions')
+    submitter = db.relationship('User', foreign_keys=[submitted_by])
+    reviewer = db.relationship('User', foreign_keys=[reviewed_by])
+    
+    def __repr__(self):
+        return f'<StageSubmission Stage{self.stage_id} Team{self.team_id} {self.submit_type}>'

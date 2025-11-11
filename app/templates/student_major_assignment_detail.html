@@ -177,6 +177,13 @@
                                         <span class="badge bg-info">
                                             <i class="fas fa-tasks me-1"></i>分工阶段
                                         </span>
+                                        {% elif stage.stage_type == 'submission' %}
+                                        <span class="badge bg-warning">
+                                            <i class="fas fa-upload me-1"></i>提交阶段
+                                        </span>
+                                        {% if stage.submission_mode %}
+                                        <small class="d-block text-muted">提交方式：{{ '文件' if stage.submission_mode=='file' else '链接' }}</small>
+                                        {% endif %}
                                         {% else %}
                                         <span class="badge bg-secondary">
                                             <i class="fas fa-flag me-1"></i>自定义阶段
@@ -209,22 +216,40 @@
                                     </td>
                                     <td>
                                         {% if stage.stage_type == 'team_formation' %}
-                                        {% if stage.status == 'active' and not my_team %}
-                                        <button class="btn btn-sm btn-primary" onclick="$('#createTeamCard').get(0).scrollIntoView({behavior: 'smooth'});">
-                                            <i class="fas fa-arrow-down me-1"></i>组队
-                                        </button>
-                                        {% elif stage.status == 'completed' %}
-                                        <span class="text-muted small">已结束</span>
-                                        {% endif %}
+                                            {% if stage.status == 'active' and not my_team %}
+                                            <button class="btn btn-sm btn-primary" onclick="$('#createTeamCard').get(0).scrollIntoView({behavior: 'smooth'});">
+                                                <i class="fas fa-arrow-down me-1"></i>组队
+                                            </button>
+                                            {% elif stage.status == 'completed' %}
+                                            <span class="text-muted small">已结束</span>
+                                            {% endif %}
                                         {% elif stage.stage_type == 'division' %}
-                                        {% if my_team and my_team.leader_id == current_user.id %}
-                                        <a href="{{ url_for('major_assignment.team_assign_divisions', team_id=my_team.id, stage_id=stage.id) }}" 
-                                           class="btn btn-sm btn-info">
-                                            <i class="fas fa-edit me-1"></i>分配
-                                        </a>
-                                        {% else %}
-                                        <span class="text-muted small">组长分配</span>
-                                        {% endif %}
+                                            {% if my_team and my_team.leader_id == current_user.id %}
+                                            <a href="{{ url_for('major_assignment.team_assign_divisions', team_id=my_team.id, stage_id=stage.id) }}" 
+                                               class="btn btn-sm btn-info">
+                                                <i class="fas fa-edit me-1"></i>分配
+                                            </a>
+                                            {% else %}
+                                            <span class="text-muted small">组长分配</span>
+                                            {% endif %}
+                                        {% elif stage.stage_type == 'submission' %}
+                                            {% if my_team %}
+                                                {% if stage.status == 'active' %}
+                                                    {% if stage.submission_mode == 'file' %}
+                                                    <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#submitStageModal" data-action-url="{{ url_for('major_assignment.stage_submit', stage_id=stage.id) }}" data-mode="file" data-team="{{ my_team.id }}">
+                                                        <i class="fas fa-upload me-1"></i>提交文件
+                                                    </button>
+                                                    {% else %}
+                                                    <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#submitStageModal" data-action-url="{{ url_for('major_assignment.stage_submit', stage_id=stage.id) }}" data-mode="link" data-team="{{ my_team.id }}">
+                                                        <i class="fas fa-link me-1"></i>提交链接
+                                                    </button>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <span class="text-muted small">已结束</span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted small">请先加入团队</span>
+                                            {% endif %}
                                         {% endif %}
                                     </td>
                                 </tr>
@@ -232,7 +257,100 @@
                             </tbody>
                         </table>
                     </div>
-                    
+
+                    <!-- 提交弹窗（全局，置顶） -->
+                    <div class="modal fade" id="submitStageModal" tabindex="-1" data-bs-backdrop="false">
+                        <div class="modal-dialog" style="margin:0; position:fixed; top:12px; left:50%; transform:translateX(-50%); width:100%; max-width:600px; z-index:1056;">
+                            <div class="modal-content">
+                                <div class="modal-header bg-warning">
+                                    <h5 class="modal-title">
+                                        <i class="fas fa-upload me-1"></i>提交
+                                    </h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <form id="submitStageForm" action="#" method="POST">
+                                    <div class="modal-body">
+                                        <input type="hidden" name="team_id" id="submitTeamId" value="">
+                                        <div id="fileBlock" class="mb-3" style="display:none;">
+                                            <label class="form-label">选择文件 <span class="text-danger">*</span></label>
+                                            <input type="file" name="file" class="form-control">
+                                            <small class="form-text text-muted">请上传与本阶段要求匹配的文件。</small>
+                                        </div>
+                                        <div id="linkBlock" class="mb-3" style="display:none;">
+                                            <label class="form-label">提交链接 <span class="text-danger">*</span></label>
+                                            <input type="url" name="url" class="form-control" placeholder="https://...">
+                                            <small class="form-text text-muted">请填写可访问的有效链接。</small>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                                        <button type="submit" class="btn btn-warning">
+                                            <i class="fas fa-paper-plane me-1"></i>提交
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                      var modalEl = document.getElementById('submitStageModal');
+                      modalEl.addEventListener('show.bs.modal', function (event) {
+                        var button = event.relatedTarget;
+                        if (!button) return;
+                        var actionUrl = button.getAttribute('data-action-url');
+                        var mode = button.getAttribute('data-mode');
+                        var teamId = button.getAttribute('data-team');
+
+                        var form = document.getElementById('submitStageForm');
+                        form.setAttribute('action', actionUrl);
+                        document.getElementById('submitTeamId').value = teamId;
+
+                        var fileBlock = document.getElementById('fileBlock');
+                        var linkBlock = document.getElementById('linkBlock');
+                        var isFile = mode === 'file';
+                        fileBlock.style.display = isFile ? 'block' : 'none';
+                        linkBlock.style.display = isFile ? 'none' : 'block';
+
+                        if (isFile) {
+                          form.setAttribute('enctype', 'multipart/form-data');
+                        } else {
+                          form.removeAttribute('enctype');
+                        }
+                      });
+                    });
+                    </script>
+
+                    <!-- 我的链接提交（仅显示当前用户提交） -->
+                    {% if my_link_submissions %}
+                    <div class="card shadow mt-3">
+                        <div class="card-header bg-warning text-dark">
+                            <h6 class="mb-0"><i class="fas fa-link me-1"></i>我提交的链接</h6>
+                        </div>
+                        <div class="card-body p-0">
+                            <ul class="list-group list-group-flush">
+                                {% for s in my_link_submissions %}
+                                <li class="list-group-item d-flex justify-content-between align-items-start">
+                                    <div class="me-3 small">
+                                        <div><strong>阶段：</strong>{{ s.stage.name }}</div>
+                                        <div><strong>链接：</strong><a href="{{ s.url }}" target="_blank">{{ s.url }}</a></div>
+                                        <div class="text-muted">提交时间：{{ s.submitted_at|beijing_time }}{% if s.status != 'pending' %}，审核：{{ '通过' if s.status=='approved' else '驳回' }}{% endif %}</div>
+                                    </div>
+                                    <div class="ms-auto">
+                                        <form action="{{ url_for('major_assignment.delete_stage_submission', submission_id=s.id) }}" method="POST" onsubmit="return confirm('确认删除该链接？');">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                <i class="fas fa-trash-alt me-1"></i>删除
+                                            </button>
+                                        </form>
+                                    </div>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                    {% endif %}
+
                     <!-- 当前阶段提示 -->
                     {% set active_stage = all_stages|selectattr('status', 'equalto', 'active')|list|first %}
                     {% if active_stage %}

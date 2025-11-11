@@ -88,6 +88,45 @@ def migrate_database():
             
             db.session.commit()
             
+            # 3.1 为Stage表添加提交模式列
+            print("\n3.1. 为Stage表添加提交模式(submission_mode)列...")
+            result = db.session.execute(text("PRAGMA table_info(stage)")).fetchall()
+            stage_columns = [col[1] for col in result]
+            if 'submission_mode' not in stage_columns:
+                db.session.execute(text("ALTER TABLE stage ADD COLUMN submission_mode VARCHAR(20)"))
+                print("  ✓ 添加submission_mode字段")
+            else:
+                print("  - submission_mode字段已存在")
+            db.session.commit()
+            
+            # 3.2 创建StageSubmission表
+            print("\n3.2. 创建StageSubmission表...")
+            result = db.session.execute(text(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='stage_submission'"
+            )).fetchone()
+            if not result:
+                db.session.execute(text("""
+                    CREATE TABLE stage_submission (
+                        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        stage_id INTEGER NOT NULL,
+                        team_id INTEGER NOT NULL,
+                        submit_type VARCHAR(20) NOT NULL,
+                        file_path TEXT,
+                        original_filename TEXT,
+                        file_size INTEGER,
+                        url TEXT,
+                        submitted_by INTEGER,
+                        submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY(stage_id) REFERENCES stage (id),
+                        FOREIGN KEY(team_id) REFERENCES team (id),
+                        FOREIGN KEY(submitted_by) REFERENCES user (id)
+                    )
+                """))
+                print("  ✓ StageSubmission表创建成功")
+            else:
+                print("  - StageSubmission表已存在")
+            db.session.commit()
+            
             # 4. 创建DivisionRole表
             print("\n4. 创建DivisionRole表...")
             

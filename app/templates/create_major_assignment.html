@@ -227,6 +227,45 @@
                                             </div>
                                         </div>
                                     </div>
+
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" id="add_submission_stage" name="add_submission_stage">
+                                        <label class="form-check-label" for="add_submission_stage">
+                                            <strong>添加提交阶段</strong>
+                                            <small class="text-muted d-block">团队提交最终成果；提交方式由超级管理员设置为文件或链接</small>
+                                        </label>
+                                    </div>
+
+                                    <div id="submission_settings" style="display: none;" class="ms-4 mt-2">
+                                        <div class="row">
+                                            <div class="col-md-6 mb-2">
+                                                <label for="submission_start" class="form-label small">提交开始时间</label>
+                                                <input type="datetime-local" class="form-control form-control-sm" 
+                                                       id="submission_start" name="submission_start">
+                                            </div>
+                                            <div class="col-md-6 mb-2">
+                                                <label for="submission_end" class="form-label small">提交结束时间</label>
+                                                <input type="datetime-local" class="form-control form-control-sm" 
+                                                       id="submission_end" name="submission_end">
+                                            </div>
+                                        </div>
+                                        {% if current_user.is_super_admin %}
+                                        <div class="row">
+                                            <div class="col-md-6 mb-2">
+                                                <label for="submission_mode" class="form-label small">提交方式（超级管理员可选）</label>
+                                                <select class="form-select form-select-sm" id="submission_mode" name="submission_mode">
+                                                    <option value="file" selected>文件提交</option>
+                                                    <option value="link">链接提交</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        {% else %}
+                                        <div class="alert alert-secondary py-2 small">
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            提交方式由超级管理员设置
+                                        </div>
+                                        {% endif %}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -438,6 +477,8 @@ const teamFormationCheckbox = document.getElementById('add_team_formation_stage'
 const divisionCheckbox = document.getElementById('add_division_stage');
 const teamFormationDates = document.getElementById('team_formation_dates');
 const divisionDates = document.getElementById('division_dates');
+const submissionCheckbox = document.getElementById('add_submission_stage');
+const submissionSettings = document.getElementById('submission_settings');
 
 if (teamFormationCheckbox) {
     teamFormationCheckbox.addEventListener('change', function() {
@@ -457,6 +498,20 @@ if (divisionCheckbox) {
         if (!this.checked) {
             document.getElementById('division_start').value = '';
             document.getElementById('division_end').value = '';
+        }
+    });
+}
+
+if (submissionCheckbox) {
+    submissionCheckbox.addEventListener('change', function() {
+        submissionSettings.style.display = this.checked ? 'block' : 'none';
+        if (!this.checked) {
+            const sStart = document.getElementById('submission_start');
+            const sEnd = document.getElementById('submission_end');
+            const sMode = document.getElementById('submission_mode');
+            if (sStart) sStart.value = '';
+            if (sEnd) sEnd.value = '';
+            if (sMode) sMode.value = 'file';
         }
     });
 }

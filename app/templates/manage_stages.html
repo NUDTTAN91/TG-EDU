@@ -129,6 +129,11 @@
                                     <span class="badge bg-primary">组队阶段</span>
                                     {% elif stage.stage_type == 'division' %}
                                     <span class="badge bg-info">分工阶段</span>
+                                    {% elif stage.stage_type == 'submission' %}
+                                    <span class="badge bg-warning">提交阶段</span>
+                                    {% if stage.submission_mode %}
+                                    <small class="text-muted ms-2">提交方式：{{ '文件' if stage.submission_mode=='file' else '链接' }}</small>
+                                    {% endif %}
                                     {% elif stage.stage_type == 'task' %}
                                     <span class="badge bg-success">任务阶段</span>
                                     {% else %}
@@ -168,6 +173,11 @@
                                     <a href="{{ url_for('major_assignment.manage_division_roles', stage_id=stage.id) }}" 
                                        class="btn btn-sm btn-outline-primary">
                                         <i class="fas fa-user-tag me-1"></i>管理分工角色
+                                    </a>
+                                    {% elif stage.stage_type == 'submission' %}
+                                    <a href="{{ url_for('major_assignment.manage_stage_submissions', stage_id=stage.id) }}" 
+                                       class="btn btn-sm btn-outline-warning">
+                                        <i class="fas fa-upload me-1"></i>查看提交
                                     </a>
                                     {% elif stage.stage_type == 'task' %}
                                     <a href="{{ url_for('major_assignment.view_stage_tasks', stage_id=stage.id) }}" 
@@ -223,10 +233,19 @@
                             <option value="">请选择...</option>
                             <option value="team_formation">组队阶段</option>
                             <option value="division">分工阶段</option>
+                            <option value="submission">提交阶段</option>
                             <option value="task">任务阶段</option>
                             <option value="custom">自定义阶段</option>
                         </select>
                         <div id="stage_type_help" class="form-text"></div>
+                        <div class="mt-2" id="submission_mode_block" style="display: none;">
+                            <label class="form-label">提交方式 <span class="text-danger">*</span></label>
+                            <select class="form-select" name="submission_mode">
+                                <option value="file">文件</option>
+                                <option value="link">链接</option>
+                            </select>
+                            <small class="text-muted">仅超级管理员可设置提交方式</small>
+                        </div>
                     </div>
                     
                     <div class="mb-3">
@@ -323,14 +342,22 @@ function updateStageTypeHelp() {
     
     if (stageType === 'team_formation') {
         helpDiv.innerHTML = '<i class="fas fa-info-circle me-1"></i>组队阶段：学生可以自由组队，阶段结束后未组队的学生将被随机分组';
+        document.getElementById('submission_mode_block').style.display = 'none';
     } else if (stageType === 'division') {
         helpDiv.innerHTML = '<i class="fas fa-info-circle me-1"></i>分工阶段：组长分配团队成员的分工角色，阶段结束后未分配的将被随机分配';
+        document.getElementById('submission_mode_block').style.display = 'none';
+    } else if (stageType === 'submission') {
+        helpDiv.innerHTML = '<i class="fas fa-info-circle me-1"></i>提交阶段：学生在此阶段提交成果，提交方式由超级管理员设置（文件或链接）';
+        document.getElementById('submission_mode_block').style.display = 'block';
     } else if (stageType === 'task') {
         helpDiv.innerHTML = '<i class="fas fa-info-circle me-1"></i>任务阶段：组长创建并分配任务，组员可以更新任务进度';
+        document.getElementById('submission_mode_block').style.display = 'none';
     } else if (stageType === 'custom') {
         helpDiv.innerHTML = '<i class="fas fa-info-circle me-1"></i>自定义阶段：用于标记大作业的不同阶段或里程碑';
+        document.getElementById('submission_mode_block').style.display = 'none';
     } else {
         helpDiv.innerHTML = '';
+        document.getElementById('submission_mode_block').style.display = 'none';
     }
 }
 

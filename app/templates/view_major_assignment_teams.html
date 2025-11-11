@@ -199,6 +199,13 @@
                                         {% elif stage.status == 'completed' %}已完成
                                         {% else %}{{ stage.status }}{% endif %}
                                     </span>
+                                    {% if stage.stage_type == 'submission' %}
+                                    <a href="{{ url_for('major_assignment.manage_stage_submissions', stage_id=stage.id) }}" 
+                                       class="btn btn-sm btn-outline-warning ms-2"
+                                       title="查看提交">
+                                        <i class="fas fa-upload me-1"></i>查看提交
+                                    </a>
+                                    {% endif %}
                                 </div>
                             </div>
                         </div>

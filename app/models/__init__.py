@@ -26,5 +26,5 @@ __all__ = [
     'TeamInvitation', 'LeaveTeamRequest', 'DissolveTeamRequest',
     'Stage', 'DivisionRole', 'TeamDivision',
     'TeamTask', 'TaskProgress',
-    'MajorAssignmentAttachment', 'MajorAssignmentLink'
+    'MajorAssignmentAttachment', 'MajorAssignmentLink', 'StageSubmission'
 ]

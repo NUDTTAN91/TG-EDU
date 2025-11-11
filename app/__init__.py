@@ -39,6 +39,33 @@ def create_app(config_name='default'):
     
     # 初始化定时任务调度器
     init_scheduler(app)
+
+    # 确保新模型表已创建（如阶段提交表）
+    try:
+        from sqlalchemy import text
+        with app.app_context():
+            # 使用SQLAlchemy创建缺失的表（不会修改已存在表结构）
+            db.create_all()
+            # 兼容旧库：为stage添加submission_mode列（如果不存在）
+            cols = db.session.execute(text('PRAGMA table_info(stage)')).fetchall()
+            names = [c[1] for c in cols]
+            if 'submission_mode' not in names:
+                db.session.execute(text('ALTER TABLE stage ADD COLUMN submission_mode VARCHAR(20)'))
+                db.session.commit()
+            # 兼容旧库：为stage_submission添加审核相关列
+            cols2 = db.session.execute(text('PRAGMA table_info(stage_submission)')).fetchall()
+            names2 = [c[1] for c in cols2]
+            if 'status' not in names2:
+                db.session.execute(text('ALTER TABLE stage_submission ADD COLUMN status VARCHAR(20) DEFAULT "pending"'))
+            if 'reviewed_by' not in names2:
+                db.session.execute(text('ALTER TABLE stage_submission ADD COLUMN reviewed_by INTEGER'))
+            if 'reviewed_at' not in names2:
+                db.session.execute(text('ALTER TABLE stage_submission ADD COLUMN reviewed_at DATETIME'))
+            if 'review_comment' not in names2:
+                db.session.execute(text('ALTER TABLE stage_submission ADD COLUMN review_comment TEXT'))
+            db.session.commit()
+    except Exception as e:
+        print(f"[INIT] 初始化数据库结构警告: {e}")
     
     return app
 

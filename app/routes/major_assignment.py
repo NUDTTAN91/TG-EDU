@@ -262,6 +262,40 @@ def create_major_assignment():
                 except Exception as e:
                     print(f'创建分工阶段失败: {str(e)}')
         
+        # 提交阶段（仅超级管理员可添加并设置模式）
+        if current_user.is_super_admin and request.form.get('add_submission_stage'):
+            sub_start_str = request.form.get('submission_start')
+            sub_end_str = request.form.get('submission_end')
+            submission_mode = request.form.get('submission_mode', 'file')
+            
+            if sub_start_str and sub_end_str:
+                try:
+                    # 处理开始时间
+                    beijing_dt = datetime.strptime(sub_start_str, '%Y-%m-%dT%H:%M')
+                    beijing_aware = beijing_dt.replace(tzinfo=BEIJING_TZ)
+                    sub_start = beijing_aware.astimezone(timezone.utc).replace(tzinfo=None)
+                    
+                    # 处理结束时间
+                    beijing_dt = datetime.strptime(sub_end_str, '%Y-%m-%dT%H:%M')
+                    beijing_aware = beijing_dt.replace(tzinfo=BEIJING_TZ)
+                    sub_end = beijing_aware.astimezone(timezone.utc).replace(tzinfo=None)
+                    
+                    # 验证时间
+                    if sub_start < sub_end:
+                        submission_stage = Stage(
+                            major_assignment_id=major_assignment.id,
+                            name='提交阶段',
+                            description='团队提交最终成果',
+                            stage_type='submission',
+                            start_date=sub_start,
+                            end_date=sub_end,
+                            order=3,
+                            submission_mode=submission_mode
+                        )
+                        db.session.add(submission_stage)
+                except Exception as e:
+                    print(f'创建提交阶段失败: {str(e)}')
+        
         db.session.commit()
         
         # 发送通知给班级学生
@@ -345,13 +379,36 @@ def view_major_assignment_teams(assignment_id):
                          stages=stages,
                          division_stages=division_stages)
 
+@bp.route('/major_assignments/<int:assignment_id>/stages')
+@login_required
+@require_teacher_or_admin
+def manage_stages(assignment_id):
+    """阶段管理页面"""
+    from app.models.team import Stage
+    
+    major_assignment = MajorAssignment.query.get_or_404(assignment_id)
+    
+    # 检查权限
+    if not major_assignment.can_manage(current_user):
+        flash('您没有权限管理此大作业')
+        return redirect(url_for('major_assignment.major_assignment_dashboard'))
+    
+    # 获取所有阶段，按顺序排列
+    stages = Stage.query.filter_by(
+        major_assignment_id=assignment_id
+    ).order_by(Stage.order).all()
+    
+    return render_template('manage_stages.html',
+                         major_assignment=major_assignment,
+                         stages=stages)
+
 
 @bp.route('/major_assignments/<int:assignment_id>/student')
 @login_required
 @require_role(UserRole.STUDENT)
 def student_major_assignment_detail(assignment_id):
     """学生查看大作业详情和管理团队"""
-    from app.models.team import Stage
+    from app.models.team import Stage, StageSubmission
     
     major_assignment = MajorAssignment.query.get_or_404(assignment_id)
     
@@ -418,6 +475,20 @@ def student_major_assignment_detail(assignment_id):
         major_assignment_id=assignment_id
     ).order_by(Stage.order).all()
     
+    # 最近一次提交摘要（按阶段）
+    my_latest_stage_submissions = {}
+    if my_team:
+        sub_stages = [s for s in all_stages if s.stage_type == 'submission']
+        for s in sub_stages:
+            last = StageSubmission.query.filter_by(stage_id=s.id, team_id=my_team.id).order_by(StageSubmission.submitted_at.desc()).first()
+            if last:
+                my_latest_stage_submissions[s.id] = last
+    
+    # 我提交的链接列表
+    my_link_submissions = []
+    if my_team:
+        my_link_submissions = StageSubmission.query.filter_by(team_id=my_team.id, submit_type='link', submitted_by=current_user.id).order_by(StageSubmission.submitted_at.desc()).all()
+    
     return render_template('student_major_assignment_detail.html',
                          major_assignment=major_assignment,
                          my_team=my_team,
@@ -426,7 +497,9 @@ def student_major_assignment_detail(assignment_id):
                          division_stages=division_stages,
                          team_formation_stages=team_formation_stages,
                          my_tasks=my_tasks,
-                         all_stages=all_stages)
+                         all_stages=all_stages,
+                         my_latest_stage_submissions=my_latest_stage_submissions,
+                         my_link_submissions=my_link_submissions)
 
 
 @bp.route('/major_assignments/<int:assignment_id>/create_team', methods=['POST'])
@@ -1689,10 +1762,219 @@ def transfer_team_leader(team_id):
 
 # ==================== 阶段管理 ====================
 
-@bp.route('/major_assignments/<int:assignment_id>/stages')
+@bp.route('/stages/<int:stage_id>/submit', methods=['POST'])
+@login_required
+@require_role(UserRole.STUDENT)
+def stage_submit(stage_id):
+    """学生/团队在提交阶段提交成果（文件或链接）"""
+    from flask import current_app
+    from app.models.team import Stage, Team, StageSubmission
+    import os
+    import uuid
+    
+    stage = Stage.query.get_or_404(stage_id)
+    major_assignment = stage.major_assignment
+    
+    # 必须是提交阶段
+    if stage.stage_type != 'submission':
+        flash('当前阶段不支持提交')
+        return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=major_assignment.id))
+    
+    # 阶段必须进行中，且时间窗口有效
+    now = datetime.utcnow()
+    if stage.status != 'active' or (stage.start_date and now < stage.start_date) or (stage.end_date and now > stage.end_date):
+        flash('不在提交时间窗口内')
+        return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=major_assignment.id))
+    
+    # 找到当前用户所属团队（通过表单team_id校验成员身份）
+    team_id = request.form.get('team_id', type=int)
+    team = Team.query.get(team_id) if team_id else None
+    if not team or team.major_assignment_id != major_assignment.id:
+        flash('无效的团队信息')
+        return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=major_assignment.id))
+    
+    is_member = (current_user.id == team.leader_id) or any(m.user_id == current_user.id for m in team.members)
+    if not is_member:
+        flash('您不是该团队成员，无法提交')
+        return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=major_assignment.id))
+    
+    # 根据提交方式保存
+    mode = (stage.submission_mode or 'file').lower()
+    if mode == 'file':
+        file = request.files.get('file')
+        if not file or not file.filename:
+            flash('请选择要上传的文件')
+            return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=major_assignment.id))
+        
+        # 保存到专用目录：uploads/stage_submissions/<major_id>/<stage_id>/team_<team_id>/
+        dest_dir = os.path.join(current_app.config['UPLOAD_FOLDER'], 'stage_submissions', str(major_assignment.id), str(stage.id), f'team_{team.id}')
+        os.makedirs(dest_dir, exist_ok=True)
+        
+        original_filename = file.filename
+        safe_name = safe_chinese_filename(original_filename)
+        ext = os.path.splitext(safe_name)[1]
+        filename = f"stage_{stage.id}_team_{team.id}_{uuid.uuid4().hex}{ext}"
+        file_path = os.path.join(dest_dir, filename)
+        file.save(file_path)
+        
+        # 文件大小
+        try:
+            file_size = os.path.getsize(file_path)
+        except Exception:
+            file_size = None
+        
+        sub = StageSubmission(
+            stage_id=stage.id,
+            team_id=team.id,
+            submit_type='file',
+            file_path=file_path,
+            original_filename=original_filename,
+            file_size=file_size,
+            submitted_by=current_user.id
+        )
+        db.session.add(sub)
+        db.session.commit()
+        flash('文件提交成功')
+    elif mode == 'link':
+        url_val = request.form.get('url', '').strip()
+        if not url_val:
+            flash('请填写链接地址')
+            return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=major_assignment.id))
+        
+        sub = StageSubmission(
+            stage_id=stage.id,
+            team_id=team.id,
+            submit_type='link',
+            url=url_val,
+            submitted_by=current_user.id
+        )
+        db.session.add(sub)
+        db.session.commit()
+        flash('链接提交成功')
+    else:
+        flash('未知的提交方式')
+    
+    return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=major_assignment.id))
+
+# 学生删除自己提交的链接
+@bp.route('/stage_submissions/<int:submission_id>/delete', methods=['POST'])
+@login_required
+@require_role(UserRole.STUDENT)
+def delete_stage_submission(submission_id):
+    """删除当前学生自己提交的链接（仅限链接类型，时间窗口内，未通过审核）"""
+    from app.models.team import StageSubmission
+    sub = StageSubmission.query.get_or_404(submission_id)
+    stage = sub.stage
+    major_assignment = stage.major_assignment
+    
+    # 仅允许删除链接类型
+    if sub.submit_type != 'link':
+        flash('只能删除链接提交')
+        return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=major_assignment.id))
+    
+    # 必须是该作业下本人的团队成员且本人提交
+    my_team = None
+    for t in major_assignment.teams:
+        if t.id == sub.team_id:
+            my_team = t
+            break
+    if not my_team:
+        flash('无效的团队信息')
+        return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=major_assignment.id))
+    is_member = (current_user.id == my_team.leader_id) or any(m.user_id == current_user.id for m in my_team.members)
+    if not is_member or sub.submitted_by != current_user.id:
+        flash('只能删除自己提交的链接')
+        return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=major_assignment.id))
+    
+    # 仅在提交时间窗口内允许删除，且未通过审核
+    now = datetime.utcnow()
+    if stage.status != 'active' or (stage.start_date and now < stage.start_date) or (stage.end_date and now > stage.end_date):
+        flash('不在提交时间窗口，无法删除')
+        return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=major_assignment.id))
+    if sub.status == 'approved':
+        flash('已通过审核的提交不可删除')
+        return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=major_assignment.id))
+    
+    try:
+        db.session.delete(sub)
+        db.session.commit()
+        flash('已删除链接提交')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'删除失败：{str(e)}')
+    
+    return redirect(url_for('major_assignment.student_major_assignment_detail', assignment_id=major_assignment.id))
+
+# ==================== 阶段提交审核与查看 ====================
+
+@bp.route('/major_assignments/stages/<int:stage_id>/submissions')
 @login_required
 @require_teacher_or_admin
-def manage_stages(assignment_id):
+def manage_stage_submissions(stage_id):
+    """教师/超级管理员查看某阶段的所有提交"""
+    from app.models.team import Stage, StageSubmission
+    stage = Stage.query.get_or_404(stage_id)
+    major_assignment = stage.major_assignment
+    
+    # 权限检查
+    if not major_assignment.can_manage(current_user):
+        flash('您没有权限查看该阶段提交')
+        return redirect(url_for('major_assignment.major_assignment_dashboard'))
+    
+    submissions = StageSubmission.query.filter_by(stage_id=stage_id).order_by(StageSubmission.submitted_at.desc()).all()
+    return render_template('manage_stage_submissions.html', stage=stage, major_assignment=major_assignment, submissions=submissions)
+
+@bp.route('/stage_submissions/<int:submission_id>/approve', methods=['POST'])
+@login_required
+@require_teacher_or_admin
+def approve_stage_submission(submission_id):
+    from app.models.team import StageSubmission
+    sub = StageSubmission.query.get_or_404(submission_id)
+    stage = sub.stage
+    major_assignment = stage.major_assignment
+    if not major_assignment.can_manage(current_user):
+        flash('您没有权限')
+        return redirect(url_for('major_assignment.major_assignment_dashboard'))
+    sub.status = 'approved'
+    sub.reviewed_by = current_user.id
+    sub.reviewed_at = datetime.utcnow()
+    sub.review_comment = request.form.get('review_comment', '')
+    db.session.commit()
+    flash('已通过该提交')
+    return redirect(url_for('major_assignment.manage_stage_submissions', stage_id=stage.id))
+
+@bp.route('/stage_submissions/<int:submission_id>/reject', methods=['POST'])
+@login_required
+@require_teacher_or_admin
+def reject_stage_submission(submission_id):
+    from app.models.team import StageSubmission
+    sub = StageSubmission.query.get_or_404(submission_id)
+    stage = sub.stage
+    major_assignment = stage.major_assignment
+    if not major_assignment.can_manage(current_user):
+        flash('您没有权限')
+        return redirect(url_for('major_assignment.major_assignment_dashboard'))
+    sub.status = 'rejected'
+    sub.reviewed_by = current_user.id
+    sub.reviewed_at = datetime.utcnow()
+    sub.review_comment = request.form.get('review_comment', '')
+    db.session.commit()
+    flash('已驳回该提交')
+    return redirect(url_for('major_assignment.manage_stage_submissions', stage_id=stage.id))
+
+@bp.route('/stage_submissions/<int:submission_id>/download')
+@login_required
+def download_stage_submission_file(submission_id):
+    """下载阶段提交的文件（学生/教师均可，需属于同班级）"""
+    from app.models.team import StageSubmission
+    sub = StageSubmission.query.get_or_404(submission_id)
+    if sub.submit_type != 'file' or not sub.file_path:
+        flash('该提交不是文件或文件不存在')
+        return redirect(url_for('major_assignment.major_assignment_dashboard'))
+    if not os.path.exists(sub.file_path):
+        flash('文件不存在')
+        return redirect(url_for('major_assignment.major_assignment_dashboard'))
+    return send_from_directory(directory=os.path.dirname(sub.file_path), path=os.path.basename(sub.file_path), as_attachment=True, download_name=sub.original_filename or os.path.basename(sub.file_path))
     """阶段管理页面"""
     from app.models.team import Stage
     
@@ -1770,6 +2052,9 @@ def create_stage(assignment_id):
         major_assignment_id=assignment_id
     ).scalar() or 0
     
+    # 若为提交阶段，读取提交方式
+    submission_mode = request.form.get('submission_mode')
+    
     # 创建阶段
     stage = Stage(
         major_assignment_id=assignment_id,
@@ -1779,7 +2064,8 @@ def create_stage(assignment_id):
         start_date=start_date,
         end_date=end_date,
         order=max_order + 1,
-        status='pending'
+        status='pending',
+        submission_mode=(submission_mode if stage_type == 'submission' else None)
     )
     db.session.add(stage)
     db.session.commit()
