@@ -230,6 +230,25 @@
                             </div>
                         </div>
                         
+                        <!-- 作弊/抄袭标记 -->
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" 
+                                       type="checkbox" 
+                                       id="is_cheating" 
+                                       name="is_cheating"
+                                       {{ 'checked' if existing_grade and existing_grade.is_cheating else '' }}>
+                                <label class="form-check-label" for="is_cheating">
+                                    <i class="fas fa-exclamation-triangle me-1 text-danger"></i>
+                                    <strong class="text-danger">作弊/抄袭</strong>
+                                </label>
+                            </div>
+                            <div class="form-text text-danger">
+                                <i class="fas fa-info-circle me-1"></i>
+                                标记为作弊/抄袭后，<strong>无论多少分，成绩统计中一律为0分</strong>
+                            </div>
+                        </div>
+                        
                         <!-- 折扣设置 -->
                         <div class="mb-3" id="discountSection" style="display: none;">
                             <label for="discount_rate" class="form-label">

@@ -363,11 +363,19 @@ def class_grades(class_id):
 
 
 def get_student_assignment_average_grade(assignment_id, student_id):
-    """获取学生在某作业的平均分"""
+    """获取学生在某作业的平均分（作弊标记计为0分）"""
     from app.models import AssignmentGrade
-    from sqlalchemy import func
+    from sqlalchemy import func, case
     
-    avg_grade = db.session.query(func.avg(AssignmentGrade.grade)).filter(
+    # 使用CASE WHEN来处理作弊标记：如果is_cheating=True，则成绩计为0
+    avg_grade = db.session.query(
+        func.avg(
+            case(
+                (AssignmentGrade.is_cheating == True, 0),  # 作弊记为0分
+                else_=AssignmentGrade.grade
+            )
+        )
+    ).filter(
         AssignmentGrade.assignment_id == assignment_id,
         AssignmentGrade.student_id == student_id
     ).scalar()

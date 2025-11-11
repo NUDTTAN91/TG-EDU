@@ -71,6 +71,7 @@ def grade_assignment_overall(assignment_id, student_id):
         grade = request.form.get('grade')
         feedback = request.form.get('feedback', '')
         is_makeup = request.form.get('is_makeup') == 'on'  # 是否为补交
+        is_cheating = request.form.get('is_cheating') == 'on'  # 是否作弊
         discount_rate = request.form.get('discount_rate', '100')  # 折扣百分比
         
         # 验证评分
@@ -126,6 +127,7 @@ def grade_assignment_overall(assignment_id, student_id):
             existing_grade.grade = grade_float
             existing_grade.feedback = feedback
             existing_grade.is_makeup = is_makeup
+            existing_grade.is_cheating = is_cheating
             if is_makeup:
                 existing_grade.discount_rate = float(discount_rate)
                 existing_grade.original_grade = original_grade
@@ -141,6 +143,7 @@ def grade_assignment_overall(assignment_id, student_id):
                 grade=grade_float,
                 feedback=feedback,
                 is_makeup=is_makeup,
+                is_cheating=is_cheating,
                 discount_rate=float(discount_rate) if is_makeup else None,
                 original_grade=original_grade if is_makeup else None
             )
@@ -349,11 +352,17 @@ def export_grading_template(assignment_id):
             teacher_id=current_user.id
         ).first()
         
+        # 确定状态
+        status = '正常'
+        if grade_record and grade_record.is_cheating:
+            status = '作弊/抄袭'
+        
         row = {
             '学号': student_info['student_number'],
             '姓名': student_info['student_name'],
             '分数': grade_record.grade if grade_record and grade_record.grade is not None else '',
-            '评语': grade_record.feedback if grade_record and grade_record.feedback else ''
+            '评语': grade_record.feedback if grade_record and grade_record.feedback else '',
+            '状态': status
         }
         data.append(row)
     
@@ -377,6 +386,7 @@ def export_grading_template(assignment_id):
         worksheet.column_dimensions['B'].width = 12  # 姓名
         worksheet.column_dimensions['C'].width = 10  # 分数
         worksheet.column_dimensions['D'].width = 50  # 评语
+        worksheet.column_dimensions['E'].width = 15  # 状态
         
         # 设置表头样式
         from openpyxl.styles import Font, Alignment, PatternFill
@@ -389,10 +399,12 @@ def export_grading_template(assignment_id):
             cell.font = header_font
             cell.alignment = Alignment(horizontal='center', vertical='center')
         
-        # 设置数据居中（学号、姓名、分数）
+        # 设置数据居中（学号、姓名、分数、状态）
         for row in worksheet.iter_rows(min_row=2, max_row=worksheet.max_row):
             for i, cell in enumerate(row):
                 if i < 3:  # 学号、姓名、分数
+                    cell.alignment = Alignment(horizontal='center', vertical='center')
+                elif i == 4:  # 状态
                     cell.alignment = Alignment(horizontal='center', vertical='center')
                 else:  # 评语
                     cell.alignment = Alignment(horizontal='left', vertical='center', wrap_text=True)
@@ -400,15 +412,29 @@ def export_grading_template(assignment_id):
         # 冻结第一行
         worksheet.freeze_panes = 'A2'
         
+        # 为状态列添加数据验证（下拉列表）
+        from openpyxl.worksheet.datavalidation import DataValidation
+        
+        dv = DataValidation(type="list", formula1='"正常,作弊/抄袭"', allow_blank=False)
+        dv.error = '请从下拉列表中选择状态'
+        dv.errorTitle = '输入错误'
+        dv.prompt = '请选择：正常 或 作弊/抄袭'
+        dv.promptTitle = '状态选择'
+        worksheet.add_data_validation(dv)
+        # 应用到所有状态列单元格（E2开始到最后一行）
+        dv.add(f'E2:E{worksheet.max_row}')
+        
         # 添加说明sheet
         instructions_df = pd.DataFrame({
             '说明': [
-                '1. 请仅修改「分数」和「评语」列',
+                '1. 请仅修改「分数」、「评语」和「状态」列',
                 '2. 分数范围：0-100',
                 '3. 分数可以为空，评语可选',
-                '4. 请勿修改学号和姓名',
-                '5. 请勿删除或添加行',
-                '6. 填写完成后，保存并上传此文件'
+                '4. 状态只能是“正常”或“作弊/抄袭”，请从下拉列表中选择',
+                '5. 标记为“作弊/抄袭”的作业，无论多少分，成绩统计中一律为0分',
+                '6. 请勿修改学号和姓名',
+                '7. 请勿删除或添加行',
+                '8. 填写完成后，保存并上传此文件'
             ]
         })
         instructions_df.to_excel(writer, sheet_name='使用说明', index=False)
@@ -487,6 +513,7 @@ def import_grades(assignment_id):
                 student_name = str(row['姓名']).strip() if pd.notna(row['姓名']) else ''
                 grade_str = str(row['分数']).strip() if pd.notna(row['分数']) else ''
                 feedback = str(row['评语']).strip() if pd.notna(row['评语']) else ''
+                status = str(row['状态']).strip() if '状态' in row and pd.notna(row['状态']) else '正常'
                 
                 if not student_number or not student_name:
                     errors.append(f'第{row_num}行：学号或姓名为空')
@@ -525,6 +552,16 @@ def import_grades(assignment_id):
                         error_count += 1
                         continue
                 
+                # 验证状态
+                is_cheating = False
+                if status not in ['正常', '作弊/抄袭']:
+                    errors.append(f'第{row_num}行：状态只能是“正常”或“作弊/抄袭”')
+                    error_count += 1
+                    continue
+                
+                if status == '作弊/抄袭':
+                    is_cheating = True
+                
                 # 查找或创建评分记录
                 grade_record = AssignmentGrade.query.filter_by(
                     assignment_id=assignment_id,
@@ -536,6 +573,7 @@ def import_grades(assignment_id):
                     # 更新现有记录
                     grade_record.grade = grade_float
                     grade_record.feedback = feedback
+                    grade_record.is_cheating = is_cheating
                     grade_record.updated_at = datetime.utcnow()
                 else:
                     # 创建新记录
@@ -544,7 +582,8 @@ def import_grades(assignment_id):
                         student_id=student.id,
                         teacher_id=current_user.id,
                         grade=grade_float,
-                        feedback=feedback
+                        feedback=feedback,
+                        is_cheating=is_cheating
                     )
                     db.session.add(grade_record)
                 
@@ -603,7 +642,7 @@ def import_grades(assignment_id):
             'error_count': error_count,
             'errors': errors
         })
-        
+
     except Exception as e:
         db.session.rollback()
         current_app.logger.error(f'批量导入评分失败: {str(e)}')

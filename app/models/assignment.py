@@ -77,6 +77,9 @@ class AssignmentGrade(db.Model):
     discount_rate = db.Column(db.Float)  # 折扣百分比（0-100）
     original_grade = db.Column(db.Float)  # 原始分数（折扣前）
     
+    # 作弊标记
+    is_cheating = db.Column(db.Boolean, default=False)  # 是否作弊/抄袭
+    
     # 关系
     assignment = db.relationship('Assignment', backref='assignment_grades')
     student = db.relationship('User', foreign_keys=[student_id], backref='received_grades')
