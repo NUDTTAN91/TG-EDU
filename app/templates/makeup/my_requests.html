@@ -17,7 +17,7 @@
                 </p>
             </div>
             <div class="col-md-4 text-end">
-                <a href="{{ url_for('assignment.student_assignments') }}" class="btn btn-secondary">
+                <a href="{{ url_for('student.dashboard') }}" class="btn btn-secondary">
                     <i class="fas fa-arrow-left me-1"></i>
                     返回作业列表
                 </a>
@@ -54,7 +54,7 @@
                                 <strong>{{ req.assignment.title }}</strong>
                             </td>
                             <td>
-                                <span class="badge bg-primary">{{ req.assignment.class_obj.name }}</span>
+                                <span class="badge bg-primary">{{ req.assignment.class_info.name }}</span>
                             </td>
                             <td>
                                 <small>{{ req.reason[:50] }}{% if req.reason|length > 50 %}...{% endif %}</small>
@@ -84,7 +84,7 @@
                                         截止：{{ req.deadline.strftime('%Y-%m-%d %H:%M') if req.deadline else '未设置' }}
                                     </small>
                                     <br>
-                                    <a href="{{ url_for('assignment.submit_assignment', assignment_id=req.assignment_id) }}" 
+                                    <a href="{{ url_for('submission.submit_assignment', assignment_id=req.assignment_id) }}" 
                                        class="btn btn-sm btn-success mt-1">
                                         <i class="fas fa-upload me-1"></i>
                                         提交补交作业
@@ -120,7 +120,7 @@
             </div>
             <h5 class="text-muted">暂无补交申请记录</h5>
             <p class="text-muted mb-4">您还没有提交过任何补交申请</p>
-            <a href="{{ url_for('assignment.student_assignments') }}" class="btn btn-primary">
+            <a href="{{ url_for('student.dashboard') }}" class="btn btn-primary">
                 <i class="fas fa-tasks me-1"></i>
                 查看作业列表
             </a>
