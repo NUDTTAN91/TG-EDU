@@ -17,9 +17,13 @@
                 </p>
             </div>
             <div class="col-md-4 text-end">
-                <button type="button" class="btn btn-success" id="batchApproveBtn" disabled>
+                <button type="button" class="btn btn-success me-2" id="batchApproveBtn" disabled>
                     <i class="fas fa-check-double me-1"></i>
                     批量批准
+                </button>
+                <button type="button" class="btn btn-danger" id="batchRejectBtn" disabled>
+                    <i class="fas fa-times-circle me-1"></i>
+                    批量拒绝
                 </button>
             </div>
         </div>
@@ -303,6 +307,43 @@
     </div>
 </div>
 
+<!-- 批量拒绝模态框 -->
+<div class="modal fade" id="batchRejectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-times-circle me-2"></i>
+                    批量拒绝申请
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-3">您已选择 <strong id="batchRejectCount">0</strong> 个待审批的申请</p>
+                <div class="mb-3">
+                    <label for="batchRejectReason" class="form-label">
+                        <i class="fas fa-comment me-1"></i>
+                        拒绝理由（可选）
+                    </label>
+                    <textarea class="form-control" id="batchRejectReason" rows="3" 
+                              placeholder="请填写拒绝理由..."></textarea>
+                </div>
+                <div class="alert alert-warning mb-0">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    批量操作将对所有选中的申请设置相同的拒绝理由
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" id="confirmBatchReject">
+                    <i class="fas fa-times-circle me-1"></i>
+                    批量拒绝
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- 修改截止时间模态框 -->
 <div class="modal fade" id="modifyDeadlineModal" tabindex="-1">
     <div class="modal-dialog">
@@ -345,6 +386,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const approveModal = new bootstrap.Modal(document.getElementById('approveModal'));
     const rejectModal = new bootstrap.Modal(document.getElementById('rejectModal'));
     const batchApproveModal = new bootstrap.Modal(document.getElementById('batchApproveModal'));
+    const batchRejectModal = new bootstrap.Modal(document.getElementById('batchRejectModal'));
     const modifyDeadlineModal = new bootstrap.Modal(document.getElementById('modifyDeadlineModal'));
     
     // 单个批准
@@ -482,6 +524,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const selectAllCheckbox = document.getElementById('selectAll');
     const requestCheckboxes = document.querySelectorAll('.request-checkbox');
     const batchApproveBtn = document.getElementById('batchApproveBtn');
+    const batchRejectBtn = document.getElementById('batchRejectBtn');
     
     if (selectAllCheckbox) {
         selectAllCheckbox.addEventListener('change', function() {
@@ -499,6 +542,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateBatchButton() {
         const checkedCount = document.querySelectorAll('.request-checkbox:checked').length;
         batchApproveBtn.disabled = checkedCount === 0;
+        batchRejectBtn.disabled = checkedCount === 0;
         
         if (selectAllCheckbox) {
             selectAllCheckbox.checked = checkedCount === requestCheckboxes.length && checkedCount > 0;
@@ -530,6 +574,44 @@ document.addEventListener('DOMContentLoaded', function() {
         formData.append('deadline', deadline);
         
         fetch('/makeup/batch_approve', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('操作失败：' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('操作失败，请重试');
+            console.error(error);
+        });
+    });
+    
+    // 批量拒绝
+    if (batchRejectBtn) {
+        batchRejectBtn.addEventListener('click', function() {
+            const checkedCount = document.querySelectorAll('.request-checkbox:checked').length;
+            document.getElementById('batchRejectCount').textContent = checkedCount;
+            batchRejectModal.show();
+        });
+    }
+    
+    document.getElementById('confirmBatchReject').addEventListener('click', function() {
+        const rejectReason = document.getElementById('batchRejectReason').value;
+        
+        const selectedIds = Array.from(document.querySelectorAll('.request-checkbox:checked'))
+            .map(cb => cb.value);
+        
+        const formData = new FormData();
+        selectedIds.forEach(id => formData.append('request_ids[]', id));
+        formData.append('reject_reason', rejectReason);
+        
+        fetch('/makeup/batch_reject', {
             method: 'POST',
             body: formData
         })

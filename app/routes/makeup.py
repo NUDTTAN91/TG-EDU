@@ -219,6 +219,33 @@ def batch_approve():
     return jsonify({'success': True, 'message': f'已批准 {updated_count} 个补交申请'})
 
 
+@bp.route('/batch_reject', methods=['POST'])
+@login_required
+@require_teacher_or_admin
+def batch_reject():
+    """批量拒绝补交申请"""
+    request_ids = request.form.getlist('request_ids[]')
+    reject_reason = request.form.get('reject_reason', '').strip()
+    
+    if not request_ids:
+        return jsonify({'success': False, 'message': '请选择要拒绝的申请'})
+    
+    # 批量更新
+    updated_count = 0
+    for request_id in request_ids:
+        makeup_request = MakeupRequest.query.get(request_id)
+        if makeup_request and makeup_request.status == 'pending':
+            makeup_request.status = 'rejected'
+            makeup_request.reject_reason = reject_reason
+            makeup_request.processed_by = current_user.id
+            makeup_request.updated_at = datetime.utcnow()
+            updated_count += 1
+    
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': f'已拒绝 {updated_count} 个补交申请'})
+
+
 @bp.route('/modify_deadline/<int:request_id>', methods=['POST'])
 @login_required
 @require_teacher_or_admin
