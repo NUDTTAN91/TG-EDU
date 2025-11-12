@@ -64,22 +64,27 @@
                     <thead>
                         <tr>
                             <th width="3%">
+                                {% if current_status == 'pending' %}
                                 <input type="checkbox" id="selectAll" class="form-check-input">
+                                {% endif %}
                             </th>
                             <th width="10%">学生</th>
-                            <th width="18%">作业名称</th>
+                            <th width="{% if current_status == 'pending' %}20{% else %}18{% endif %}%">作业名称</th>
                             <th width="10%">班级</th>
-                            <th width="22%">补交理由</th>
+                            <th width="20%">补交理由</th>
                             <th width="10%">申请时间</th>
                             <th width="8%">状态</th>
-                            <th width="19%">操作</th>
+                            {% if current_status != 'pending' %}
+                            <th width="8%">处理人</th>
+                            {% endif %}
+                            <th width="{% if current_status == 'pending' %}16{% else %}13{% endif %}%">操作</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for req in requests %}
                         <tr>
                             <td>
-                                {% if req.status == 'pending' %}
+                                {% if req.status == 'pending' and current_status == 'pending' %}
                                 <input type="checkbox" class="form-check-input request-checkbox" 
                                        value="{{ req.id }}">
                                 {% endif %}
@@ -122,6 +127,17 @@
                                     </span>
                                 {% endif %}
                             </td>
+                            {% if current_status != 'pending' %}
+                            <td>
+                                {% if req.processor %}
+                                    <strong>{{ req.processor.real_name }}</strong>
+                                    <br>
+                                    <small class="text-muted">{{ req.processor.username }}</small>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            {% endif %}
                             <td>
                                 {% if req.status == 'pending' %}
                                     <button class="btn btn-sm btn-success approve-btn" 

@@ -136,7 +136,7 @@ def approve_request(request_id):
     
     makeup_request.status = 'approved'
     makeup_request.deadline = deadline
-    makeup_request.approved_by = current_user.id
+    makeup_request.processed_by = current_user.id
     makeup_request.updated_at = datetime.utcnow()
     
     db.session.commit()
@@ -167,7 +167,7 @@ def reject_request(request_id):
     
     makeup_request.status = 'rejected'
     makeup_request.reject_reason = reject_reason
-    makeup_request.approved_by = current_user.id
+    makeup_request.processed_by = current_user.id
     makeup_request.updated_at = datetime.utcnow()
     
     db.session.commit()
@@ -210,7 +210,7 @@ def batch_approve():
         if makeup_request and makeup_request.status == 'pending':
             makeup_request.status = 'approved'
             makeup_request.deadline = deadline
-            makeup_request.approved_by = current_user.id
+            makeup_request.processed_by = current_user.id
             makeup_request.updated_at = datetime.utcnow()
             updated_count += 1
     
