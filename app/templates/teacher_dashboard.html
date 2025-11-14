@@ -652,18 +652,20 @@ function startDownload(assignmentId) {
         checkDownloadProgress(assignmentId);
     }, 500); // 每500ms检查一次进度
     
-    // 触发实际下载（通过隐藏的iframe）
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    iframe.src = `/admin/assignment/${assignmentId}/download`;
-    document.body.appendChild(iframe);
+    // 触发实际下载（通过创建隐藏的a标签）
+    const downloadLink = document.createElement('a');
+    downloadLink.style.display = 'none';
+    downloadLink.href = `/admin/assignment/${assignmentId}/download`;
+    downloadLink.download = ''; // 触发下载而非打开
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
     
-    // 10秒后移除iframe
+    // 1秒后移除链接
     setTimeout(() => {
-        if (iframe.parentNode) {
-            iframe.parentNode.removeChild(iframe);
+        if (downloadLink.parentNode) {
+            downloadLink.parentNode.removeChild(downloadLink);
         }
-    }, 10000);
+    }, 1000);
 }
 
 // 检查下载进度
