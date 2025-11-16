@@ -103,21 +103,44 @@
                     <div class="row">
                         <div class="col-12">
                             <div class="mb-3">
-                                <label for="allowed_file_types" class="form-label">
+                                <label class="form-label" style="font-size: 1rem;">
                                     <i class="fas fa-file-check me-1"></i>
-                                    允许的文件扩展名：
+                                    允许的文件类型：
                                 </label>
-                                <div class="input-group">
-                                    <input type="text" class="form-control" id="allowed_file_types" name="allowed_file_types" 
-                                           placeholder="例如：pdf,doc,docx,txt,zip" 
-                                           value="pdf,doc,docx,txt,zip,py,java,cpp">
-                                    <button type="button" class="btn btn-outline-secondary" onclick="addCommonTypes()">
-                                        <i class="fas fa-magic"></i> 常用类型
-                                    </button>
+                                <input type="hidden" id="allowed_file_types" name="allowed_file_types" value="">
+                                <div class="file-type-selection">
+                                    <div class="file-type-category">
+                                        <div class="category-label">文档类型</div>
+                                        <div class="type-buttons-vertical">
+                                            <button type="button" class="btn btn-outline-secondary file-type-btn" data-type="pdf">
+                                                <i class="fas fa-file-pdf me-1"></i>PDF
+                                            </button>
+                                            <button type="button" class="btn btn-outline-secondary file-type-btn" data-type="doc">
+                                                <i class="fas fa-file-word me-1"></i>DOC
+                                            </button>
+                                            <button type="button" class="btn btn-outline-secondary file-type-btn" data-type="docx">
+                                                <i class="fas fa-file-word me-1"></i>DOCX
+                                            </button>
+                                            <button type="button" class="btn btn-outline-secondary file-type-btn" data-type="md">
+                                                <i class="fas fa-file-alt me-1"></i>MD
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="file-type-category">
+                                        <div class="category-label">压缩包类型</div>
+                                        <div class="type-buttons-vertical">
+                                            <button type="button" class="btn btn-outline-secondary file-type-btn" data-type="zip">
+                                                <i class="fas fa-file-archive me-1"></i>ZIP
+                                            </button>
+                                            <button type="button" class="btn btn-outline-secondary file-type-btn" data-type="7z">
+                                                <i class="fas fa-file-archive me-1"></i>7Z
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="form-text">
-                                    用逗号分隔，不需要加点号。留空将使用默认类型。
-                                    <br><strong>常用类型：</strong> pdf, doc, docx, txt, zip, rar, py, java, cpp, c, html, css, js
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    点击按钮选择允许的文件类型（可多选），至少选择一种。MD文件为文本格式，仅验证扩展名和文本编码。
                                 </div>
                             </div>
                         </div>
@@ -154,39 +177,7 @@
                         </div>
                     </div>
                     
-                    <!-- 文件类型预设选择 -->
-                    <div class="mb-4">
-                        <label class="form-label">
-                            <i class="fas fa-layer-group me-1"></i>
-                            快速选择文件类型
-                        </label>
-                        <div class="row">
-                            <div class="col-md-3">
-                                <button type="button" class="btn btn-outline-primary btn-sm w-100 mb-2" 
-                                        onclick="setFileTypes('pdf,doc,docx')">
-                                    <i class="fas fa-file-pdf"></i> 文档类型
-                                </button>
-                            </div>
-                            <div class="col-md-3">
-                                <button type="button" class="btn btn-outline-success btn-sm w-100 mb-2" 
-                                        onclick="setFileTypes('py,java,cpp,c,js,html,css')">
-                                    <i class="fas fa-code"></i> 编程文件
-                                </button>
-                            </div>
-                            <div class="col-md-3">
-                                <button type="button" class="btn btn-outline-warning btn-sm w-100 mb-2" 
-                                        onclick="setFileTypes('zip,rar,7z,tar')">
-                                    <i class="fas fa-file-archive"></i> 压缩文件
-                                </button>
-                            </div>
-                            <div class="col-md-3">
-                                <button type="button" class="btn btn-outline-info btn-sm w-100 mb-2" 
-                                        onclick="setFileTypes('jpg,png,gif,bmp,svg')">
-                                    <i class="fas fa-image"></i> 图片文件
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                    <!-- 文件类型已限制为仅支持PDF和ZIP -->
                     
                     <div class="d-flex gap-2 justify-content-end">
                         <a href="{{ url_for('admin.teacher_dashboard') if current_user.is_teacher else url_for('admin.super_admin_dashboard') }}" 
@@ -213,6 +204,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const forms = document.querySelectorAll('.needs-validation');
     Array.from(forms).forEach(form => {
         form.addEventListener('submit', event => {
+            // 检查是否至少选择了一种文件类型
+            const hiddenInput = document.getElementById('allowed_file_types');
+            if (!hiddenInput.value || hiddenInput.value.trim() === '') {
+                event.preventDefault();
+                event.stopPropagation();
+                alert('请至少选择一种文件类型！');
+                return false;
+            }
+            
             if (!form.checkValidity()) {
                 event.preventDefault();
                 event.stopPropagation();
@@ -220,43 +220,39 @@ document.addEventListener('DOMContentLoaded', function() {
             form.classList.add('was-validated');
         }, false);
     });
-});
-
-// 设置文件类型
-function setFileTypes(types) {
-    document.getElementById('allowed_file_types').value = types;
-}
-
-// 添加常用类型
-function addCommonTypes() {
-    const input = document.getElementById('allowed_file_types');
-    const commonTypes = 'pdf,doc,docx,txt,zip,rar,py,java,cpp,c,html,css,js';
-    input.value = commonTypes;
-}
-
-// 实时预览选择的文件类型
-document.getElementById('allowed_file_types').addEventListener('input', function() {
-    const types = this.value.split(',').map(t => t.trim()).filter(t => t);
-    const preview = types.map(t => `<span class="badge bg-secondary me-1">.${t}</span>`).join('');
     
-    // 创建或更新预览元素
-    let previewElement = document.getElementById('file-types-preview');
-    if (!previewElement) {
-        previewElement = document.createElement('div');
-        previewElement.id = 'file-types-preview';
-        previewElement.className = 'mt-2';
-        this.parentNode.appendChild(previewElement);
+    // 文件类型按钮处理
+    const fileTypeButtons = document.querySelectorAll('.file-type-btn');
+    const hiddenInput = document.getElementById('allowed_file_types');
+    let selectedTypes = [];
+    
+    function updateHiddenInput() {
+        hiddenInput.value = selectedTypes.join(',');
     }
     
-    if (types.length > 0) {
-        previewElement.innerHTML = '<small class="text-muted">允许的文件扩展名：</small><br>' + preview;
-    } else {
-        previewElement.innerHTML = '';
-    }
+    fileTypeButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const type = this.getAttribute('data-type');
+            const index = selectedTypes.indexOf(type);
+            
+            if (index > -1) {
+                // 已选中，取消选择
+                selectedTypes.splice(index, 1);
+                this.classList.remove('active');
+                this.classList.remove('btn-primary');
+                this.classList.add('btn-outline-secondary');
+            } else {
+                // 未选中，添加选择
+                selectedTypes.push(type);
+                this.classList.add('active');
+                this.classList.remove('btn-outline-secondary');
+                this.classList.add('btn-primary');
+            }
+            
+            updateHiddenInput();
+        });
+    });
 });
-
-// 触发初始预览
-document.getElementById('allowed_file_types').dispatchEvent(new Event('input'));
 </script>
 
 <style>
@@ -284,6 +280,56 @@ document.getElementById('allowed_file_types').dispatchEvent(new Event('input'));
 .badge {
     font-size: 0.75rem;
     padding: 0.25rem 0.5rem;
+}
+
+/* 文件类型选择样式 */
+.file-type-selection {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+}
+
+.file-type-category {
+    flex: 0 0 auto;
+    min-width: 150px;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+
+.category-label {
+    font-size: 1rem;
+    color: #212529;
+    font-weight: 700;
+    margin-bottom: 0.9rem;
+    display: block;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #0d6efd;
+}
+
+.type-buttons-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.file-type-btn {
+    font-size: 0.95rem;
+    padding: 0.5rem 1rem;
+    border-width: 2px;
+    transition: all 0.2s ease;
+    text-align: left;
+    min-width: 120px;
+}
+
+.file-type-btn:hover {
+    transform: translateX(3px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.file-type-btn.active {
+    font-weight: 600;
 }
 </style>
 {% endblock %}

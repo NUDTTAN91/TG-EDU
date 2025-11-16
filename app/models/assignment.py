@@ -30,15 +30,27 @@ class Assignment(db.Model):
     def get_allowed_extensions(self):
         """获取允许的文件扩展名列表"""
         if self.allowed_file_types:
-            return [ext.strip().lower() for ext in self.allowed_file_types.split(',')]
-        return ['pdf', 'doc', 'docx', 'txt', 'zip', 'rar']
+            # 允许pdf、zip、doc、docx、7z、md文件类型
+            allowed_types = [ext.strip().lower() for ext in self.allowed_file_types.split(',')]
+            # 过滤只保留支持的类型
+            return [ext for ext in allowed_types if ext in ['pdf', 'zip', 'doc', 'docx', '7z', 'md']]
+        return ['pdf', 'zip', 'doc', 'docx', '7z', 'md']
     
     def is_file_allowed(self, filename):
-        """检查文件类型是否允许"""
+        """检查文件类型是否允许（严格验证PDF、ZIP、DOC、DOCX、7Z、MD文件）"""
         if '.' not in filename:
             return False
         ext = filename.rsplit('.', 1)[1].lower()
-        return ext in self.get_allowed_extensions()
+        
+        # 获取允许的扩展名
+        allowed_extensions = self.get_allowed_extensions()
+        
+        # 严格验证：只允许支持的文件类型
+        if ext not in ['pdf', 'zip', 'doc', 'docx', '7z', 'md']:
+            return False
+            
+        # 检查是否在允许的扩展名列表中
+        return ext in allowed_extensions
     
     def is_overdue(self):
         """检查是否已过截止时间"""

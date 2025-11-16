@@ -258,27 +258,45 @@
                             </div>
                             
                             <div class="col-md-12 mb-3">
-                                <label for="file_types" class="form-label">
+                                <label class="form-label" style="font-size: 1rem;">
                                     <i class="fas fa-file-alt me-2"></i>
                                     允许的文件类型 <span class="text-info">(可选)</span>
                                 </label>
-                                <input type="text" 
-                                       class="form-control" 
-                                       id="file_types" 
-                                       name="file_types" 
-                                       value="{{ assignment.allowed_file_types or '' }}"
-                                       placeholder="如：pdf,doc,docx,txt,zip">
+                                <input type="hidden" id="file_types" name="file_types" 
+                                       value="{% if assignment.allowed_file_types %}{{ assignment.allowed_file_types }}{% else %}{% endif %}">
+                                <div class="file-type-selection">
+                                    <div class="file-type-category">
+                                        <div class="category-label">文档类型</div>
+                                        <div class="type-buttons-vertical">
+                                            <button type="button" class="btn btn-outline-secondary file-type-btn {% if 'pdf' in assignment.get_allowed_extensions() %}active btn-primary{% endif %}" data-type="pdf">
+                                                <i class="fas fa-file-pdf me-1"></i>PDF
+                                            </button>
+                                            <button type="button" class="btn btn-outline-secondary file-type-btn {% if 'doc' in assignment.get_allowed_extensions() %}active btn-primary{% endif %}" data-type="doc">
+                                                <i class="fas fa-file-word me-1"></i>DOC
+                                            </button>
+                                            <button type="button" class="btn btn-outline-secondary file-type-btn {% if 'docx' in assignment.get_allowed_extensions() %}active btn-primary{% endif %}" data-type="docx">
+                                                <i class="fas fa-file-word me-1"></i>DOCX
+                                            </button>
+                                            <button type="button" class="btn btn-outline-secondary file-type-btn {% if 'md' in assignment.get_allowed_extensions() %}active btn-primary{% endif %}" data-type="md">
+                                                <i class="fas fa-file-alt me-1"></i>MD
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="file-type-category">
+                                        <div class="category-label">压缩包类型</div>
+                                        <div class="type-buttons-vertical">
+                                            <button type="button" class="btn btn-outline-secondary file-type-btn {% if 'zip' in assignment.get_allowed_extensions() %}active btn-primary{% endif %}" data-type="zip">
+                                                <i class="fas fa-file-archive me-1"></i>ZIP
+                                            </button>
+                                            <button type="button" class="btn btn-outline-secondary file-type-btn {% if '7z' in assignment.get_allowed_extensions() %}active btn-primary{% endif %}" data-type="7z">
+                                                <i class="fas fa-file-archive me-1"></i>7Z
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
                                 <div class="form-text">
                                     <i class="fas fa-info-circle me-1"></i>
-                                    用逗号分隔多个文件类型，留空表示允许常见文件类型
-                                </div>
-                                <div class="mt-2">
-                                    <small class="text-muted">当前允许的类型：</small>
-                                    <div class="mt-1">
-                                        {% for ext in assignment.get_allowed_extensions() %}
-                                            <span class="badge bg-primary me-1 mb-1">.{{ ext }}</span>
-                                        {% endfor %}
-                                    </div>
+                                    点击按钮选择允许的文件类型（可多选），至少选择一种。MD文件为文本格式，仅验证扩展名和文本编码。
                                 </div>
                             </div>
                         </div>
@@ -316,6 +334,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const forms = document.querySelectorAll('.needs-validation');
     Array.from(forms).forEach(form => {
         form.addEventListener('submit', event => {
+            // 检查是否至少选择了一种文件类型
+            const hiddenInput = document.getElementById('file_types');
+            if (!hiddenInput.value || hiddenInput.value.trim() === '') {
+                event.preventDefault();
+                event.stopPropagation();
+                alert('请至少选择一种文件类型！');
+                return false;
+            }
+            
             if (!form.checkValidity()) {
                 event.preventDefault();
                 event.stopPropagation();
@@ -324,29 +351,47 @@ document.addEventListener('DOMContentLoaded', function() {
         }, false);
     });
     
-    // 文件类型输入实时预览
-    const fileTypesInput = document.getElementById('file_types');
-    const previewContainer = document.querySelector('.mt-2');
+    // 文件类型按钮处理
+    const fileTypeButtons = document.querySelectorAll('.file-type-btn');
+    const hiddenInput = document.getElementById('file_types');
+    let selectedTypes = [];
     
-    fileTypesInput.addEventListener('input', function() {
-        const value = this.value.trim();
-        if (value) {
-            const types = value.split(',').map(t => t.trim().toLowerCase()).filter(t => t);
-            updatePreview(types);
+    // 初始化已选中的类型
+    fileTypeButtons.forEach(button => {
+        if (button.classList.contains('active')) {
+            selectedTypes.push(button.getAttribute('data-type'));
         }
     });
     
-    function updatePreview(types) {
-        const badgeContainer = previewContainer.querySelector('.mt-1');
-        badgeContainer.innerHTML = '';
-        
-        types.forEach(type => {
-            const badge = document.createElement('span');
-            badge.className = 'badge bg-primary me-1 mb-1';
-            badge.textContent = `.${type.startsWith('.') ? type.substring(1) : type}`;
-            badgeContainer.appendChild(badge);
-        });
+    function updateHiddenInput() {
+        hiddenInput.value = selectedTypes.join(',');
     }
+    
+    fileTypeButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const type = this.getAttribute('data-type');
+            const index = selectedTypes.indexOf(type);
+            
+            if (index > -1) {
+                // 已选中，取消选择
+                selectedTypes.splice(index, 1);
+                this.classList.remove('active');
+                this.classList.remove('btn-primary');
+                this.classList.add('btn-outline-secondary');
+            } else {
+                // 未选中，添加选择
+                selectedTypes.push(type);
+                this.classList.add('active');
+                this.classList.remove('btn-outline-secondary');
+                this.classList.add('btn-primary');
+            }
+            
+            updateHiddenInput();
+        });
+    });
+    
+    // 初始化hidden input
+    updateHiddenInput();
     
     // 截止时间设置提示
     const dueDateInput = document.getElementById('due_date');
@@ -388,6 +433,56 @@ document.addEventListener('DOMContentLoaded', function() {
 .badge {
     font-size: 0.75rem;
     padding: 0.25rem 0.5rem;
+}
+
+/* 文件类型选择样式 */
+.file-type-selection {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+}
+
+.file-type-category {
+    flex: 0 0 auto;
+    min-width: 150px;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+
+.category-label {
+    font-size: 1rem;
+    color: #212529;
+    font-weight: 700;
+    margin-bottom: 0.9rem;
+    display: block;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #0d6efd;
+}
+
+.type-buttons-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.file-type-btn {
+    font-size: 0.95rem;
+    padding: 0.5rem 1rem;
+    border-width: 2px;
+    transition: all 0.2s ease;
+    text-align: left;
+    min-width: 120px;
+}
+
+.file-type-btn:hover {
+    transform: translateX(3px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.file-type-btn.active {
+    font-weight: 600;
 }
 
 /* 响应式设计 */

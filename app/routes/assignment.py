@@ -95,16 +95,20 @@ def create_assignment():
         except (ValueError, TypeError):
             max_submissions_count = 0
         
-        # 处理文件类型
+        # 处理文件类型 - 允许PDF、ZIP、DOC、DOCX、7Z、MD
         if allowed_file_types:
             file_types = []
             for ext in allowed_file_types.split(','):
                 ext = ext.strip().lower()
                 if ext.startswith('.'):
                     ext = ext[1:]
-                if ext:
+                # 只允许支持的文件类型
+                if ext and ext in ['pdf', 'zip', 'doc', 'docx', '7z', 'md']:
                     file_types.append(ext)
             allowed_file_types = ','.join(file_types)
+        else:
+            # 默认允许所有支持的类型
+            allowed_file_types = 'pdf,zip,doc,docx,7z,md'
         
         assignment = Assignment(
             title=title,
@@ -446,7 +450,7 @@ def edit_assignment(assignment_id):
                 flash('截止时间格式不正确')
                 return render_template('edit_assignment.html', assignment=assignment, available_classes=get_available_classes())
         
-        # 处理文件类型
+        # 处理文件类型 - 允许PDF、ZIP、DOC、DOCX、7Z、MD
         allowed_file_types = ''
         if file_types:
             file_types_list = []
@@ -454,9 +458,13 @@ def edit_assignment(assignment_id):
                 ext = ext.strip().lower()
                 if ext.startswith('.'):
                     ext = ext[1:]
-                if ext:
+                # 只允许支持的文件类型
+                if ext and ext in ['pdf', 'zip', 'doc', 'docx', '7z', 'md']:
                     file_types_list.append(ext)
             allowed_file_types = ','.join(file_types_list)
+        else:
+            # 默认允许所有支持的类型
+            allowed_file_types = 'pdf,zip,doc,docx,7z,md'
         
         # 更新作业信息
         assignment.title = title

@@ -131,14 +131,78 @@ def submit_assignment(assignment_id):
             flash('请选择文件')
             return render_template('submit.html', assignment=assignment, logged_in_student=logged_in_student)
         
-        # 检查文件类型
+        # 检查文件类型（严格验证PDF、ZIP、DOC、DOCX、7Z、MD文件）
         if not assignment.is_file_allowed(file.filename):
-            allowed_types = ', '.join(assignment.get_allowed_extensions())
-            error_msg = f'不允许的文件类型。允许的类型：{allowed_types}'
+            error_msg = '不允许的文件类型。系统仅支持PDF、ZIP、DOC、DOCX、7Z、MD文件。'
             if request.headers.get('Content-Type', '').startswith('multipart/form-data'):
                 return jsonify({'success': False, 'message': error_msg}), 400
             flash(error_msg)
             return render_template('submit.html', assignment=assignment, logged_in_student=logged_in_student)
+        
+        # 额外的文件内容验证（确保文件确实是正确的格式）
+        file_extension = file.filename.rsplit('.', 1)[1].lower()
+        if file_extension == 'pdf':
+            # 检查PDF文件头
+            file.seek(0)
+            header = file.read(4)
+            file.seek(0)
+            if not header.startswith(b'%PDF'):
+                error_msg = '文件不是有效的PDF格式。'
+                if request.headers.get('Content-Type', '').startswith('multipart/form-data'):
+                    return jsonify({'success': False, 'message': error_msg}), 400
+                flash(error_msg)
+                return render_template('submit.html', assignment=assignment, logged_in_student=logged_in_student)
+        elif file_extension == 'zip':
+            # 检查ZIP文件头
+            file.seek(0)
+            header = file.read(4)
+            file.seek(0)
+            if not header.startswith(b'PK\x03\x04'):
+                error_msg = '文件不是有效的ZIP格式。'
+                if request.headers.get('Content-Type', '').startswith('multipart/form-data'):
+                    return jsonify({'success': False, 'message': error_msg}), 400
+                flash(error_msg)
+                return render_template('submit.html', assignment=assignment, logged_in_student=logged_in_student)
+        elif file_extension in ['doc', 'docx']:
+            # 检查DOC/DOCX文件头（Microsoft Office文档）
+            file.seek(0)
+            header = file.read(8)
+            file.seek(0)
+            # DOC格式 (OLE2): D0 CF 11 E0 A1 B1 1A E1
+            # DOCX格式 (ZIP包装): PK\x03\x04
+            if not (header.startswith(b'\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1') or header.startswith(b'PK\x03\x04')):
+                error_msg = '文件不是有效的DOC/DOCX格式。'
+                if request.headers.get('Content-Type', '').startswith('multipart/form-data'):
+                    return jsonify({'success': False, 'message': error_msg}), 400
+                flash(error_msg)
+                return render_template('submit.html', assignment=assignment, logged_in_student=logged_in_student)
+        elif file_extension == '7z':
+            # 检查7Z文件头: 37 7A BC AF 27 1C
+            file.seek(0)
+            header = file.read(6)
+            file.seek(0)
+            if not header.startswith(b'7z\xBC\xAF\'\x1C'):
+                error_msg = '文件不是有效的7Z格式。'
+                if request.headers.get('Content-Type', '').startswith('multipart/form-data'):
+                    return jsonify({'success': False, 'message': error_msg}), 400
+                flash(error_msg)
+                return render_template('submit.html', assignment=assignment, logged_in_student=logged_in_student)
+        elif file_extension == 'md':
+            # 检查MD文件（Markdown文本文件）- 验证是否为有效的UTF-8文本
+            file.seek(0)
+            try:
+                content = file.read(1024)  # 读取前1KB内容
+                file.seek(0)
+                # 尝试解码为UTF-8
+                content.decode('utf-8')
+                # 可选：检查是否包含常见的Markdown语法标记
+                # 这里只做基本的文本验证，不严格要求必须有Markdown语法
+            except (UnicodeDecodeError, AttributeError):
+                error_msg = '文件不是有效的Markdown文本格式。'
+                if request.headers.get('Content-Type', '').startswith('multipart/form-data'):
+                    return jsonify({'success': False, 'message': error_msg}), 400
+                flash(error_msg)
+                return render_template('submit.html', assignment=assignment, logged_in_student=logged_in_student)
         
         # 检查文件大小
         file.seek(0, 2)  # 移动到文件末尾
