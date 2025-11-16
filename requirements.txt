@@ -12,3 +12,4 @@ gevent==23.9.1
 psutil==5.9.8
 chardet>=5.0.0
 py-ip2region
+filetype==1.2.0

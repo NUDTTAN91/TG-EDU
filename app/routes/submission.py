@@ -5,6 +5,7 @@ from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_from_directory
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
+import filetype
 
 from app.extensions import db
 from app.models import Assignment, Submission, User, Class, UserRole
@@ -131,7 +132,7 @@ def submit_assignment(assignment_id):
             flash('请选择文件')
             return render_template('submit.html', assignment=assignment, logged_in_student=logged_in_student)
         
-        # 检查文件类型（严格验证PDF、ZIP、DOC、DOCX、7Z、MD文件）
+        # 检查文件扩展名是否在允许列表中
         if not assignment.is_file_allowed(file.filename):
             error_msg = '不允许的文件类型。系统仅支持PDF、ZIP、DOC、DOCX、7Z、MD文件。'
             if request.headers.get('Content-Type', '').startswith('multipart/form-data'):
@@ -139,66 +140,87 @@ def submit_assignment(assignment_id):
             flash(error_msg)
             return render_template('submit.html', assignment=assignment, logged_in_student=logged_in_student)
         
-        # 额外的文件内容验证（确保文件确实是正确的格式）
-        file_extension = file.filename.rsplit('.', 1)[1].lower()
-        if file_extension == 'pdf':
-            # 检查PDF文件头
-            file.seek(0)
-            header = file.read(4)
-            file.seek(0)
-            if not header.startswith(b'%PDF'):
-                error_msg = '文件不是有效的PDF格式。'
+        # 获取声称的文件扩展名
+        declared_extension = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
+        
+        # 读取文件头用于真实类型检测
+        file.seek(0)
+        header = file.read(8192)  # 读取前8KB用于类型检测
+        file.seek(0)
+        
+        # 使用filetype库检测真实文件类型
+        kind = filetype.guess(header)
+        
+        # 定义MIME类型到扩展名的映射
+        mime_to_ext = {
+            'application/pdf': 'pdf',
+            'application/zip': 'zip',
+            'application/x-7z-compressed': '7z',
+            'application/msword': 'doc',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+        }
+        
+        if kind is not None:
+            # 成功识别出文件类型
+            real_type = mime_to_ext.get(kind.mime, None)
+            
+            if real_type is None:
+                # 识别到的文件类型不在我们支持的范围内
+                error_msg = f'检测到不支持的文件类型：{kind.mime}。系统仅支持PDF、ZIP、DOC、DOCX、7Z、MD文件。'
                 if request.headers.get('Content-Type', '').startswith('multipart/form-data'):
                     return jsonify({'success': False, 'message': error_msg}), 400
                 flash(error_msg)
                 return render_template('submit.html', assignment=assignment, logged_in_student=logged_in_student)
-        elif file_extension == 'zip':
-            # 检查ZIP文件头
-            file.seek(0)
-            header = file.read(4)
-            file.seek(0)
-            if not header.startswith(b'PK\x03\x04'):
-                error_msg = '文件不是有效的ZIP格式。'
+            
+            # 检查实际类型与声称的扩展名是否匹配
+            if declared_extension != real_type:
+                error_msg = f'文件类型不正确：文件实际为{real_type.upper()}格式，但扩展名为.{declared_extension}。请上传正确的文件或修改扩展名。'
                 if request.headers.get('Content-Type', '').startswith('multipart/form-data'):
                     return jsonify({'success': False, 'message': error_msg}), 400
                 flash(error_msg)
                 return render_template('submit.html', assignment=assignment, logged_in_student=logged_in_student)
-        elif file_extension in ['doc', 'docx']:
-            # 检查DOC/DOCX文件头（Microsoft Office文档）
-            file.seek(0)
-            header = file.read(8)
-            file.seek(0)
-            # DOC格式 (OLE2): D0 CF 11 E0 A1 B1 1A E1
-            # DOCX格式 (ZIP包装): PK\x03\x04
-            if not (header.startswith(b'\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1') or header.startswith(b'PK\x03\x04')):
-                error_msg = '文件不是有效的DOC/DOCX格式。'
-                if request.headers.get('Content-Type', '').startswith('multipart/form-data'):
-                    return jsonify({'success': False, 'message': error_msg}), 400
-                flash(error_msg)
-                return render_template('submit.html', assignment=assignment, logged_in_student=logged_in_student)
-        elif file_extension == '7z':
-            # 检查7Z文件头: 37 7A BC AF 27 1C
-            file.seek(0)
-            header = file.read(6)
-            file.seek(0)
-            if not header.startswith(b'7z\xBC\xAF\'\x1C'):
-                error_msg = '文件不是有效的7Z格式。'
-                if request.headers.get('Content-Type', '').startswith('multipart/form-data'):
-                    return jsonify({'success': False, 'message': error_msg}), 400
-                flash(error_msg)
-                return render_template('submit.html', assignment=assignment, logged_in_student=logged_in_student)
-        elif file_extension == 'md':
-            # 检查MD文件（Markdown文本文件）- 验证是否为有效的UTF-8文本
-            file.seek(0)
-            try:
-                content = file.read(1024)  # 读取前1KB内容
-                file.seek(0)
-                # 尝试解码为UTF-8
-                content.decode('utf-8')
-                # 可选：检查是否包含常见的Markdown语法标记
-                # 这里只做基本的文本验证，不严格要求必须有Markdown语法
-            except (UnicodeDecodeError, AttributeError):
-                error_msg = '文件不是有效的Markdown文本格式。'
+        else:
+            # 无法识别文件类型（返回None），按实际后缀处理
+            # 对于文本文件（如MD），进行基本的文本验证
+            if declared_extension == 'md':
+                # 验证是否为有效的UTF-8文本
+                try:
+                    header.decode('utf-8')
+                    # 额外检查：确保不包含常见二进制文件的特征标记
+                    if header.startswith(b'%PDF'):
+                        error_msg = '文件类型不正确：检测到PDF文件，请上传真实的MD文件。'
+                        if request.headers.get('Content-Type', '').startswith('multipart/form-data'):
+                            return jsonify({'success': False, 'message': error_msg}), 400
+                        flash(error_msg)
+                        return render_template('submit.html', assignment=assignment, logged_in_student=logged_in_student)
+                    if header.startswith(b'PK\x03\x04'):
+                        error_msg = '文件类型不正确：检测到ZIP/DOCX文件，请上传真实的MD文件。'
+                        if request.headers.get('Content-Type', '').startswith('multipart/form-data'):
+                            return jsonify({'success': False, 'message': error_msg}), 400
+                        flash(error_msg)
+                        return render_template('submit.html', assignment=assignment, logged_in_student=logged_in_student)
+                    if header.startswith(b'\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1'):
+                        error_msg = '文件类型不正确：检测到DOC文件，请上传真实的MD文件。'
+                        if request.headers.get('Content-Type', '').startswith('multipart/form-data'):
+                            return jsonify({'success': False, 'message': error_msg}), 400
+                        flash(error_msg)
+                        return render_template('submit.html', assignment=assignment, logged_in_student=logged_in_student)
+                    if header.startswith(b'7z\xBC\xAF\'\x1C'):
+                        error_msg = '文件类型不正确：检测到7Z文件，请上传真实的MD文件。'
+                        if request.headers.get('Content-Type', '').startswith('multipart/form-data'):
+                            return jsonify({'success': False, 'message': error_msg}), 400
+                        flash(error_msg)
+                        return render_template('submit.html', assignment=assignment, logged_in_student=logged_in_student)
+                except (UnicodeDecodeError, AttributeError):
+                    error_msg = '文件类型不正确：无法解码为UTF-8文本，请上传有效的MD文件。'
+                    if request.headers.get('Content-Type', '').startswith('multipart/form-data'):
+                        return jsonify({'success': False, 'message': error_msg}), 400
+                    flash(error_msg)
+                    return render_template('submit.html', assignment=assignment, logged_in_student=logged_in_student)
+            else:
+                # 其他类型文件无法识别，这不应该发生（因为PDF/ZIP/DOC/DOCX/7Z都能被识别）
+                # 如果走到这里，说明文件可能损坏或格式异常
+                error_msg = f'文件类型不正确：无法验证文件是否为有效的{declared_extension.upper()}格式，请检查文件是否损坏。'
                 if request.headers.get('Content-Type', '').startswith('multipart/form-data'):
                     return jsonify({'success': False, 'message': error_msg}), 400
                 flash(error_msg)
