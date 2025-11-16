@@ -74,18 +74,32 @@ def create_assignment():
                 flash('日期格式错误')
                 return render_template('create_assignment.html', available_classes=get_available_classes())
         
-        # 处理文件大小限制
+        # 处理文件大小限制（支持KB、MB、GB单位）
         try:
-            max_size_mb = float(max_file_size)
-            if max_size_mb < 1:
-                flash('文件大小不能小于1MB')
-                return render_template('create_assignment.html', available_classes=get_available_classes())
-            elif max_size_mb > 10240:
-                flash('文件大小不能超过10GB (10240MB)')
-                return render_template('create_assignment.html', available_classes=get_available_classes())
-            max_size_bytes = int(max_size_mb * 1024 * 1024)
+            max_size_value = float(max_file_size)
+            file_size_unit = request.form.get('file_size_unit', 'mb').lower()
+            
+            # 根据单位转换为字节
+            if file_size_unit == 'kb':
+                max_size_bytes = int(max_size_value * 1024)
+                if max_size_value < 1:
+                    flash('文件大小不能小于1KB')
+                    return render_template('create_assignment.html', available_classes=get_available_classes())
+            elif file_size_unit == 'gb':
+                max_size_bytes = int(max_size_value * 1024 * 1024 * 1024)
+                if max_size_value > 10:
+                    flash('文件大小不能超过10GB')
+                    return render_template('create_assignment.html', available_classes=get_available_classes())
+            else:  # mb
+                max_size_bytes = int(max_size_value * 1024 * 1024)
+                if max_size_value < 0.001:
+                    flash('文件大小不能小于0.001MB')
+                    return render_template('create_assignment.html', available_classes=get_available_classes())
+                elif max_size_value > 10240:
+                    flash('文件大小不能超过10GB (10240MB)')
+                    return render_template('create_assignment.html', available_classes=get_available_classes())
         except (ValueError, TypeError):
-            max_size_bytes = 50 * 1024 * 1024
+            max_size_bytes = 5 * 1024 * 1024  # 默认5MB
         
         # 处理提交次数限制
         try:
@@ -418,16 +432,30 @@ def edit_assignment(assignment_id):
                 flash('您没有权限将作业分配到此班级')
                 return render_template('edit_assignment.html', assignment=assignment, available_classes=get_available_classes())
         
-        # 验证和处理数据
+        # 验证和处理数据（支持KB、MB、GB单位）
         try:
-            max_size_mb = float(max_size)
-            if max_size_mb < 1:
-                flash('文件大小不能小于1MB')
-                return render_template('edit_assignment.html', assignment=assignment, available_classes=get_available_classes())
-            elif max_size_mb > 10240:
-                flash('文件大小不能超过10GB (10240MB)')
-                return render_template('edit_assignment.html', assignment=assignment, available_classes=get_available_classes())
-            max_size_bytes = int(max_size_mb * 1024 * 1024)
+            max_size_value = float(max_size)
+            file_size_unit = request.form.get('file_size_unit', 'mb').lower()
+            
+            # 根据单位转换为字节
+            if file_size_unit == 'kb':
+                max_size_bytes = int(max_size_value * 1024)
+                if max_size_value < 1:
+                    flash('文件大小不能小于1KB')
+                    return render_template('edit_assignment.html', assignment=assignment, available_classes=get_available_classes())
+            elif file_size_unit == 'gb':
+                max_size_bytes = int(max_size_value * 1024 * 1024 * 1024)
+                if max_size_value > 10:
+                    flash('文件大小不能超过10GB')
+                    return render_template('edit_assignment.html', assignment=assignment, available_classes=get_available_classes())
+            else:  # mb
+                max_size_bytes = int(max_size_value * 1024 * 1024)
+                if max_size_value < 0.001:
+                    flash('文件大小不能小于0.001MB')
+                    return render_template('edit_assignment.html', assignment=assignment, available_classes=get_available_classes())
+                elif max_size_value > 10240:
+                    flash('文件大小不能超过10GB (10240MB)')
+                    return render_template('edit_assignment.html', assignment=assignment, available_classes=get_available_classes())
         except (ValueError, TypeError):
             flash('文件大小限制必须是有效的数字')
             return render_template('edit_assignment.html', assignment=assignment, available_classes=get_available_classes())

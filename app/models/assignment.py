@@ -10,8 +10,8 @@ class Assignment(db.Model):
     description = db.Column(db.Text)
     due_date = db.Column(db.DateTime)
     allowed_file_types = db.Column(db.Text)
-    max_file_size = db.Column(db.Integer, default=50*1024*1024)
-    max_submissions = db.Column(db.Integer, default=1)
+    max_file_size = db.Column(db.Integer, default=5*1024*1024)  # 默认5MB
+    max_submissions = db.Column(db.Integer, default=3)  # 默认3次
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     teacher_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     class_id = db.Column(db.Integer, db.ForeignKey('class.id'))

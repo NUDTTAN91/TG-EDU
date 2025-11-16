@@ -151,11 +151,18 @@
                             <div class="mb-3">
                                 <label for="max_file_size" class="form-label">
                                     <i class="fas fa-weight-hanging me-1"></i>
-                                    最大文件大小 (MB)
+                                    最大文件大小
                                 </label>
-                                <input type="number" class="form-control" id="max_file_size" name="max_file_size" 
-                                       value="50" min="1" max="10240" step="0.1">
-                                <div class="form-text">可设置1MB到10GB (10240MB)，建议根据作业类型设置合适的大小</div>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="max_file_size" name="max_file_size" 
+                                           value="5" min="0.001" step="0.001" required>
+                                    <select class="form-select" id="file_size_unit" name="file_size_unit" style="max-width: 100px;">
+                                        <option value="kb">KB</option>
+                                        <option value="mb" selected>MB</option>
+                                        <option value="gb">GB</option>
+                                    </select>
+                                </div>
+                                <div class="form-text">默认5MB，可设置为 KB、MB 或 GB。建议根据作业类型设置合适的大小。</div>
                             </div>
                         </div>
                         <div class="col-md-4">
@@ -165,14 +172,14 @@
                                     提交次数限制
                                 </label>
                                 <select class="form-select" id="max_submissions" name="max_submissions">
-                                    <option value="0" selected>无限制</option>
+                                    <option value="0">无限制</option>
                                     <option value="1">1次</option>
                                     <option value="2">2次</option>
-                                    <option value="3">3次</option>
+                                    <option value="3" selected>3次</option>
                                     <option value="5">5次</option>
                                     <option value="10">10次</option>
                                 </select>
-                                <div class="form-text">限制学生可以提交的次数，选择“无限制”允许多次提交</div>
+                                <div class="form-text">默认3次。限制学生可以提交的次数，选择“无限制”允许多次提交。</div>
                             </div>
                         </div>
                     </div>

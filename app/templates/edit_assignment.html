@@ -219,22 +219,43 @@
                             <div class="col-md-6 mb-3">
                                 <label for="max_size" class="form-label">
                                     <i class="fas fa-weight-hanging me-2"></i>
-                                    文件大小限制 (MB) <span class="text-danger">*</span>
+                                    文件大小限制 <span class="text-danger">*</span>
                                 </label>
-                                <input type="number" 
-                                       class="form-control" 
-                                       id="max_size" 
-                                       name="max_size" 
-                                       value="{{ (assignment.max_file_size / 1024 / 1024)|round(1) }}"
-                                       min="1" 
-                                       max="10240" 
-                                       step="0.1" 
-                                       required>
+                                <div class="input-group">
+                                    {% set size_mb = (assignment.max_file_size / 1024 / 1024)|round(3) %}
+                                    {% set size_kb = (assignment.max_file_size / 1024)|round(3) %}
+                                    {% set size_gb = (assignment.max_file_size / 1024 / 1024 / 1024)|round(3) %}
+                                    {% if size_gb >= 1 %}
+                                        <input type="number" class="form-control" id="max_size" name="max_size" 
+                                               value="{{ size_gb }}" min="0.001" step="0.001" required>
+                                        <select class="form-select" id="file_size_unit" name="file_size_unit" style="max-width: 100px;">
+                                            <option value="kb">KB</option>
+                                            <option value="mb">MB</option>
+                                            <option value="gb" selected>GB</option>
+                                        </select>
+                                    {% elif size_mb >= 1 %}
+                                        <input type="number" class="form-control" id="max_size" name="max_size" 
+                                               value="{{ size_mb }}" min="0.001" step="0.001" required>
+                                        <select class="form-select" id="file_size_unit" name="file_size_unit" style="max-width: 100px;">
+                                            <option value="kb">KB</option>
+                                            <option value="mb" selected>MB</option>
+                                            <option value="gb">GB</option>
+                                        </select>
+                                    {% else %}
+                                        <input type="number" class="form-control" id="max_size" name="max_size" 
+                                               value="{{ size_kb }}" min="0.001" step="0.001" required>
+                                        <select class="form-select" id="file_size_unit" name="file_size_unit" style="max-width: 100px;">
+                                            <option value="kb" selected>KB</option>
+                                            <option value="mb">MB</option>
+                                            <option value="gb">GB</option>
+                                        </select>
+                                    {% endif %}
+                                </div>
                                 <div class="form-text">
-                                    可设置1MB到10GB (10240MB)，建议根据作业类型设置合适的大小
+                                    可设置为 KB、MB 或 GB。建议根据作业类型设置合适的大小。
                                 </div>
                                 <div class="invalid-feedback">
-                                    请输入1-10240MB之间的文件大小限制
+                                    请输入有效的文件大小限制
                                 </div>
                             </div>
                             
