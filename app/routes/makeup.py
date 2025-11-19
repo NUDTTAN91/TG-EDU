@@ -286,3 +286,67 @@ def modify_deadline(request_id):
     db.session.commit()
     
     return jsonify({'success': True, 'message': '已修改补交截止时间'})
+
+
+@bp.route('/details')
+@login_required
+@require_teacher_or_admin
+def makeup_details():
+    """补交详情 - 查看所有已批准的补交申请及提交情况"""
+    from app.models.assignment import AssignmentGrade
+    
+    # 获取所有已批准的补交申请
+    query = MakeupRequest.query.filter_by(status='approved')
+    
+    if not current_user.is_super_admin:
+        # 普通老师只能看到自己班级的申请
+        from app.models import class_teacher
+        teacher_classes = db.session.query(class_teacher.c.class_id).filter(
+            class_teacher.c.teacher_id == current_user.id
+        ).all()
+        class_ids = [c[0] for c in teacher_classes]
+        
+        # 筛选这些班级的作业
+        assignment_ids = db.session.query(Assignment.id).filter(
+            Assignment.class_id.in_(class_ids)
+        ).all()
+        assignment_ids = [a[0] for a in assignment_ids]
+        
+        query = query.filter(MakeupRequest.assignment_id.in_(assignment_ids))
+    
+    approved_requests = query.order_by(MakeupRequest.updated_at.desc()).all()
+    
+    # 构建详情数据
+    details = []
+    for req in approved_requests:
+        # 获取该学生该作业的补交提交记录
+        makeup_submission = Submission.query.filter_by(
+            assignment_id=req.assignment_id,
+            student_id=req.student_id,
+            is_makeup=True
+        ).order_by(Submission.submitted_at.desc()).first()
+        
+        # 获取补交评分记录
+        makeup_grade = AssignmentGrade.query.filter_by(
+            assignment_id=req.assignment_id,
+            student_id=req.student_id,
+            teacher_id=current_user.id,
+            is_makeup=True
+        ).first()
+        
+        # 检查是否超过截止时间
+        is_overdue = False
+        if req.deadline:
+            import pytz
+            utc_now = datetime.utcnow().replace(tzinfo=pytz.UTC)
+            deadline_utc = req.deadline.replace(tzinfo=pytz.UTC) if req.deadline.tzinfo is None else req.deadline
+            is_overdue = utc_now > deadline_utc
+        
+        details.append({
+            'request': req,
+            'submission': makeup_submission,
+            'grade': makeup_grade,
+            'is_overdue': is_overdue
+        })
+    
+    return render_template('makeup/details.html', details=details)

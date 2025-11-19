@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block title %}补交详情{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- 页面头部 -->
+    <div class="hero-section mb-4">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="display-6 fw-bold mb-2 fade-in-up">
+                    <i class="fas fa-clipboard-list me-3" style="color: var(--accent-color);"></i>
+                    补交详情
+                </h1>
+                <p class="lead mb-0 fade-in-up" style="animation-delay: 0.2s;">
+                    查看所有已批准的补交申请及提交情况
+                </p>
+            </div>
+            <div class="col-md-4 text-end">
+                <a href="{{ url_for('makeup.manage_requests') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-1"></i>
+                    返回申请管理
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card stat-card text-center">
+                <div class="card-body">
+                    <div class="shortcut-icon-wrapper mb-3">
+                        <div class="shortcut-icon success-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="shortcut-glow success-glow"></div>
+                    </div>
+                    <h3 class="stat-number success-text">{{ details|length }}</h3>
+                    <p class="stat-label mb-0">已批准补交</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card text-center">
+                <div class="card-body">
+                    <div class="shortcut-icon-wrapper mb-3">
+                        <div class="shortcut-icon warning-icon">
+                            <i class="fas fa-upload"></i>
+                        </div>
+                        <div class="shortcut-glow warning-glow"></div>
+                    </div>
+                    {% set submitted_count = details|selectattr('submission', 'none')|list|length %}
+                    <h3 class="stat-number warning-text">{{ details|length - submitted_count }}</h3>
+                    <p class="stat-label mb-0">已提交</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card text-center">
+                <div class="card-body">
+                    <div class="shortcut-icon-wrapper mb-3">
+                        <div class="shortcut-icon info-icon">
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <div class="shortcut-glow info-glow"></div>
+                    </div>
+                    {% set graded_count = details|selectattr('grade', 'none')|list|length %}
+                    <h3 class="stat-number info-text">{{ details|length - graded_count }}</h3>
+                    <p class="stat-label mb-0">已评分</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card text-center">
+                <div class="card-body">
+                    <div class="shortcut-icon-wrapper mb-3">
+                        <div class="shortcut-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="shortcut-glow" style="box-shadow: 0 0 30px rgba(102, 126, 234, 0.5);"></div>
+                    </div>
+                    {% set pending_count = details|rejectattr('submission', 'none')|rejectattr('grade', 'none')|list|length %}
+                    <h3 class="stat-number" style="color: #667eea;">{{ pending_count }}</h3>
+                    <p class="stat-label mb-0">待评分</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 补交详情列表 -->
+    {% if details %}
+    <div class="card">
+        <div class="card-header bg-gradient">
+            <h5 class="mb-0">
+                <i class="fas fa-list-ul me-2"></i>
+                补交详情列表（共 {{ details|length }} 条）
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th width="8%">学生</th>
+                            <th width="15%">作业名称</th>
+                            <th width="8%">班级</th>
+                            <th width="10%">批准时间</th>
+                            <th width="10%">补交截止</th>
+                            <th width="8%">提交状态</th>
+                            <th width="12%">提交时间</th>
+                            <th width="8%">评分状态</th>
+                            <th width="8%">分数</th>
+                            <th width="13%">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for detail in details %}
+                        <tr>
+                            <td>
+                                <strong>{{ detail.request.student.real_name }}</strong>
+                                <br>
+                                <small class="text-muted">{{ detail.request.student.username }}</small>
+                            </td>
+                            <td>
+                                <strong>{{ detail.request.assignment.title }}</strong>
+                            </td>
+                            <td>
+                                {% if detail.request.assignment.class_info %}
+                                    <span class="badge bg-primary">{{ detail.request.assignment.class_info.name }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">公共作业</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small>{{ detail.request.updated_at|beijing_time }}</small>
+                            </td>
+                            <td>
+                                {% if detail.request.deadline %}
+                                    <small class="{% if detail.is_overdue and not detail.submission %}text-danger{% else %}text-success{% endif %}">
+                                        {{ detail.request.deadline|beijing_time }}
+                                        {% if detail.is_overdue and not detail.submission %}
+                                            <br><span class="badge bg-danger">已超期</span>
+                                        {% endif %}
+                                    </small>
+                                {% else %}
+                                    <small class="text-muted">未设置</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if detail.submission %}
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-check me-1"></i>已提交
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-warning">
+                                        <i class="fas fa-clock me-1"></i>未提交
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if detail.submission %}
+                                    <small>{{ detail.submission.submitted_at|beijing_time }}</small>
+                                {% else %}
+                                    <small class="text-muted">-</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if detail.grade %}
+                                    <span class="badge bg-info">
+                                        <i class="fas fa-star me-1"></i>已评分
+                                    </span>
+                                {% elif detail.submission %}
+                                    <span class="badge bg-primary">
+                                        <i class="fas fa-hourglass-half me-1"></i>待评分
+                                    </span>
+                                {% else %}
+                                    <small class="text-muted">-</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if detail.grade and detail.grade.grade is not none %}
+                                    <strong class="text-success">{{ detail.grade.grade }}分</strong>
+                                    {% if detail.grade.original_grade %}
+                                        <br>
+                                        <small class="text-muted" title="原始分数×折扣率">
+                                            {{ detail.grade.original_grade }}×{{ detail.grade.discount_rate }}%
+                                        </small>
+                                    {% endif %}
+                                {% else %}
+                                    <small class="text-muted">-</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="d-flex flex-column gap-1">
+                                    <!-- 查看补交评分页面 -->
+                                    <a href="{{ url_for('assignment.makeup_grading', assignment_id=detail.request.assignment_id) }}" 
+                                       class="btn btn-sm btn-info" target="_blank">
+                                        <i class="fas fa-clipboard-list me-1"></i>查看补交评分
+                                    </a>
+                                    
+                                    <!-- 评分按钮 -->
+                                    <a href="{{ url_for('grading.grade_assignment_overall', 
+                                                        assignment_id=detail.request.assignment_id, 
+                                                        student_id=detail.request.student_id, 
+                                                        is_makeup=1) }}" 
+                                       class="btn btn-sm {% if detail.grade %}btn-warning{% else %}btn-primary{% endif %}">
+                                        <i class="fas {% if detail.grade %}fa-edit{% else %}fa-star{% endif %} me-1"></i>
+                                        {% if detail.grade %}修改评分{% else %}评分{% endif %}
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <div class="shortcut-icon-wrapper mb-3 d-inline-block">
+                <div class="shortcut-icon secondary-icon">
+                    <i class="fas fa-inbox"></i>
+                </div>
+                <div class="shortcut-glow secondary-glow"></div>
+            </div>
+            <h5 class="text-muted">暂无补交详情</h5>
+            <p class="text-muted">当前没有已批准的补交申请</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
