@@ -5,10 +5,29 @@ from flask_login import current_user
 from app.models import UserRole
 
 
+def check_password_change_required(f):
+    """
+    检查用户是否需要强制修改密码
+    如果用户需要修改密码（非超级管理员），则重定向到修改密码页面
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # 如果用户已登录且需要修改密码（非超级管理员）
+        if current_user.is_authenticated and current_user.must_change_password and not current_user.is_super_admin:
+            # 允许访问强制修改密码页面和登出页面
+            from flask import request
+            if request.endpoint not in ['auth.force_change_password', 'auth.logout']:
+                flash('您必须先修改密码才能继续使用系统', 'warning')
+                return redirect(url_for('auth.force_change_password'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
 def require_role(role):
     """要求特定角色的装饰器"""
     def decorator(f):
         @wraps(f)
+        @check_password_change_required
         def decorated_function(*args, **kwargs):
             if not current_user.is_authenticated:
                 return redirect(url_for('auth.login'))
@@ -23,6 +42,7 @@ def require_role(role):
 def require_teacher_or_admin(f):
     """要求教师或管理员权限"""
     @wraps(f)
+    @check_password_change_required
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated:
             return redirect(url_for('auth.login'))
@@ -36,6 +56,7 @@ def require_teacher_or_admin(f):
 def require_login(f):
     """要求登录"""
     @wraps(f)
+    @check_password_change_required
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated:
             flash('请先登录')

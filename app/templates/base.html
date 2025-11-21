@@ -18,8 +18,8 @@
 <body>
     <nav class="navbar navbar-expand-lg fixed-top">
         <div class="container-fluid">
-            <!-- 侧边栏切换按钮 -->
-            {% if current_user.is_authenticated and request.endpoint != 'index' %}
+            <!-- 侧边栏切换按钮（强制修改密码时隐藏） -->
+            {% if current_user.is_authenticated and request.endpoint != 'index' and not (current_user.must_change_password and not current_user.is_super_admin) %}
             <button class="btn btn-outline-light d-lg-none me-2" type="button" id="sidebarToggle">
                 <i class="fas fa-bars"></i>
             </button>
@@ -122,8 +122,8 @@
         </div>
     </nav>
 
-    {% if current_user.is_authenticated and request.endpoint != 'index' %}
-    <!-- 全局左侧菜单栏（首页除外） -->
+    {% if current_user.is_authenticated and request.endpoint != 'index' and not (current_user.must_change_password and not current_user.is_super_admin) %}
+    <!-- 全局左侧菜单栏（首页除外，强制修改密码时隐藏） -->
     <div class="global-sidebar" id="globalSidebar">
         <div class="sidebar-header">
             <div class="user-info">
