@@ -423,13 +423,24 @@ def export_class_grades(class_id):
         
         # 每个作业的成绩
         for assignment in assignments:
+            # 检查是否有作弊标记
+            grade_record = AssignmentGrade.query.filter_by(
+                assignment_id=assignment.id,
+                student_id=student.id
+            ).first()
+            
             # 首先检查 AssignmentGrade 表（支持补交评分）
             avg_grade = get_student_assignment_average_grade(assignment.id, student.id)
             
             if avg_grade is not None:
                 # 有评分记录（可能是补交评分）
-                row[assignment.title] = avg_grade
-                total_score += avg_grade
+                if grade_record and grade_record.is_cheating:
+                    # 作弊标记：显示0分+作弊标记
+                    row[assignment.title] = '0分(作弊/抄袭)'
+                    total_score += 0
+                else:
+                    row[assignment.title] = avg_grade
+                    total_score += avg_grade
                 graded_count += 1
             else:
                 # 没有评分记录，检查是否有提交记录
@@ -447,8 +458,13 @@ def export_class_grades(class_id):
                     avg_grade = get_student_assignment_average_grade(assignment.id, student.id)
                     
                     if avg_grade is not None:
-                        row[assignment.title] = avg_grade
-                        total_score += avg_grade
+                        if grade_record and grade_record.is_cheating:
+                            # 作弊标记：显示0分+作弊标记
+                            row[assignment.title] = '0分(作弊/抄袭)'
+                            total_score += 0
+                        else:
+                            row[assignment.title] = avg_grade
+                            total_score += avg_grade
                         graded_count += 1
                     else:
                         # 尝试从旧系统获取
