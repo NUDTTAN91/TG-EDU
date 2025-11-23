@@ -536,7 +536,16 @@ def delete_assignment(assignment_id):
         flash('您没有权限删除此作业')
         return redirect(url_for('admin.teacher_dashboard' if current_user.is_teacher else 'admin.super_admin_dashboard'))
     
-    # 删除相关的提交文件
+    # 按正确顺序删除关联数据，避免外键约束错误
+    from app.models import MakeupRequest
+    
+    # 1. 删除该作业的补交申请
+    MakeupRequest.query.filter_by(assignment_id=assignment_id).delete(synchronize_session=False)
+    
+    # 2. 删除该作业的评分记录
+    AssignmentGrade.query.filter_by(assignment_id=assignment_id).delete(synchronize_session=False)
+    
+    # 3. 删除相关的提交文件
     for submission in assignment.submissions:
         try:
             if os.path.exists(submission.file_path):
@@ -544,11 +553,12 @@ def delete_assignment(assignment_id):
         except Exception as e:
             print(f"删除文件失败: {e}")
     
-    # 删除作业附件
+    # 4. 删除作业附件
     if assignment.attachment_file_path:
         FileService.delete_file(assignment.attachment_file_path)
     
     assignment_title = assignment.title
+    # 5. 最后删除作业（会级联删除submissions）
     db.session.delete(assignment)
     db.session.commit()
     

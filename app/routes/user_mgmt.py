@@ -1,9 +1,9 @@
 """用户管理路由"""
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app
 from flask_login import login_required, current_user
 from sqlalchemy import or_, case
 from app.extensions import db
-from app.models import User, UserRole, Class, Notification
+from app.models import User, UserRole, Class, Notification, Submission
 from app.utils import require_teacher_or_admin, require_role
 
 bp = Blueprint('user_mgmt', __name__, url_prefix='/admin/users')
@@ -476,12 +476,40 @@ def delete_user(user_id):
     
     real_name = user.real_name
     
-    # 删除用户相关的通知（作为发送者或接收者）
+    # 按正确顺序删除关联数据，避免外键约束错误
+    from app.models import AssignmentGrade, MakeupRequest
+    
+    # 1. 删除用户的评分记录（作为学生或教师）
+    AssignmentGrade.query.filter(
+        (AssignmentGrade.student_id == user.id) | (AssignmentGrade.teacher_id == user.id)
+    ).delete(synchronize_session=False)
+    db.session.commit()  # 立即提交，避免autoflush问题
+    
+    # 2. 删除用户的提交记录（先删除物理文件，再批量删除记录）
+    import os
+    submissions = Submission.query.filter_by(student_id=user.id).all()
+    # 先删除物理文件
+    for submission in submissions:
+        if submission.file_path and os.path.exists(submission.file_path):
+            try:
+                os.remove(submission.file_path)
+            except Exception as e:
+                current_app.logger.error(f'删除文件失败 {submission.file_path}: {str(e)}')
+    # 批量删除提交记录，避免autoflush
+    Submission.query.filter_by(student_id=user.id).delete(synchronize_session=False)
+    db.session.commit()  # 提交提交记录删除
+    
+    # 3. 删除用户的补交申请
+    MakeupRequest.query.filter_by(student_id=user.id).delete(synchronize_session=False)
+    db.session.commit()  # 提交补交申请删除
+    
+    # 4. 删除用户相关的通知（作为发送者或接收者）
     Notification.query.filter(
         (Notification.sender_id == user.id) | (Notification.receiver_id == user.id)
     ).delete(synchronize_session=False)
+    db.session.commit()  # 提交通知删除
     
-    # 删除用户
+    # 5. 最后删除用户
     db.session.delete(user)
     db.session.commit()
     
