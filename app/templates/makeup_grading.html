@@ -30,10 +30,18 @@
         {% if submitted_makeup_students %}
             <div class="card mb-4">
                 <div class="card-header bg-gradient" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                    <h5 class="mb-0 text-white">
-                        <i class="fas fa-file-upload me-2"></i>
-                        已提交补交作业的学生 ({{ submitted_makeup_students|length }} 人)
-                    </h5>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 text-white">
+                            <i class="fas fa-file-upload me-2"></i>
+                            已提交补交作业的学生 ({{ submitted_makeup_students|length }} 人)
+                        </h5>
+                        <a href="{{ url_for('download.download_makeup_submissions', assignment_id=assignment.id) }}" 
+                           class="btn btn-light btn-sm"
+                           title="批量下载所有补交作业">
+                            <i class="fas fa-download me-1"></i>
+                            批量下载补交作业
+                        </a>
+                    </div>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">

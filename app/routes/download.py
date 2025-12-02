@@ -393,6 +393,119 @@ def download_batch_file():
     )
 
 
+@bp.route('/assignment/<int:assignment_id>/download_makeup_submissions')
+@login_required
+@require_teacher_or_admin
+def download_makeup_submissions(assignment_id):
+    """下载指定作业的所有补交提交文件"""
+    assignment = Assignment.query.get_or_404(assignment_id)
+    
+    # 权限检查
+    if not can_manage_assignment(current_user, assignment):
+        flash('您没有权限下载此作业的补交提交')
+        return redirect(url_for('admin.teacher_dashboard' if current_user.is_teacher else 'admin.super_admin_dashboard'))
+    
+    # 获取作业的所有补交提交记录（is_makeup=True）
+    makeup_submissions = Submission.query.filter_by(
+        assignment_id=assignment_id,
+        is_makeup=True
+    ).order_by(Submission.submitted_at.desc()).all()
+    
+    if not makeup_submissions:
+        flash('该作业没有任何补交提交记录')
+        return redirect(url_for('assignment.makeup_grading', assignment_id=assignment_id))
+    
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.warning(f"[补交下载] ===== 开始下载补交作业 =====")
+    logger.warning(f"[补交下载] 用户ID: {current_user.id}, 用户名: {current_user.username}")
+    logger.warning(f"[补交下载] 作业ID: {assignment_id}, 作业标题: {assignment.title}")
+    logger.warning(f"[补交下载] 补交提交数: {len(makeup_submissions)}")
+    
+    # 创建内存ZIP文件
+    memory_file = BytesIO()
+    
+    try:
+        # 使用最高压缩级别
+        with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
+            processed_files = 0
+            # 统计存在的文件数
+            existing_files = []
+            for s in makeup_submissions:
+                if os.path.isabs(s.file_path):
+                    file_path = s.file_path
+                else:
+                    if s.file_path.startswith('storage/'):
+                        file_path = os.path.join('/app', s.file_path)
+                    else:
+                        file_path = os.path.join('/app/storage', s.file_path)
+                
+                logger.warning(f"[补交下载] 检查文件: {s.student_name} - {s.original_filename}")
+                logger.warning(f"[补交下载] 原始路径: {s.file_path}")
+                logger.warning(f"[补交下载] 转换路径: {file_path}")
+                logger.warning(f"[补交下载] 文件存在: {os.path.exists(file_path)}")
+                
+                if os.path.exists(file_path):
+                    existing_files.append((s, file_path))
+                else:
+                    logger.warning(f"[补交下载] 文件不存在，跳过: {file_path}")
+            
+            total_files = len(existing_files)
+            logger.warning(f"[补交下载] 实际存在的文件数: {total_files}/{len(makeup_submissions)}")
+            
+            for i, (submission, file_path) in enumerate(existing_files):
+                logger.warning(f"[补交下载] 处理文件 {processed_files + 1}/{total_files}: {submission.original_filename}")
+                
+                # 创建文件在ZIP中的路径：学生姓名_学号_提交时间_原文件名
+                beijing_time = to_beijing_time(submission.submitted_at)
+                time_str = beijing_time.strftime('%Y%m%d_%H%M%S') if beijing_time else 'unknown'
+                
+                safe_student_name = safe_chinese_filename(submission.student_name)
+                safe_original_name = safe_chinese_filename(submission.original_filename)
+                
+                zip_filename = f"{safe_student_name}_{submission.student_number}_{time_str}_{safe_original_name}"
+                
+                # 添加文件到ZIP（使用完整路径）
+                zf.write(file_path, zip_filename)
+                processed_files += 1
+        
+        # 完成压缩
+        logger.warning(f"[补交下载] 压缩完成，共处理 {total_files} 个文件")
+        
+        memory_file.seek(0)
+        
+        # 生成ZIP文件名：班级-作业标题-补交作业-时间.zip
+        beijing_created = to_beijing_time(assignment.created_at)
+        created_time_str = beijing_created.strftime('%Y%m%d%H%M%S') if beijing_created else 'unknown'
+        
+        if assignment.class_info:
+            class_name = safe_chinese_filename(assignment.class_info.name)
+        else:
+            class_name = '公共作业'
+        
+        safe_title = safe_chinese_filename(assignment.title)
+        zip_filename = f"{class_name}-{safe_title}-补交作业-{created_time_str}.zip"
+        
+        logger.warning(f"[补交下载] 开始下载文件: {zip_filename}")
+        
+        return send_file(
+            memory_file,
+            as_attachment=True,
+            download_name=zip_filename,
+            mimetype='application/zip'
+        )
+        
+    except Exception as e:
+        # 错误处理
+        logger.error(f"[补交下载] 下载失败: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        
+        flash(f'下载失败: {str(e)}')
+        return redirect(url_for('assignment.makeup_grading', assignment_id=assignment_id))
+
+
 @bp.route('/assignments/batch_download', methods=['GET', 'POST'])
 @login_required
 @require_teacher_or_admin
