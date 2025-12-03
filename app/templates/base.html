@@ -5,6 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}作业收集系统{% endblock %}</title>
     
+    <!-- 防止页面闪烁的关键CSS -->
+    <style>
+        /* 在资源加载前隐藏内容，防止布局抖动 */
+        html {
+            visibility: visible;
+            opacity: 1;
+        }
+        
+        /* 平滑过渡，但不影响性能 */
+        body {
+            transition: none !important;
+        }
+        
+        /* 禁用所有初始动画，防止闪烁 */
+        *, *::before, *::after {
+            animation-duration: 0s !important;
+            animation-delay: 0s !important;
+            transition-duration: 0s !important;
+        }
+    </style>
+    
     <!-- Bootstrap CSS -->
     <link href="{{ url_for('static', filename='css/vendor/bootstrap.min.css') }}" rel="stylesheet">
     <!-- Font Awesome -->
@@ -14,6 +35,18 @@
     
     <!-- 页面图标 -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
+    
+    <!-- 恢复正常过渡效果 -->
+    <script>
+        // 页面加载完成后恢复CSS动画和过渡
+        window.addEventListener('load', function() {
+            document.querySelectorAll('*').forEach(function(el) {
+                el.style.animationDuration = '';
+                el.style.animationDelay = '';
+                el.style.transitionDuration = '';
+            });
+        });
+    </script>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg fixed-top">
@@ -616,39 +649,42 @@
     }
     
     // ========================
-    // 全局滚动位置保持功能
+    // 全局滚动位置保持功能（防闪烁优化版）
     // ========================
+    
+    // 在页面加载前立即恢复滚动位置，避免视觉闪烁
+    (function() {
+        const currentPath = window.location.pathname;
+        const savedPosition = sessionStorage.getItem('scrollPosition_' + currentPath);
+        if (savedPosition !== null) {
+            // 立即设置滚动位置，在页面渲染前
+            document.documentElement.scrollTop = document.body.scrollTop = parseInt(savedPosition);
+            // 清除保存的位置
+            sessionStorage.removeItem('scrollPosition_' + currentPath);
+        }
+    })();
     
     // 保存滚动位置
     function saveScrollPosition() {
-        sessionStorage.setItem('scrollPosition', window.scrollY);
+        const currentPath = window.location.pathname;
+        sessionStorage.setItem('scrollPosition_' + currentPath, window.scrollY);
     }
-    
-    // 恢复滚动位置
-    function restoreScrollPosition() {
-        const savedPosition = sessionStorage.getItem('scrollPosition');
-        if (savedPosition !== null) {
-            window.scrollTo(0, parseInt(savedPosition));
-            // 清除保存的位置，避免影响其他页面
-            sessionStorage.removeItem('scrollPosition');
-        }
-    }
-    
-    // 页面加载时恢复滚动位置
-    window.addEventListener('DOMContentLoaded', function() {
-        restoreScrollPosition();
-    });
     
     // 为所有带有 href 的链接添加点击事件，保存滚动位置
     document.addEventListener('click', function(e) {
         const target = e.target.closest('a[href]');
         if (target && target.href && !target.hasAttribute('target')) {
             // 排除附件下载和外部链接
-            const url = new URL(target.href);
-            if (url.hostname === window.location.hostname && 
-                !target.href.includes('/download/') && 
-                !target.href.includes('/attachment/')) {
-                saveScrollPosition();
+            try {
+                const url = new URL(target.href);
+                if (url.hostname === window.location.hostname && 
+                    !target.href.includes('/download') && 
+                    !target.href.includes('/attachment') &&
+                    !target.href.includes('#')) {
+                    saveScrollPosition();
+                }
+            } catch(e) {
+                // URL解析失败，忽略
             }
         }
     });

@@ -62,7 +62,7 @@
                     </thead>
                     <tbody>
                         {% for student_stat in student_stats %}
-                            <tr class="clickable-row" data-href="{{ url_for('grading.grade_assignment_overall', assignment_id=assignment.id, student_id=student_stat.student_id) }}">
+                            <tr>
                                 <td>
                                     <strong>{{ student_stat.student_name }}</strong>
                                 </td>
