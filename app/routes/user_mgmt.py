@@ -294,7 +294,8 @@ def add_user():
             role=role,
             student_id=student_id if (role == UserRole.STUDENT and student_id.strip()) else None,
             created_by=current_user.id,
-            must_change_password=False if role == UserRole.SUPER_ADMIN else True
+            # 只有密码是123456的用户才需要强制修改，超级管理员不受限制
+            must_change_password=False if role == UserRole.SUPER_ADMIN else (password == '123456')
         )
         user.set_password(password)
         
@@ -363,9 +364,13 @@ def edit_user(user_id):
                 return render_template('edit_user.html', user=user, available_classes=available_classes)
             
             user.set_password(new_password)
-            if current_user.is_super_admin and user.id != current_user.id and not user.is_super_admin:
-                user.must_change_password = True
-                flash(f'用户 {user.real_name} 的密码已更新，该用户下次登录时必须修改密码')
+            # 只有密码是123456的用户才需要强制修改，超级管理员不受限制
+            if not user.is_super_admin:
+                user.must_change_password = (new_password == '123456')
+                if user.must_change_password:
+                    flash(f'用户 {user.real_name} 的密码已更新，该用户下次登录时必须修改密码')
+                else:
+                    flash(f'用户 {user.real_name} 的密码已更新')
             else:
                 flash(f'用户 {user.real_name} 的密码已更新')
         

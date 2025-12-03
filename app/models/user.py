@@ -36,6 +36,41 @@ class User(UserMixin, db.Model):
         """验证密码"""
         return check_password_hash(self.password_hash, password)
     
+    def is_default_password(self):
+        """检查是否使用默认密码123456"""
+        return check_password_hash(self.password_hash, '123456')
+    
+    @staticmethod
+    def validate_password_strength(password):
+        """验证密码强度
+        要求：
+        - 长度至少8位
+        - 包含大写字母
+        - 包含小写字母
+        - 包含数字
+        - 包含特殊字符
+        
+        返回: (is_valid: bool, error_msg: str)
+        """
+        if len(password) < 8:
+            return False, '密码长度至少为8位'
+        
+        has_upper = any(c.isupper() for c in password)
+        has_lower = any(c.islower() for c in password)
+        has_digit = any(c.isdigit() for c in password)
+        has_special = any(not c.isalnum() for c in password)
+        
+        if not has_upper:
+            return False, '密码必须包含至少一个大写字母'
+        if not has_lower:
+            return False, '密码必须包含至少一个小写字母'
+        if not has_digit:
+            return False, '密码必须包含至少一个数字'
+        if not has_special:
+            return False, '密码必须包含至少一个特殊字符'
+        
+        return True, ''
+    
     @property
     def is_super_admin(self):
         return self.role == UserRole.SUPER_ADMIN

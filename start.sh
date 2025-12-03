@@ -237,13 +237,13 @@ with app.app_context():
             import traceback
             traceback.print_exc()
         
-        # 更新现有用户的must_change_password字段
-        users_to_update = User.query.all()
-        for user in users_to_update:
-            if user.role == UserRole.SUPER_ADMIN:
-                user.must_change_password = False
-            else:
-                user.must_change_password = True
+        # must_change_password字段已经在用户创建/重置时正确设置，不需要启动时检查
+        # 逻辑：
+        # 1. 创建用户时：密码=123456 -> must_change_password=True
+        # 2. 重置密码时：密码=123456 -> must_change_password=True
+        # 3. 用户修改密码时：must_change_password=False
+        # 4. 管理员修改用户密码时：根据新密码是否为123456决定
+        print('✅ 密码安全策略已启用：只有使用默认密码123456的用户需要强制修改')
         
         admin_username = os.environ.get('ADMIN_USERNAME', 'admin')
         admin_password = os.environ.get('ADMIN_PASSWORD', 'admin123')

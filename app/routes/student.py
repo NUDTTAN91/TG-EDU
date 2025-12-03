@@ -1,5 +1,5 @@
 """学生相关路由"""
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, redirect, url_for
 from flask_login import login_required, current_user
 from sqlalchemy import or_
 from app.models import Assignment, Submission, UserRole, AssignmentGrade, MakeupRequest
@@ -15,6 +15,10 @@ bp = Blueprint('student', __name__, url_prefix='/student')
 @require_role(UserRole.STUDENT)
 def dashboard():
     """学生仪表板"""
+    # 检查是否需要强制修改密码
+    if current_user.must_change_password:
+        return redirect(url_for('auth.force_change_password'))
+    
     # 获取学生所在班级的作业
     student_classes = current_user.classes
     if student_classes:

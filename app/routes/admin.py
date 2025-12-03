@@ -99,6 +99,10 @@ def teacher_dashboard():
     """教师仪表板"""
     from flask import request
     
+    # 检查是否需要强制修改密码
+    if current_user.must_change_password:
+        return redirect(url_for('auth.force_change_password'))
+    
     # 获取班级筛选参数
     class_filter = request.args.get('class_id', type=int)
     

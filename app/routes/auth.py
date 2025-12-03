@@ -32,9 +32,9 @@ def login():
                 result='success'
             )
             
-            # 检查是否需要强制修改密码
+            # 检查是否需要强制修改密码（非超级管理员且标记为必须修改）
             if user.must_change_password and not user.is_super_admin:
-                flash('您是首次登录，必须修改密码后才能继续使用系统')
+                flash('您需要修改密码后才能继续使用系统')
                 return redirect(url_for('auth.force_change_password'))
             
             # 根据角色重定向
@@ -74,6 +74,8 @@ def logout():
 @login_required
 def force_change_password():
     """强制修改密码"""
+    # 检查是否需要强制修改密码
+    # 如果不需要修改或者是超级管理员，则直接跳转到仪表板
     if not current_user.must_change_password or current_user.is_super_admin:
         if current_user.is_super_admin:
             return redirect(url_for('admin.super_admin_dashboard'))
@@ -87,25 +89,38 @@ def force_change_password():
         new_password = request.form['new_password']
         confirm_password = request.form['confirm_password']
         
+        # 验证当前密码
         if not current_user.check_password(current_password):
             flash('当前密码错误')
             return render_template('force_change_password.html')
         
-        if len(new_password) < 6:
-            flash('新密码长度至少6位')
-            return render_template('force_change_password.html')
-        
+        # 验证两次输入是否一致
         if new_password != confirm_password:
             flash('两次输入的新密码不一致')
             return render_template('force_change_password.html')
         
+        # 验证是否与当前密码相同
         if new_password == current_password:
             flash('新密码不能与当前密码相同')
             return render_template('force_change_password.html')
         
+        # 验证密码强度（大小写字母+数字+特殊字符，8位以上）
+        is_valid, error_msg = User.validate_password_strength(new_password)
+        if not is_valid:
+            flash(error_msg)
+            return render_template('force_change_password.html')
+        
+        # 修改密码
         current_user.set_password(new_password)
         current_user.must_change_password = False
         db.session.commit()
+        
+        # 记录修改密码日志
+        LogService.log_operation(
+            operation_type='change_password',
+            operation_desc=f'用户 {current_user.username} ({current_user.real_name}) 修改密码',
+            result='success'
+        )
         
         flash('密码修改成功，欢迎使用系统！')
         
