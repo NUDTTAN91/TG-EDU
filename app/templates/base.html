@@ -7,20 +7,25 @@
     
     <!-- 防止页面闪烁的终极方案 -->
     <style>
-        /* 页面加载时隐藏body内容，防止任何视觉闪烁 */
-        body {
-            opacity: 0;
-            transition: opacity 0.15s ease-in;
-        }
-        
-        /* 加载完成后显示内容 */
-        body.loaded {
-            opacity: 1;
-        }
-        
-        /* 防止空状态页面高度跳变引起闪烁 */
-        .text-center {
-            min-height: 100px;
+        /* 完全禁用所有动画和过渡效果 - 最高优先级 */
+        *,
+        *::before,
+        *::after,
+        body,
+        .card,
+        .btn,
+        .nav-link,
+        .navbar,
+        .sidebar,
+        .global-sidebar,
+        .menu-item,
+        .feature-card,
+        .quick-nav-card,
+        .assignment-card,
+        .stat-card {
+            animation: none !important;
+            transition: none !important;
+            transform: none !important;
         }
         
         /* 表格容器最小高度 */
@@ -575,7 +580,9 @@
             });
         }
         
-        // 菜单项目动画
+        // 菜单项目动画（仅在body.loaded后触发，避免闪烁）
+        // 注释掉侧边栏动画，防止页面加载时闪烁
+        /*
         const menuItems = document.querySelectorAll('.menu-item');
         menuItems.forEach((item, index) => {
             item.style.opacity = '0';
@@ -586,6 +593,7 @@
                 item.style.transform = 'translateX(0)';
             }, index * 100);
         });
+        */
     });
     
     // 快捷操作函数
@@ -666,14 +674,8 @@
     }
     
     // ========================
-    // 全局滚动位置保持功能（防闪烁终极方案）
+    // 全局滚动位置保持功能
     // ========================
-    
-    // 页面DOM加载完成后显示内容
-    window.addEventListener('DOMContentLoaded', function() {
-        // 添加loaded类，显示body内容
-        document.body.classList.add('loaded');
-    });
     
     // 保存滚动位置
     function saveScrollPosition() {

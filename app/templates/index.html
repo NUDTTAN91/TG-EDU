@@ -326,19 +326,11 @@ function showUserProfile() {
     }
 }
 
+/* 完全禁用fade-in-up动画 */
 .fade-in-up {
-    animation: fadeInUp 0.8s ease-out;
-}
-
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(30px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    animation: none !important;
+    opacity: 1 !important;
+    transform: translateY(0) !important;
 }
 
 .quick-nav-card {
