@@ -5,35 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}作业收集系统{% endblock %}</title>
     
-    <!-- 防止页面闪烁的终极方案 -->
-    <style>
-        /* 完全禁用所有动画和过渡效果 - 最高优先级 */
-        *,
-        *::before,
-        *::after,
-        body,
-        .card,
-        .btn,
-        .nav-link,
-        .navbar,
-        .sidebar,
-        .global-sidebar,
-        .menu-item,
-        .feature-card,
-        .quick-nav-card,
-        .assignment-card,
-        .stat-card {
-            animation: none !important;
-            transition: none !important;
-            transform: none !important;
-        }
-        
-        /* 表格容器最小高度 */
-        .table-responsive {
-            min-height: 200px;
-        }
-    </style>
-    
     <!-- 立即恢复滚动位置的脚本 -->
     <script>
         (function() {
@@ -54,6 +25,52 @@
     <link href="{{ url_for('static', filename='css/vendor/font-awesome.min.css') }}" rel="stylesheet">
     <!-- 自定义样式 -->
     <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    
+    <!-- 防止页面闪烁的终极方案 - 必须放在所有CSS之后 -->
+    <style>
+        /* 完全禁用所有动画和过渡效果 - 最高优先级 */
+        html *,
+        html *::before,
+        html *::after,
+        html body,
+        html .card,
+        html .btn,
+        html .nav-link,
+        html .navbar,
+        html .sidebar,
+        html .global-sidebar,
+        html .menu-item,
+        html .feature-card,
+        html .quick-nav-card,
+        html .assignment-card,
+        html .stat-card,
+        html .row,
+        html .col-md-6,
+        html .col-lg-4 {
+            animation: none !important;
+            transition: none !important;
+        }
+        
+        /* 禁用hover时的transform，但保持正常的transform属性 */
+        html *:hover,
+        html *:hover::before,
+        html *:hover::after {
+            transform: none !important;
+        }
+        
+        /* 强制所有fade-in-up元素和容器立即可见 */
+        html .fade-in-up,
+        html .container,
+        html div,
+        html section {
+            opacity: 1 !important;
+        }
+        
+        /* 表格容器最小高度 */
+        html .table-responsive {
+            min-height: 200px;
+        }
+    </style>
     
     <!-- 页面图标 -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
