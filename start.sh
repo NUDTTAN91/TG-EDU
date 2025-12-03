@@ -42,6 +42,9 @@ python3 migrations/migrate_operation_log.py
 # 运行IP地理位置字段迁移
 python3 migrations/add_ip_location.py
 
+# 运行一次性密码字段修复迁移（只执行一次）
+python3 migrations/fix_must_change_password.py
+
 # 然后初始化管理员账户
 python3 -c "
 import os
@@ -236,14 +239,6 @@ with app.app_context():
             print(f'迁移Notification表时出错: {e}')
             import traceback
             traceback.print_exc()
-        
-        # must_change_password字段已经在用户创建/重置时正确设置，不需要启动时检查
-        # 逻辑：
-        # 1. 创建用户时：密码=123456 -> must_change_password=True
-        # 2. 重置密码时：密码=123456 -> must_change_password=True
-        # 3. 用户修改密码时：must_change_password=False
-        # 4. 管理员修改用户密码时：根据新密码是否为123456决定
-        print('✅ 密码安全策略已启用：只有使用默认密码123456的用户需要强制修改')
         
         admin_username = os.environ.get('ADMIN_USERNAME', 'admin')
         admin_password = os.environ.get('ADMIN_PASSWORD', 'admin123')
