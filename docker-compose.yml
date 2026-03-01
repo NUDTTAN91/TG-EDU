@@ -10,7 +10,7 @@ services:
     environment:
       # 管理员账户配置（可以修改这些值）
       - ADMIN_USERNAME=tan91
-      - ADMIN_PASSWORD=tan91
+      - ADMIN_PASSWORD=Tan91@123
       # 应用安全密钥（建议在生产环境中修改）
       - SECRET_KEY=root
     restart: unless-stopped
