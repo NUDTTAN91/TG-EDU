@@ -115,13 +115,13 @@ def batch_import_users():
                 
                 current_app.logger.info(f"Excel文件列名: {list(df.columns)}")
                 
-                # 检查必要字段
-                required_fields = ['姓名', '密码', '用户类型']
+                # 检查必要字段（密码字段已移除，统一使用默认密码123456）
+                required_fields = ['姓名', '用户类型']
                 missing_fields = [field for field in required_fields if field not in df.columns]
                 if missing_fields:
                     return jsonify({
                         'success': False,
-                        'message': f'Excel文件缺少必要字段: {", ".join(missing_fields)}。必要字段包括: 姓名, 密码, 用户类型。当前字段: {", ".join(list(df.columns))}'
+                        'message': f'Excel文件缺少必要字段: {", ".join(missing_fields)}。必要字段包括: 姓名, 用户类型。当前字段: {", ".join(list(df.columns))}'
                     })
                 
                 # 将DataFrame转换为字典列表，方便后续处理
@@ -204,13 +204,13 @@ def batch_import_users():
                 
                 current_app.logger.info(f"CSV清理后字段: {cleaned_fieldnames}")
                 
-                # 检查必要字段（使用清理后的字段名）
-                required_fields = ['姓名', '密码', '用户类型']
+                # 检查必要字段（使用清理后的字段名，密码字段已移除，统一使用默认密码123456）
+                required_fields = ['姓名', '用户类型']
                 missing_fields = [field for field in required_fields if field not in cleaned_fieldnames]
                 if missing_fields:
                     return jsonify({
                         'success': False, 
-                        'message': f'CSV文件缺少必要字段: {", ".join(missing_fields)}。必要字段包括: 姓名, 密码, 用户类型。当前字段: {", ".join(cleaned_fieldnames)}。建议使用Excel文件格式。'
+                        'message': f'CSV文件缺少必要字段: {", ".join(missing_fields)}。必要字段包括: 姓名, 用户类型。当前字段: {", ".join(cleaned_fieldnames)}。建议使用Excel文件格式。'
                     })
                 
             except Exception as e:
@@ -256,16 +256,15 @@ def batch_import_users():
                     try:
                         # 获取并清理数据（处理NaN值）
                         real_name = safe_str(row_data.get('姓名', ''))
-                        password = safe_str(row_data.get('密码', ''))
                         class_name = safe_str(row_data.get('班级', ''))
                         role = safe_str(row_data.get('用户类型', '')).lower()
                         id_number = safe_str(row_data.get('学号/教工号', ''))
                         
                         current_app.logger.info(f"处理第{row_num}行: {real_name}, {role}, {class_name}")
                         
-                        # 验证必要字段
-                        if not real_name or not password or not role:
-                            errors.append(f'第{row_num}行: 缺少必要字段(姓名、密码、用户类型)')
+                        # 验证必要字段（密码统一使用默认值123456）
+                        if not real_name or not role:
+                            errors.append(f'第{row_num}行: 缺少必要字段(姓名、用户类型)')
                             error_count += 1
                             continue
                         
@@ -305,12 +304,15 @@ def batch_import_users():
                             real_name=real_name,
                             role=role,
                             student_id=id_number if id_number else None,
-                            created_by=current_user.id
+                            created_by=current_user.id,
+                            must_change_password=True  # 强制首次登录修改密码
                         )
-                        user.set_password(password)
+                        
+                        # 统一使用默认密码123456，用户首次登录需强制修改
+                        user.set_password('123456')
                         
                         db.session.add(user)
-                        current_app.logger.info(f"创建用户: {real_name}")
+                        current_app.logger.info(f"创建用户: {real_name}（默认密码123456）")
                         
                         # 处理班级（在缓存中查找或创建）
                         class_obj = None
