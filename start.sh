@@ -255,17 +255,14 @@ with app.app_context():
             db.session.commit()
             print(f'创建默认超级管理员用户: {admin_username}')
         else:
-            # 更新旧用户的角色为超级管理员
-            updated = False
+            # 用户已存在，同步密码和角色（支持通过 docker-compose.yml 动态管理）
+            admin.set_password(admin_password)  # 同步密码
             if not hasattr(admin, 'role') or admin.role != UserRole.SUPER_ADMIN:
                 admin.role = UserRole.SUPER_ADMIN
-                updated = True
             if not hasattr(admin, 'real_name') or not admin.real_name:
                 admin.real_name = '超级管理员'
-                updated = True
-            if updated:
-                db.session.commit()
-            print(f'超级管理员用户 {admin_username} 已存在')
+            db.session.commit()
+            print(f'超级管理员用户 {admin_username} 已同步')
     except Exception as e:
         print(f'数据库初始化错误: {e}')
         import traceback
