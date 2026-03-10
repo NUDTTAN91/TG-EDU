@@ -13,6 +13,10 @@ services:
       - ADMIN_PASSWORD=Tan91@123
       # 应用安全密钥（建议在生产环境中修改）
       - SECRET_KEY=root
+      # DeepSeek API配置（用于AI自动改卷功能）
+      - DeepSeek_API_KEY=your-deepseek-api-key-here
+      # 调用模型，模型支持有deepseek-chat和deepseek-reasoner
+      - DeepSeek_MODEL=deepseek-reasoner
     restart: unless-stopped
     volumes:
       # 持久化存储目录（包含数据库、上传文件和附件）
