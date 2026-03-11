@@ -27,6 +27,10 @@ class Submission(db.Model):
     discount_rate = db.Column(db.Float)  # 折扣百分比（0-100）
     original_grade = db.Column(db.Float)  # 原始分数（折扣前）
     
+    # AI 自动评分相关字段
+    ai_score = db.Column(db.Float)  # AI 评分
+    ai_feedback = db.Column(db.Text)  # AI 评语
+    
     # 关系
     assignment = db.relationship('Assignment', backref='submissions', cascade='all, delete-orphan', single_parent=True)
     student_user = db.relationship('User', foreign_keys=[student_id], backref='submissions_made')
