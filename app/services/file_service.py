@@ -37,6 +37,33 @@ class FileService:
             return None, None, None, None
     
     @staticmethod
+    def save_reference_answer(ref_file):
+        """保存参考答案文件"""
+        if not ref_file or not ref_file.filename:
+            return None, None, None, None
+        
+        original_filename = ref_file.filename
+        filename = secure_filename(original_filename)
+        
+        if not filename:
+            file_ext = os.path.splitext(original_filename)[1] if '.' in original_filename else ''
+            filename = str(uuid.uuid4()) + file_ext
+        
+        unique_filename = f"ref_{uuid.uuid4()}_{filename}"
+        appendix_folder = current_app.config['APPENDIX_FOLDER']
+        os.makedirs(appendix_folder, exist_ok=True)
+        
+        file_path = os.path.join(appendix_folder, unique_filename)
+        
+        try:
+            ref_file.save(file_path)
+            file_size = get_file_size(file_path)
+            return filename, original_filename, file_path, file_size
+        except Exception as e:
+            current_app.logger.error(f"保存参考答案文件失败: {e}")
+            return None, None, None, None
+    
+    @staticmethod
     def delete_file(file_path):
         """删除文件"""
         if file_path and os.path.exists(file_path):
