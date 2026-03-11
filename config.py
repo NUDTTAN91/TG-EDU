@@ -39,6 +39,11 @@ class Config:
     # 分页配置
     PER_PAGE_OPTIONS = [10, 20, 50, 100]
     DEFAULT_PER_PAGE = 10
+    
+    # DeepSeek API 配置（用于 AI 自动评分）
+    DEEPSEEK_API_KEY = os.environ.get('DeepSeek_API_KEY', '')
+    DEEPSEEK_MODEL = os.environ.get('DeepSeek_MODEL', 'deepseek-reasoner')
+    DEEPSEEK_BASE_URL = 'https://api.deepseek.com'
 
 
 class DevelopmentConfig(Config):
