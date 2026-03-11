@@ -23,6 +23,9 @@ class Assignment(db.Model):
     attachment_file_path = db.Column(db.String(500))
     attachment_file_size = db.Column(db.Integer)
     
+    # AI 评分相关字段
+    grading_criteria = db.Column(db.Text)  # 评分标准（用于 AI 自动评分）
+    
     # 关系
     teacher = db.relationship('User', backref='assignments')
     class_info = db.relationship('Class', backref='assignments')
