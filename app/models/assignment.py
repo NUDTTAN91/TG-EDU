@@ -26,6 +26,20 @@ class Assignment(db.Model):
     # AI 评分相关字段
     grading_criteria = db.Column(db.Text)  # 评分标准（用于 AI 自动评分）
     
+    # AI 自动改卷模式
+    # 0 = 不启用 AI 自动改卷
+    # 1 = 学生提交立刻自动改卷（需要立刻上传参考答案）
+    # 2 = 学生提交自动改卷（稍后上传参考答案再自动进行批改）
+    # 3 = 自动改卷自动判分，不需要参考答案
+    ai_grading_mode = db.Column(db.Integer, default=0)
+    
+    # 参考答案相关字段
+    reference_answer = db.Column(db.Text)  # 参考答案文本内容
+    reference_answer_filename = db.Column(db.String(255))  # 参考答案文件名
+    reference_answer_original_filename = db.Column(db.String(255))  # 参考答案原始文件名
+    reference_answer_file_path = db.Column(db.String(500))  # 参考答案文件路径
+    reference_answer_file_size = db.Column(db.Integer)  # 参考答案文件大小
+    
     # 关系
     teacher = db.relationship('User', backref='assignments')
     class_info = db.relationship('Class', backref='assignments')
