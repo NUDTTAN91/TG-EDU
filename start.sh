@@ -48,6 +48,9 @@ python3 migrations/fix_must_change_password.py
 # 运行 AI 评分相关字段迁移
 python3 migrations/migrate_add_grading_criteria.py
 
+# 运行 AI 自动改卷模式字段迁移
+python3 migrations/migrate_ai_grading_mode.py
+
 # 然后初始化管理员账户
 python3 -c "
 import os
