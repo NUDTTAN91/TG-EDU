@@ -309,6 +309,61 @@
                         </div>
                     </div>
                     
+                    <!-- AI 自动评分功能 -->
+                    <div class="card border-info mb-3">
+                        <div class="card-header bg-info bg-opacity-10">
+                            <h6 class="mb-0">
+                                <i class="fas fa-robot me-2"></i>
+                                AI 辅助评分
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <small class="text-muted">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        点击按钮让 AI 自动分析作业并生成评分和评语建议
+                                    </small>
+                                </div>
+                                <button type="button" 
+                                        class="btn btn-info ai-grade-btn" 
+                                        data-submission-id="{{ submission.id }}"
+                                        onclick="startAIGrading({{ submission.id }})">
+                                    <i class="fas fa-magic me-1"></i>
+                                    AI 评分
+                                </button>
+                            </div>
+                            <div id="aiResult{{ submission.id }}" class="mt-3" style="display: none;">
+                                <div class="alert alert-success mb-2">
+                                    <strong>AI 建议评分：</strong>
+                                    <span id="aiScore{{ submission.id }}" class="badge bg-success fs-6"></span> 分
+                                </div>
+                                <div class="alert alert-light">
+                                    <strong>AI 评语：</strong>
+                                    <div id="aiComment{{ submission.id }}" class="mt-2"></div>
+                                </div>
+                                <button type="button" 
+                                        class="btn btn-success btn-sm" 
+                                        onclick="applyAIGrade({{ submission.id }})">
+                                    <i class="fas fa-check me-1"></i>
+                                    采纳 AI 评分
+                                </button>
+                            </div>
+                            <div id="aiLoading{{ submission.id }}" class="mt-3" style="display: none;">
+                                <div class="d-flex align-items-center">
+                                    <div class="spinner-border spinner-border-sm text-info me-2" role="status"></div>
+                                    <span>正在调用 AI 进行评分，请稍候...</span>
+                                </div>
+                            </div>
+                            <div id="aiError{{ submission.id }}" class="mt-3" style="display: none;">
+                                <div class="alert alert-danger mb-0">
+                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                    <span id="aiErrorMsg{{ submission.id }}"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-1"></i>
                         <strong>提示：</strong> 
@@ -372,6 +427,82 @@
 
 {% block scripts %}
 <script>
+// AI 评分结果缓存
+const aiGradeCache = {};
+
+// 开始 AI 评分
+function startAIGrading(submissionId) {
+    const loadingEl = document.getElementById(`aiLoading${submissionId}`);
+    const resultEl = document.getElementById(`aiResult${submissionId}`);
+    const errorEl = document.getElementById(`aiError${submissionId}`);
+    const btn = document.querySelector(`button[data-submission-id="${submissionId}"]`);
+    
+    // 显示加载状态
+    loadingEl.style.display = 'block';
+    resultEl.style.display = 'none';
+    errorEl.style.display = 'none';
+    btn.disabled = true;
+    
+    // 调用 AI 评分 API
+    fetch(`/api/ai-grading/grade-submission/${submissionId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({})
+    })
+    .then(response => response.json())
+    .then(data => {
+        loadingEl.style.display = 'none';
+        btn.disabled = false;
+        
+        if (data.success) {
+            // 显示结果
+            const scoreEl = document.getElementById(`aiScore${submissionId}`);
+            const commentEl = document.getElementById(`aiComment${submissionId}`);
+            
+            scoreEl.textContent = data.data.ai_score;
+            commentEl.innerHTML = data.data.ai_comment.replace(/\n/g, '<br>');
+            resultEl.style.display = 'block';
+            
+            // 缓存结果
+            aiGradeCache[submissionId] = {
+                score: data.data.ai_score,
+                comment: data.data.ai_comment
+            };
+        } else {
+            // 显示错误
+            document.getElementById(`aiErrorMsg${submissionId}`).textContent = data.message;
+            errorEl.style.display = 'block';
+        }
+    })
+    .catch(error => {
+        loadingEl.style.display = 'none';
+        btn.disabled = false;
+        document.getElementById(`aiErrorMsg${submissionId}`).textContent = 'AI 评分请求失败: ' + error.message;
+        errorEl.style.display = 'block';
+    });
+}
+
+// 采纳 AI 评分
+function applyAIGrade(submissionId) {
+    const cached = aiGradeCache[submissionId];
+    if (!cached) return;
+    
+    // 填充到表单
+    document.getElementById(`grade${submissionId}`).value = cached.score;
+    document.getElementById(`feedback${submissionId}`).value = cached.comment;
+    
+    // 提示用户
+    const resultEl = document.getElementById(`aiResult${submissionId}`);
+    resultEl.innerHTML = `
+        <div class="alert alert-success">
+            <i class="fas fa-check-circle me-1"></i>
+            AI 评分已填充到表单，请检查后点击“保存评分”按钮确认
+        </div>
+    `;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // 为评分输入框添加验证
     const gradeInputs = document.querySelectorAll('input[name="grade"]');
