@@ -45,6 +45,9 @@ python3 migrations/add_ip_location.py
 # 运行一次性密码字段修复迁移（只执行一次）
 python3 migrations/fix_must_change_password.py
 
+# 运行 AI 评分相关字段迁移
+python3 migrations/migrate_add_grading_criteria.py
+
 # 然后初始化管理员账户
 python3 -c "
 import os
