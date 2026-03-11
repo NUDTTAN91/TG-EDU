@@ -193,6 +193,13 @@
                             </h6>
                         </div>
                         <div class="card-body">
+                            <!-- 不支持文件类型警告 -->
+                            <div id="ai_unsupported_warning" class="alert alert-warning" style="display: none;">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                <strong>注意：</strong>您选择的文件类型中，<span id="unsupported_types_list"></span> 不支持 AI 自动改卷。
+                                <br><small class="text-muted">AI 评分仅支持：PDF、DOCX、MD 格式</small>
+                            </div>
+                            
                             <div class="mb-3">
                                 <label class="form-label">
                                     <i class="fas fa-cog me-1"></i>
@@ -352,6 +359,24 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function updateHiddenInput() {
         hiddenInput.value = selectedTypes.join(',');
+        // 检查不支持 AI 评分的文件类型
+        checkAIUnsupportedTypes();
+    }
+    
+    // 检查不支持 AI 评分的文件类型
+    function checkAIUnsupportedTypes() {
+        const aiSupportedTypes = ['pdf', 'docx', 'md'];  // AI 支持的类型
+        const unsupportedTypes = selectedTypes.filter(type => !aiSupportedTypes.includes(type));
+        
+        const warningDiv = document.getElementById('ai_unsupported_warning');
+        const unsupportedList = document.getElementById('unsupported_types_list');
+        
+        if (unsupportedTypes.length > 0) {
+            unsupportedList.textContent = unsupportedTypes.map(t => t.toUpperCase()).join('、');
+            warningDiv.style.display = 'block';
+        } else {
+            warningDiv.style.display = 'none';
+        }
     }
     
     fileTypeButtons.forEach(button => {
