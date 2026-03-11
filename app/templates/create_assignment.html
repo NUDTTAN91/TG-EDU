@@ -184,6 +184,100 @@
                         </div>
                     </div>
                     
+                    <!-- AI 自动改卷配置 -->
+                    <div class="card border-info mb-3">
+                        <div class="card-header bg-info bg-opacity-10">
+                            <h6 class="mb-0">
+                                <i class="fas fa-robot me-2"></i>
+                                AI 自动改卷配置
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-cog me-1"></i>
+                                    改卷模式
+                                </label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="ai_grading_mode" 
+                                           id="ai_mode_0" value="0" checked onchange="toggleReferenceAnswer()">
+                                    <label class="form-check-label" for="ai_mode_0">
+                                        <i class="fas fa-times-circle text-secondary me-1"></i>
+                                        不启用 AI 自动改卷
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="ai_grading_mode" 
+                                           id="ai_mode_1" value="1" onchange="toggleReferenceAnswer()">
+                                    <label class="form-check-label" for="ai_mode_1">
+                                        <i class="fas fa-bolt text-warning me-1"></i>
+                                        学生提交立刻自动改卷
+                                        <small class="text-muted">(需要立刻上传参考答案)</small>
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="ai_grading_mode" 
+                                           id="ai_mode_2" value="2" onchange="toggleReferenceAnswer()">
+                                    <label class="form-check-label" for="ai_mode_2">
+                                        <i class="fas fa-clock text-primary me-1"></i>
+                                        学生提交自动改卷
+                                        <small class="text-muted">(稍后上传参考答案再自动进行批改)</small>
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="ai_grading_mode" 
+                                           id="ai_mode_3" value="3" onchange="toggleReferenceAnswer()">
+                                    <label class="form-check-label" for="ai_mode_3">
+                                        <i class="fas fa-magic text-success me-1"></i>
+                                        自动改卷自动判分
+                                        <small class="text-muted">(不需要参考答案，AI 根据作业要求自主评分)</small>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <!-- 参考答案区域（根据模式显示/隐藏） -->
+                            <div id="reference_answer_section" style="display: none;">
+                                <hr class="my-3">
+                                <div class="mb-3">
+                                    <label for="reference_answer" class="form-label">
+                                        <i class="fas fa-file-alt me-1"></i>
+                                        参考答案文本
+                                    </label>
+                                    <textarea class="form-control" id="reference_answer" name="reference_answer" 
+                                              rows="5" placeholder="请输入参考答案..."></textarea>
+                                    <div class="form-text">直接输入参考答案文本，或上传参考答案文件</div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="reference_answer_file" class="form-label">
+                                        <i class="fas fa-upload me-1"></i>
+                                        参考答案文件 <span class="text-info">(可选)</span>
+                                    </label>
+                                    <input type="file" class="form-control" id="reference_answer_file" 
+                                           name="reference_answer_file" accept=".pdf,.doc,.docx,.txt,.md">
+                                    <div class="form-text">支持 PDF、DOC、DOCX、TXT、MD 格式</div>
+                                </div>
+                            </div>
+                            
+                            <!-- 评分标准（所有 AI 模式都可设置） -->
+                            <div id="grading_criteria_section" style="display: none;">
+                                <hr class="my-3">
+                                <div class="mb-3">
+                                    <label for="grading_criteria" class="form-label">
+                                        <i class="fas fa-list-ol me-1"></i>
+                                        评分标准 <span class="text-info">(可选)</span>
+                                    </label>
+                                    <textarea class="form-control" id="grading_criteria" name="grading_criteria" 
+                                              rows="4" placeholder="例如：
+1. 内容完整性（30分）
+2. 语言表达（20分）
+3. 逻辑性（25分）
+4. 创新性（25分）"></textarea>
+                                    <div class="form-text">设置评分标准可帮助 AI 更准确地评分</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <!-- 文件类型已限制为仅支持PDF和ZIP -->
                     
                     <div class="d-flex gap-2 justify-content-end">
@@ -206,6 +300,29 @@
 
 {% block scripts %}
 <script>
+// AI 改卷模式切换
+function toggleReferenceAnswer() {
+    const mode = document.querySelector('input[name="ai_grading_mode"]:checked').value;
+    const refAnswerSection = document.getElementById('reference_answer_section');
+    const gradingCriteriaSection = document.getElementById('grading_criteria_section');
+    
+    // 模式 0: 不启用，隐藏所有
+    // 模式 1: 立刻改卷，显示参考答案和评分标准
+    // 模式 2: 稍后改卷，显示参考答案和评分标准（参考答案可以稍后上传）
+    // 模式 3: 无参考答案，只显示评分标准
+    
+    if (mode === '0') {
+        refAnswerSection.style.display = 'none';
+        gradingCriteriaSection.style.display = 'none';
+    } else if (mode === '1' || mode === '2') {
+        refAnswerSection.style.display = 'block';
+        gradingCriteriaSection.style.display = 'block';
+    } else if (mode === '3') {
+        refAnswerSection.style.display = 'none';
+        gradingCriteriaSection.style.display = 'block';
+    }
+}
+
 // 表单验证
 document.addEventListener('DOMContentLoaded', function() {
     const forms = document.querySelectorAll('.needs-validation');
