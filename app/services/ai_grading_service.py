@@ -75,10 +75,11 @@ class AIGradingService:
             return None, f"文件读取失败: {str(e)}"
     
     @staticmethod
-    def build_grading_prompt(assignment_title, assignment_description, grading_criteria, student_content, max_score=100):
+    def build_grading_prompt(assignment_title, assignment_description, grading_criteria, student_content, reference_answer=None, max_score=100):
         """
         构建评分 Prompt
         """
+        # 基础 Prompt
         prompt = f"""你是一位专业的教师，请根据以下评分标准对学生作业进行评分。
 
 【作业题目】
@@ -88,7 +89,18 @@ class AIGradingService:
 {assignment_description or '无具体要求'}
 
 【评分标准】
-{grading_criteria or '请根据作业完成质量、内容完整性、逻辑清晰度进行综合评分'}
+{grading_criteria or '请根据作业完成质量、内容完整性、逻辑清晰度进行综合评分'}"""
+        
+        # 如果有参考答案，添加到 Prompt
+        if reference_answer:
+            prompt += f"""
+
+【参考答案】
+{reference_answer}
+
+注意：请将学生作业与参考答案进行对比，评估学生答案的正确性和完整性。"""
+        
+        prompt += f"""
 
 【满分】
 {max_score} 分
@@ -112,11 +124,11 @@ class AIGradingService:
     
     @staticmethod
     def grade_submission(assignment_title, assignment_description, grading_criteria, 
-                        student_content, max_score=100):
+                        student_content, reference_answer=None, max_score=100):
         """
         调用 AI 进行评分
         
-        返回: (score, comment, error)
+        返回: dict {success, score, comment, error}
         """
         try:
             client = AIGradingService.get_client()
@@ -126,7 +138,8 @@ class AIGradingService:
                 assignment_title, 
                 assignment_description,
                 grading_criteria, 
-                student_content, 
+                student_content,
+                reference_answer,
                 max_score
             )
             
@@ -159,35 +172,35 @@ class AIGradingService:
                 # 确保分数在有效范围内
                 score = max(0, min(score, max_score))
                 
-                return score, comment, None
+                return {'success': True, 'score': score, 'comment': comment, 'error': None}
             else:
-                return None, None, "AI 返回格式错误，无法解析评分结果"
+                return {'success': False, 'score': None, 'comment': None, 'error': "AI 返回格式错误，无法解析评分结果"}
                 
         except json.JSONDecodeError as e:
             current_app.logger.error(f"AI 评分 JSON 解析失败: {e}, 原始响应: {result_text}")
-            return None, None, f"AI 返回格式错误: {str(e)}"
+            return {'success': False, 'score': None, 'comment': None, 'error': f"AI 返回格式错误: {str(e)}"}
         except ValueError as e:
-            return None, None, str(e)
+            return {'success': False, 'score': None, 'comment': None, 'error': str(e)}
         except Exception as e:
             current_app.logger.error(f"AI 评分失败: {e}")
-            return None, None, f"AI 评分失败: {str(e)}"
+            return {'success': False, 'score': None, 'comment': None, 'error': f"AI 评分失败: {str(e)}"}
     
     @staticmethod
     def grade_submission_by_file(assignment_title, assignment_description, grading_criteria,
-                                 file_path, max_score=100):
+                                 file_path, reference_answer=None, max_score=100):
         """
         通过文件路径进行评分（自动提取文件内容）
         
-        返回: (score, comment, error)
+        返回: dict {success, score, comment, error}
         """
         # 提取文件内容
         content, extract_error = AIGradingService.extract_file_content(file_path)
         
         if extract_error:
-            return None, None, extract_error
+            return {'success': False, 'score': None, 'comment': None, 'error': extract_error}
         
         if not content or not content.strip():
-            return None, None, "文件内容为空"
+            return {'success': False, 'score': None, 'comment': None, 'error': "文件内容为空"}
         
         # 限制内容长度（避免超出 token 限制）
         max_content_length = 50000  # 约 50K 字符
@@ -199,6 +212,7 @@ class AIGradingService:
             assignment_description,
             grading_criteria,
             content,
+            reference_answer,
             max_score
         )
     
