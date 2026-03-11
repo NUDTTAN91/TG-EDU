@@ -60,7 +60,7 @@ def grade_submission(submission_id):
         })
     
     # 调用 AI 评分
-    score, comment, error = AIGradingService.grade_submission_by_file(
+    result = AIGradingService.grade_submission_by_file(
         assignment_title=assignment.title,
         assignment_description=assignment.description,
         grading_criteria=grading_criteria,
@@ -68,18 +68,18 @@ def grade_submission(submission_id):
         max_score=max_score
     )
     
-    if error:
+    if not result.get('success'):
         return jsonify({
             'success': False,
-            'message': error
+            'message': result.get('error', 'AI 评分失败')
         })
     
     return jsonify({
         'success': True,
         'data': {
             'submission_id': submission_id,
-            'ai_score': score,
-            'ai_comment': comment,
+            'ai_score': result.get('score'),
+            'ai_comment': result.get('comment'),
             'max_score': max_score
         }
     })
@@ -206,7 +206,7 @@ def batch_grade_assignment(assignment_id):
             error_count += 1
             continue
         
-        score, comment, error = AIGradingService.grade_submission_by_file(
+        result = AIGradingService.grade_submission_by_file(
             assignment_title=assignment.title,
             assignment_description=assignment.description,
             grading_criteria=grading_criteria,
@@ -214,12 +214,12 @@ def batch_grade_assignment(assignment_id):
             max_score=max_score
         )
         
-        if error:
+        if not result.get('success'):
             results.append({
                 'submission_id': submission.id,
                 'student_name': submission.student.real_name if submission.student else '未知',
                 'success': False,
-                'error': error
+                'error': result.get('error', 'AI 评分失败')
             })
             error_count += 1
         else:
@@ -227,8 +227,8 @@ def batch_grade_assignment(assignment_id):
                 'submission_id': submission.id,
                 'student_name': submission.student.real_name if submission.student else '未知',
                 'success': True,
-                'ai_score': score,
-                'ai_comment': comment
+                'ai_score': result.get('score'),
+                'ai_comment': result.get('comment')
             })
             success_count += 1
     
