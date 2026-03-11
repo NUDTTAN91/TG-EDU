@@ -124,6 +124,24 @@ def create_assignment():
             # 默认允许所有支持的类型
             allowed_file_types = 'pdf,zip,doc,docx,7z,md'
         
+        # 处理 AI 自动改卷配置
+        ai_grading_mode = int(request.form.get('ai_grading_mode', 0))
+        grading_criteria = request.form.get('grading_criteria', '')
+        reference_answer = request.form.get('reference_answer', '')
+        
+        # 处理参考答案文件上传
+        ref_answer_filename = None
+        ref_answer_original_filename = None
+        ref_answer_file_path = None
+        ref_answer_file_size = None
+        
+        if ai_grading_mode in [1, 2] and 'reference_answer_file' in request.files:
+            ref_file = request.files['reference_answer_file']
+            if ref_file and ref_file.filename:
+                # 保存参考答案文件
+                ref_answer_filename, ref_answer_original_filename, ref_answer_file_path, ref_answer_file_size = \
+                    FileService.save_reference_answer(ref_file)
+        
         assignment = Assignment(
             title=title,
             description=description,
@@ -136,7 +154,15 @@ def create_assignment():
             attachment_filename=attachment_filename,
             attachment_original_filename=attachment_original_filename,
             attachment_file_path=attachment_file_path,
-            attachment_file_size=attachment_file_size
+            attachment_file_size=attachment_file_size,
+            # AI 自动改卷相关字段
+            ai_grading_mode=ai_grading_mode,
+            grading_criteria=grading_criteria if grading_criteria else None,
+            reference_answer=reference_answer if reference_answer else None,
+            reference_answer_filename=ref_answer_filename,
+            reference_answer_original_filename=ref_answer_original_filename,
+            reference_answer_file_path=ref_answer_file_path,
+            reference_answer_file_size=ref_answer_file_size
         )
         
         db.session.add(assignment)
