@@ -1,4 +1,4 @@
-"""定时任务服务 - 自动更新阶段状态"""
+"""定时任务服务 - 自动更新阶段状态和处理AI批改队列"""
 from flask_apscheduler import APScheduler
 from app.services.stage_service import StageService
 import os
@@ -62,6 +62,19 @@ def init_scheduler(app):
                 print("✅ 定时任务：阶段状态更新完成")
             except Exception as e:
                 print(f"❌ 定时任务：阶段状态更新失败 - {str(e)}")
+                import traceback
+                traceback.print_exc()
+    
+    # 添加定时任务：每10秒处理一次AI批改队列
+    @scheduler.task('interval', id='process_ai_queue', seconds=10, misfire_grace_time=60)
+    def scheduled_ai_queue_process():
+        """定时处理AI批改队列"""
+        with app.app_context():
+            try:
+                from app.services.ai_queue_service import AIQueueService
+                AIQueueService.process_queue()
+            except Exception as e:
+                print(f"❌ AI队列处理失败: {str(e)}")
                 import traceback
                 traceback.print_exc()
     
