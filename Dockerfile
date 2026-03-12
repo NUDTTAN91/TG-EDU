@@ -17,6 +17,11 @@ RUN apt-get update && apt-get install -y \
     python3-dev \
     build-essential \
     tzdata \
+    # OCR 相关依赖
+    tesseract-ocr \
+    tesseract-ocr-chi-sim \
+    tesseract-ocr-chi-tra \
+    poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # 设置时区

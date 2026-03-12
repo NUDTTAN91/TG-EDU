@@ -1,12 +1,13 @@
 """AI 自动评分服务 - 调用 DeepSeek API 进行作业评分"""
 import json
 import os
+import io
 from flask import current_app
 from openai import OpenAI
 
 
 class AIGradingService:
-    """AI 评分服务类"""
+    """АI 评分服务类"""
     
     @staticmethod
     def get_client():
@@ -20,9 +21,26 @@ class AIGradingService:
         return OpenAI(api_key=api_key, base_url=base_url)
     
     @staticmethod
+    def ocr_image(image):
+        """
+        对图片进行 OCR 识别
+        
+        参数: image - PIL Image 对象
+        返回: 识别的文本
+        """
+        try:
+            import pytesseract
+            # 使用中文+英文识别
+            text = pytesseract.image_to_string(image, lang='chi_sim+eng')
+            return text.strip()
+        except Exception as e:
+            current_app.logger.warning(f"OCR 识别失败: {e}")
+            return ""
+    
+    @staticmethod
     def extract_file_content(file_path):
         """
-        提取文件内容
+        提取文件内容（支持 OCR 图片识别）
         支持：txt, md, py, java, c, cpp, js, html, css, pdf, docx
         """
         if not file_path or not os.path.exists(file_path):
@@ -41,31 +59,13 @@ class AIGradingService:
                     content = f.read()
                 return content, None
             
-            # PDF 文件
+            # PDF 文件（文本 + OCR 图片）
             elif file_ext == '.pdf':
-                try:
-                    import pdfplumber
-                    text_parts = []
-                    with pdfplumber.open(file_path) as pdf:
-                        for page in pdf.pages:
-                            page_text = page.extract_text()
-                            if page_text:
-                                text_parts.append(page_text)
-                    content = '\n'.join(text_parts)
-                    return content if content.strip() else (None, "PDF 文件无法提取文本内容")
-                except Exception as e:
-                    return None, f"PDF 解析失败: {str(e)}"
+                return AIGradingService._extract_pdf_content(file_path)
             
-            # Word 文件
+            # Word 文件（文本 + OCR 图片）
             elif file_ext == '.docx':
-                try:
-                    from docx import Document
-                    doc = Document(file_path)
-                    paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
-                    content = '\n'.join(paragraphs)
-                    return content if content.strip() else (None, "Word 文件无法提取文本内容")
-                except Exception as e:
-                    return None, f"Word 解析失败: {str(e)}"
+                return AIGradingService._extract_docx_content(file_path)
             
             # 不支持的格式
             else:
@@ -73,6 +73,107 @@ class AIGradingService:
                 
         except Exception as e:
             return None, f"文件读取失败: {str(e)}"
+    
+    @staticmethod
+    def _extract_pdf_content(file_path):
+        """提取 PDF 内容（文本 + OCR 图片）"""
+        try:
+            import pdfplumber
+            from PIL import Image
+            
+            all_content = []
+            
+            with pdfplumber.open(file_path) as pdf:
+                for page_num, page in enumerate(pdf.pages, 1):
+                    page_content = []
+                    
+                    # 1. 提取页面文本
+                    page_text = page.extract_text()
+                    if page_text:
+                        page_content.append(page_text)
+                    
+                    # 2. 提取页面图片并 OCR
+                    try:
+                        images = page.images
+                        for img_idx, img in enumerate(images):
+                            # 获取图片数据
+                            if 'stream' in img:
+                                img_data = img['stream'].get_data()
+                                pil_image = Image.open(io.BytesIO(img_data))
+                                ocr_text = AIGradingService.ocr_image(pil_image)
+                                if ocr_text:
+                                    page_content.append(f"[图片{img_idx+1}内容]: {ocr_text}")
+                    except Exception as e:
+                        current_app.logger.warning(f"PDF 页面{page_num} 图片提取失败: {e}")
+                    
+                    if page_content:
+                        all_content.append(f"--- 第{page_num}页 ---\n" + "\n".join(page_content))
+            
+            content = "\n\n".join(all_content)
+            
+            # 如果 pdfplumber 提取失败，尝试用 pdf2image 进行整页 OCR
+            if not content.strip():
+                content = AIGradingService._pdf_full_ocr(file_path)
+            
+            return (content, None) if content.strip() else (None, "PDF 文件无法提取文本内容")
+            
+        except Exception as e:
+            return None, f"PDF 解析失败: {str(e)}"
+    
+    @staticmethod
+    def _pdf_full_ocr(file_path):
+        """将 PDF 每页转为图片进行 OCR（用于扫描件 PDF）"""
+        try:
+            from pdf2image import convert_from_path
+            
+            # 将 PDF 转换为图片
+            images = convert_from_path(file_path, dpi=200)
+            
+            all_text = []
+            for page_num, image in enumerate(images, 1):
+                ocr_text = AIGradingService.ocr_image(image)
+                if ocr_text:
+                    all_text.append(f"--- 第{page_num}页 ---\n{ocr_text}")
+            
+            return "\n\n".join(all_text)
+        except Exception as e:
+            current_app.logger.warning(f"PDF 整页 OCR 失败: {e}")
+            return ""
+    
+    @staticmethod
+    def _extract_docx_content(file_path):
+        """提取 Word 内容（文本 + OCR 图片）"""
+        try:
+            from docx import Document
+            from PIL import Image
+            
+            doc = Document(file_path)
+            all_content = []
+            
+            # 1. 提取段落文本
+            for para in doc.paragraphs:
+                if para.text.strip():
+                    all_content.append(para.text)
+            
+            # 2. 提取图片并 OCR
+            img_idx = 0
+            for rel in doc.part.rels.values():
+                if "image" in rel.target_ref:
+                    try:
+                        img_idx += 1
+                        image_data = rel.target_part.blob
+                        pil_image = Image.open(io.BytesIO(image_data))
+                        ocr_text = AIGradingService.ocr_image(pil_image)
+                        if ocr_text:
+                            all_content.append(f"[图片{img_idx}内容]: {ocr_text}")
+                    except Exception as e:
+                        current_app.logger.warning(f"Word 图片{img_idx} OCR 失败: {e}")
+            
+            content = "\n".join(all_content)
+            return (content, None) if content.strip() else (None, "Word 文件无法提取文本内容")
+            
+        except Exception as e:
+            return None, f"Word 解析失败: {str(e)}"
     
     @staticmethod
     def build_grading_prompt(assignment_title, assignment_description, grading_criteria, student_content, reference_answer=None, max_score=100):
