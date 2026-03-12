@@ -1,0 +1,404 @@
+{% extends "base.html" %}
+
+{% block title %}AI批改队列 - TG-EDU综合教育平台{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- 页面标题 -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">
+                <i class="fas fa-robot me-2 text-primary"></i>AI批改队列
+            </h2>
+            <p class="text-muted mb-0">管理和监控AI自动批改任务</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-danger" onclick="clearCompleted()">
+                <i class="fas fa-trash me-1"></i>清除已完成
+            </button>
+        </div>
+    </div>
+    
+    <!-- 统计卡片 -->
+    <div class="row mb-4">
+        <div class="col-md-3 col-6 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="display-6 fw-bold text-primary">{{ total_tasks }}</div>
+                    <div class="text-muted">总任务数</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="display-6 fw-bold text-warning">{{ pending_count }}</div>
+                    <div class="text-muted">等待中</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="display-6 fw-bold text-info">{{ processing_count }}</div>
+                    <div class="text-muted">批改中</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center">
+                    <div class="display-6 fw-bold text-success">{{ completed_count }}</div>
+                    <div class="text-muted">已完成</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 配置区域 -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="fas fa-cog me-2"></i>并发配置</h5>
+        </div>
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <label class="form-label">最大并发批改数（1-10）</label>
+                    <div class="input-group" style="max-width: 200px;">
+                        <input type="number" class="form-control" id="maxConcurrent" 
+                               value="{{ config.max_concurrent }}" min="1" max="10">
+                        <button class="btn btn-primary" onclick="updateConfig()">
+                            <i class="fas fa-save"></i>
+                        </button>
+                    </div>
+                    <small class="text-muted">建议根据DeepSeek API配额设置，避免触发限流</small>
+                </div>
+                <div class="col-md-6">
+                    <div class="alert alert-info mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        当前配置：同时最多处理 <strong>{{ config.max_concurrent }}</strong> 个批改任务
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 筛选区域 -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label">状态筛选</label>
+                    <select class="form-select" name="status" onchange="this.form.submit()">
+                        <option value="" {% if status_filter == '' %}selected{% endif %}>全部状态</option>
+                        <option value="0" {% if status_filter == '0' %}selected{% endif %}>等待中</option>
+                        <option value="1" {% if status_filter == '1' %}selected{% endif %}>批改中</option>
+                        <option value="2" {% if status_filter == '2' %}selected{% endif %}>完成</option>
+                        <option value="3" {% if status_filter == '3' %}selected{% endif %}>失败</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 队列表格 -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="fas fa-list me-2"></i>批改任务列表</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" style="table-layout: auto;">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="text-nowrap">ID</th>
+                            <th class="text-nowrap">学生</th>
+                            <th class="text-nowrap">班级</th>
+                            <th>作业</th>
+                            <th class="text-nowrap">所属教师</th>
+                            <th class="text-nowrap">状态</th>
+                            <th class="text-nowrap">评分</th>
+                            <th class="text-nowrap">创建时间</th>
+                            <th class="text-nowrap">完成时间</th>
+                            <th class="text-nowrap">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for task in tasks %}
+                        <tr>
+                            <td><code>{{ task.id }}</code></td>
+                            <td>
+                                {% if task.student %}
+                                    {{ task.student.real_name }}
+                                {% else %}
+                                    <span class="text-muted">未知</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ task.class_name }}</td>
+                            <td>
+                                {% if task.assignment %}
+                                    <span class="text-truncate d-inline-block" style="max-width: 150px;" 
+                                          title="{{ task.assignment.title }}">
+                                        {{ task.assignment.title }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted">未知</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ task.teacher_name }}</td>
+                            <td>
+                                {% if task.status == 0 %}
+                                    <span class="badge bg-warning text-dark">
+                                        <i class="fas fa-clock me-1"></i>等待中
+                                    </span>
+                                {% elif task.status == 1 %}
+                                    <span class="badge bg-info">
+                                        <i class="fas fa-spinner fa-spin me-1"></i>批改中
+                                    </span>
+                                {% elif task.status == 2 %}
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-check me-1"></i>完成
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-danger">
+                                        <i class="fas fa-times me-1"></i>失败
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if task.score is not none %}
+                                    <span class="fw-bold text-primary">{{ task.score }}</span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small>{{ task.created_at.strftime('%Y-%m-%d %H:%M') if task.created_at else '-' }}</small>
+                            </td>
+                            <td>
+                                <small>{{ task.completed_at.strftime('%Y-%m-%d %H:%M') if task.completed_at else '-' }}</small>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-primary" onclick="viewDetail({{ task.id }})" 
+                                            title="查看详情">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    {% if task.status == 3 %}
+                                    <button class="btn btn-outline-warning" onclick="retryTask({{ task.id }})"
+                                            title="重试">
+                                        <i class="fas fa-redo"></i>
+                                    </button>
+                                    {% endif %}
+                                    <button class="btn btn-outline-danger" onclick="deleteTask({{ task.id }})"
+                                            title="删除">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="10" class="text-center py-5 text-muted">
+                                <i class="fas fa-inbox fa-3x mb-3 d-block"></i>
+                                暂无批改任务
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- 分页 -->
+        {% if pagination.pages > 1 %}
+        <div class="card-footer bg-white">
+            <nav>
+                <ul class="pagination justify-content-center mb-0">
+                    {% if pagination.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('ai_queue.index', page=pagination.prev_num, status=status_filter) }}">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for p in pagination.iter_pages() %}
+                        {% if p %}
+                            <li class="page-item {% if p == pagination.page %}active{% endif %}">
+                                <a class="page-link" href="{{ url_for('ai_queue.index', page=p, status=status_filter) }}">{{ p }}</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if pagination.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('ai_queue.index', page=pagination.next_num, status=status_filter) }}">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 详情模态框 -->
+<div class="modal fade" id="detailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-info-circle me-2"></i>任务详情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detailContent">
+                <div class="text-center py-5">
+                    <i class="fas fa-spinner fa-spin fa-2x"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 更新配置
+function updateConfig() {
+    const maxConcurrent = document.getElementById('maxConcurrent').value;
+    
+    fetch('{{ url_for("ai_queue.update_config") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ max_concurrent: maxConcurrent })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('错误: ' + data.message);
+        }
+    });
+}
+
+// 查看详情
+function viewDetail(taskId) {
+    const modal = new bootstrap.Modal(document.getElementById('detailModal'));
+    const content = document.getElementById('detailContent');
+    
+    content.innerHTML = '<div class="text-center py-5"><i class="fas fa-spinner fa-spin fa-2x"></i></div>';
+    modal.show();
+    
+    fetch(`{{ url_for("ai_queue.index") }}task/${taskId}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const d = data.data;
+            let conversationHtml = '';
+            if (d.conversation_log) {
+                try {
+                    const log = JSON.parse(d.conversation_log);
+                    conversationHtml = `
+                        <div class="mt-3">
+                            <h6><i class="fas fa-comments me-2"></i>API对话记录</h6>
+                            <div class="border rounded p-3 bg-light" style="max-height: 300px; overflow-y: auto;">
+                                <pre class="mb-0" style="white-space: pre-wrap; font-size: 12px;">${JSON.stringify(log, null, 2)}</pre>
+                            </div>
+                        </div>
+                    `;
+                } catch(e) {
+                    conversationHtml = `
+                        <div class="mt-3">
+                            <h6><i class="fas fa-comments me-2"></i>API对话记录</h6>
+                            <div class="border rounded p-3 bg-light" style="max-height: 300px; overflow-y: auto;">
+                                <pre class="mb-0" style="white-space: pre-wrap; font-size: 12px;">${d.conversation_log}</pre>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+            
+            content.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>学生：</strong>${d.student_name}</p>
+                        <p><strong>班级：</strong>${d.class_name}</p>
+                        <p><strong>作业：</strong>${d.assignment_title}</p>
+                        <p><strong>教师：</strong>${d.teacher_name}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>状态：</strong><span class="badge ${d.status == 2 ? 'bg-success' : d.status == 3 ? 'bg-danger' : d.status == 1 ? 'bg-info' : 'bg-warning'}">${d.status_text}</span></p>
+                        <p><strong>评分：</strong>${d.score !== null ? d.score : '-'}</p>
+                        <p><strong>创建时间：</strong>${d.created_at || '-'}</p>
+                        <p><strong>完成时间：</strong>${d.completed_at || '-'}</p>
+                    </div>
+                </div>
+                ${d.feedback ? `
+                <div class="mt-3">
+                    <h6><i class="fas fa-comment me-2"></i>AI反馈</h6>
+                    <div class="border rounded p-3 bg-light">${d.feedback}</div>
+                </div>
+                ` : ''}
+                ${d.error_message ? `
+                <div class="mt-3">
+                    <h6 class="text-danger"><i class="fas fa-exclamation-circle me-2"></i>错误信息</h6>
+                    <div class="border border-danger rounded p-3 bg-light text-danger">${d.error_message}</div>
+                </div>
+                ` : ''}
+                ${conversationHtml}
+            `;
+        } else {
+            content.innerHTML = '<div class="alert alert-danger">加载失败</div>';
+        }
+    });
+}
+
+// 重试任务
+function retryTask(taskId) {
+    if (!confirm('确定要重试此任务吗？')) return;
+    
+    fetch(`{{ url_for("ai_queue.index") }}task/${taskId}/retry`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        if (data.success) location.reload();
+    });
+}
+
+// 删除任务
+function deleteTask(taskId) {
+    if (!confirm('确定要删除此任务吗？此操作不可恢复！')) return;
+    
+    fetch(`{{ url_for("ai_queue.index") }}task/${taskId}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        if (data.success) location.reload();
+    });
+}
+
+// 清除已完成
+function clearCompleted() {
+    if (!confirm('确定要清除所有已完成的任务吗？')) return;
+    
+    fetch('{{ url_for("ai_queue.clear_completed") }}', {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        if (data.success) location.reload();
+    });
+}
+</script>
+{% endblock %}
