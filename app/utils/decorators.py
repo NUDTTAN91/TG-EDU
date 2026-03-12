@@ -53,6 +53,20 @@ def require_teacher_or_admin(f):
     return decorated_function
 
 
+def super_admin_required(f):
+    """要求超级管理员权限"""
+    @wraps(f)
+    @check_password_change_required
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return redirect(url_for('auth.login'))
+        if not current_user.is_super_admin:
+            flash('您没有权限访问此页面')
+            return redirect(url_for('main.index'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
 def require_login(f):
     """要求登录"""
     @wraps(f)

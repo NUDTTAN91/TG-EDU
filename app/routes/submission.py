@@ -300,53 +300,25 @@ def submit_assignment(assignment_id):
                 db.session.add(submission)
                 db.session.commit()
                 
-                # AI 自动改卷处理
-                ai_grade_result = None
+                # AI 自动改卷处理：加入队列
                 if assignment.ai_grading_mode in [1, 3]:  # 模式1：立刻改卷，模式3：无参考答案自动改卷
                     try:
-                        from app.services.ai_grading_service import AIGradingService
+                        from app.models import AIGradingTask
                         
-                        # 获取参考答案（模式1需要，模式3不需要）
-                        reference_content = None
-                        if assignment.ai_grading_mode == 1:
-                            # 优先使用文本参考答案
-                            if assignment.reference_answer:
-                                reference_content = assignment.reference_answer
-                            elif assignment.reference_answer_file_path:
-                                reference_content = AIGradingService.extract_file_content(
-                                    assignment.reference_answer_file_path
-                                )
-                        
-                        # 模式1需要参考答案，模式3不需要
-                        if assignment.ai_grading_mode == 3 or reference_content:
-                            # 获取学生提交内容
-                            student_content = AIGradingService.extract_file_content(file_path)
-                            
-                            if student_content:
-                                # 调用 AI 评分
-                                ai_grade_result = AIGradingService.grade_submission(
-                                    assignment_title=assignment.title,
-                                    assignment_description=assignment.description or '',
-                                    grading_criteria=assignment.grading_criteria or '',
-                                    student_content=student_content,
-                                    reference_answer=reference_content,
-                                    max_score=100
-                                )
-                                
-                                if ai_grade_result.get('success'):
-                                    # 保存 AI 评分结果到提交记录
-                                    submission.ai_score = ai_grade_result.get('score')
-                                    submission.ai_feedback = ai_grade_result.get('comment')
-                                    db.session.commit()
-                                    current_app.logger.info(
-                                        f"[AI评分] 提交ID={submission.id} AI评分成功: {ai_grade_result.get('score')}分"
-                                    )
-                                else:
-                                    current_app.logger.warning(
-                                        f"[AI评分] 提交ID={submission.id} AI评分失败: {ai_grade_result.get('error')}"
-                                    )
+                        # 创建 AI 批改任务
+                        ai_task = AIGradingTask(
+                            submission_id=submission.id,
+                            assignment_id=assignment.id,
+                            student_id=current_user.id,
+                            status=AIGradingTask.STATUS_PENDING
+                        )
+                        db.session.add(ai_task)
+                        db.session.commit()
+                        current_app.logger.info(
+                            f"[AI队列] 提交ID={submission.id} 已加入批改队列，任务ID={ai_task.id}"
+                        )
                     except Exception as e:
-                        current_app.logger.error(f"[AI评分] 自动评分异常: {str(e)}")
+                        current_app.logger.error(f"[AI队列] 创建任务失败: {str(e)}")
                         import traceback
                         current_app.logger.error(traceback.format_exc())
                 
