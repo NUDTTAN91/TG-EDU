@@ -13,10 +13,22 @@ import os
 
 def migrate():
     """执行迁移"""
-    db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'storage', 'data', 'app.db')
+    # 支持多个可能的数据库路径
+    possible_paths = [
+        os.path.join(os.path.dirname(os.path.dirname(__file__)), 'storage', 'data', 'homework.db'),
+        os.path.join(os.path.dirname(os.path.dirname(__file__)), 'storage', 'data', 'app.db'),
+        '/app/storage/data/homework.db',
+        '/app/storage/data/app.db',
+    ]
     
-    if not os.path.exists(db_path):
-        print(f"数据库文件不存在: {db_path}")
+    db_path = None
+    for path in possible_paths:
+        if os.path.exists(path):
+            db_path = path
+            break
+    
+    if not db_path:
+        print(f"数据库文件不存在，尝试过: {possible_paths}")
         return False
     
     conn = sqlite3.connect(db_path)
