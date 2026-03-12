@@ -153,6 +153,7 @@ def register_blueprints(app):
     from app.routes import (main, auth, admin, student, user_mgmt, 
                             class_mgmt, assignment, submission, grading,
                             download, notification, advanced, import_export, major_assignment, makeup, logs, ai_grading)
+    from app.routes.ai_queue import ai_queue_bp
     
     app.register_blueprint(main.bp)
     app.register_blueprint(auth.bp)
@@ -171,6 +172,7 @@ def register_blueprints(app):
     app.register_blueprint(makeup.bp)
     app.register_blueprint(logs.bp)
     app.register_blueprint(ai_grading.bp)
+    app.register_blueprint(ai_queue_bp)
 
 
 def init_scheduler(app):
