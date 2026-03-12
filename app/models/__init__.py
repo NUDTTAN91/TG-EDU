@@ -13,6 +13,7 @@ from app.models.team import (
     TeamTask, TaskProgress,
     MajorAssignmentAttachment, MajorAssignmentLink
 )
+from app.models.ai_grading_task import AIGradingTask, AIGradingConfig
 
 __all__ = [
     'User', 'UserRole',
@@ -26,5 +27,6 @@ __all__ = [
     'TeamInvitation', 'LeaveTeamRequest', 'DissolveTeamRequest',
     'Stage', 'DivisionRole', 'TeamDivision',
     'TeamTask', 'TaskProgress',
-    'MajorAssignmentAttachment', 'MajorAssignmentLink', 'StageSubmission'
+    'MajorAssignmentAttachment', 'MajorAssignmentLink', 'StageSubmission',
+    'AIGradingTask', 'AIGradingConfig'
 ]
