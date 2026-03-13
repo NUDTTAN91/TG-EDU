@@ -247,6 +247,69 @@
                 </div>
             </div>
 
+            <!-- 从其他班级导入 -->
+            {% if other_classes %}
+            <div class="card mt-4">
+                <div class="card-header bg-gradient-primary">
+                    <h5 class="mb-0 text-white">
+                        <i class="fas fa-file-import me-2"></i>
+                        从其他班级导入
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="source_class" class="form-label">
+                            <i class="fas fa-chalkboard me-1"></i>
+                            选择源班级
+                        </label>
+                        <select class="form-select" id="source_class" onchange="loadSourceClassStudents(this.value)">
+                            <option value="">请选择班级</option>
+                            {% for cls in other_classes %}
+                                <option value="{{ cls.id }}">
+                                    {{ cls.name }} ({{ cls.students|length }}人)
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <form method="POST" action="{{ url_for('class_mgmt.import_students_from_class', class_id=class_obj.id) }}" id="importForm">
+                        <input type="hidden" name="source_class_id" id="source_class_id">
+                        
+                        <div id="studentListContainer" style="display: none;">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label mb-0">
+                                    <i class="fas fa-users me-1"></i>
+                                    选择学生
+                                </label>
+                                <div>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAllStudents()">
+                                        全选
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="deselectAllStudents()">
+                                        取消
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="studentCheckboxList" class="border rounded p-2" style="max-height: 250px; overflow-y: auto;">
+                                <!-- 动态加载学生列表 -->
+                            </div>
+                            <div class="mt-3 d-grid">
+                                <button type="submit" class="btn btn-primary" id="importBtn" disabled>
+                                    <i class="fas fa-file-import me-2"></i>
+                                    导入选中学生
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div id="noStudentTip" class="text-center text-muted py-3" style="display: none;">
+                            <i class="fas fa-info-circle me-1"></i>
+                            该班级没有学生
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+
 
 
             <!-- 班级教师 -->
@@ -404,6 +467,88 @@ function clearAllStudents() {
                 alert('操作失败，请重试');
             }
         });
+    }
+}
+
+// 从其他班级导入学生功能
+function loadSourceClassStudents(classId) {
+    const container = document.getElementById('studentListContainer');
+    const noStudentTip = document.getElementById('noStudentTip');
+    const checkboxList = document.getElementById('studentCheckboxList');
+    const sourceClassIdInput = document.getElementById('source_class_id');
+    const importBtn = document.getElementById('importBtn');
+    
+    if (!classId) {
+        container.style.display = 'none';
+        noStudentTip.style.display = 'none';
+        return;
+    }
+    
+    sourceClassIdInput.value = classId;
+    checkboxList.innerHTML = '<div class="text-center py-3"><i class="fas fa-spinner fa-spin"></i> 加载中...</div>';
+    container.style.display = 'block';
+    noStudentTip.style.display = 'none';
+    
+    fetch(`/admin/classes/{{ class_obj.id }}/get_class_students/${classId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.students && data.students.length > 0) {
+                let html = '';
+                data.students.forEach(student => {
+                    const disabled = student.already_in ? 'disabled' : '';
+                    const checked = '';
+                    const labelClass = student.already_in ? 'text-muted' : '';
+                    const badge = student.already_in ? '<span class="badge bg-secondary ms-2">已在班级</span>' : '';
+                    
+                    html += `
+                        <div class="form-check mb-2">
+                            <input class="form-check-input student-checkbox" type="checkbox" 
+                                   name="student_ids" value="${student.id}" 
+                                   id="student_${student.id}" ${disabled} ${checked}
+                                   onchange="updateImportBtn()">
+                            <label class="form-check-label ${labelClass}" for="student_${student.id}">
+                                ${student.real_name} <small class="text-muted">(${student.student_id})</small>${badge}
+                            </label>
+                        </div>
+                    `;
+                });
+                checkboxList.innerHTML = html;
+                container.style.display = 'block';
+                noStudentTip.style.display = 'none';
+                updateImportBtn();
+            } else {
+                container.style.display = 'none';
+                noStudentTip.style.display = 'block';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            checkboxList.innerHTML = '<div class="text-danger">加载失败，请重试</div>';
+        });
+}
+
+function selectAllStudents() {
+    document.querySelectorAll('.student-checkbox:not(:disabled)').forEach(cb => {
+        cb.checked = true;
+    });
+    updateImportBtn();
+}
+
+function deselectAllStudents() {
+    document.querySelectorAll('.student-checkbox').forEach(cb => {
+        cb.checked = false;
+    });
+    updateImportBtn();
+}
+
+function updateImportBtn() {
+    const checkedCount = document.querySelectorAll('.student-checkbox:checked').length;
+    const importBtn = document.getElementById('importBtn');
+    if (importBtn) {
+        importBtn.disabled = checkedCount === 0;
+        importBtn.innerHTML = checkedCount > 0 
+            ? `<i class="fas fa-file-import me-2"></i>导入选中学生 (${checkedCount}人)`
+            : '<i class="fas fa-file-import me-2"></i>导入选中学生';
     }
 }
 </script>

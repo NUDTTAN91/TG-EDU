@@ -189,9 +189,13 @@ def class_students(class_id):
         ~User.id.in_(current_student_ids) if current_student_ids else True
     ).order_by(User.real_name).all()
     
+    # 获取其他班级（用于导入学生）
+    other_classes = Class.query.filter(Class.id != class_id).order_by(Class.name).all()
+    
     return render_template('class_students.html',
                          class_obj=class_obj,
-                         available_students=available_students)
+                         available_students=available_students,
+                         other_classes=other_classes)
 
 
 @bp.route('/<int:class_id>/add_student', methods=['POST'])
@@ -246,6 +250,90 @@ def remove_student_from_class(class_id):
         flash(f'{student.real_name} 不在此班级中')
     
     return redirect(url_for('class_mgmt.class_students', class_id=class_id))
+
+
+@bp.route('/<int:class_id>/import_from_class', methods=['POST'])
+@login_required
+@require_teacher_or_admin
+def import_students_from_class(class_id):
+    """从其他班级导入学生"""
+    class_obj = Class.query.get_or_404(class_id)
+    
+    # 权限检查
+    if not current_user.is_super_admin:
+        if current_user not in class_obj.teachers:
+            flash('您没有权限管理此班级')
+            return redirect(url_for('class_mgmt.manage_classes'))
+    
+    source_class_id = request.form.get('source_class_id')
+    student_ids = request.form.getlist('student_ids')
+    
+    if not source_class_id:
+        flash('请选择源班级')
+        return redirect(url_for('class_mgmt.class_students', class_id=class_id))
+    
+    if not student_ids:
+        flash('请选择要导入的学生')
+        return redirect(url_for('class_mgmt.class_students', class_id=class_id))
+    
+    # 获取源班级
+    source_class = Class.query.get_or_404(source_class_id)
+    
+    # 导入学生
+    imported_count = 0
+    already_in_count = 0
+    
+    for student_id in student_ids:
+        student = User.query.filter_by(id=student_id, role=UserRole.STUDENT).first()
+        if student:
+            if student not in class_obj.students:
+                class_obj.students.append(student)
+                imported_count += 1
+            else:
+                already_in_count += 1
+    
+    db.session.commit()
+    
+    if imported_count > 0:
+        flash(f'成功从「{source_class.name}」导入 {imported_count} 名学生')
+    if already_in_count > 0:
+        flash(f'{already_in_count} 名学生已在班级中，已跳过')
+    
+    return redirect(url_for('class_mgmt.class_students', class_id=class_id))
+
+
+@bp.route('/<int:class_id>/get_class_students/<int:source_class_id>')
+@login_required
+@require_teacher_or_admin
+def get_class_students_api(class_id, source_class_id):
+    """获取指定班级的学生列表（API）"""
+    from flask import jsonify
+    
+    class_obj = Class.query.get_or_404(class_id)
+    source_class = Class.query.get_or_404(source_class_id)
+    
+    # 权限检查
+    if not current_user.is_super_admin:
+        if current_user not in class_obj.teachers:
+            return jsonify({'error': '无权限'}), 403
+    
+    # 获取当前班级学生ID
+    current_student_ids = [s.id for s in class_obj.students]
+    
+    # 返回源班级学生（标记是否已在当前班级）
+    students = []
+    for student in source_class.students:
+        students.append({
+            'id': student.id,
+            'real_name': student.real_name,
+            'student_id': student.student_id or student.username,
+            'already_in': student.id in current_student_ids
+        })
+    
+    return jsonify({
+        'class_name': source_class.name,
+        'students': students
+    })
 
 
 @bp.route('/<int:class_id>/grades')
