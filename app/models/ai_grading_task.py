@@ -61,8 +61,9 @@ class AIGradingTask(db.Model):
     @property
     def teacher_name(self):
         """获取所属教师名称"""
-        if self.assignment and self.assignment.class_info and self.assignment.class_info.teacher:
-            return self.assignment.class_info.teacher.real_name
+        if self.assignment and self.assignment.class_info and self.assignment.class_info.teachers:
+            # 班级可能有多个教师，取第一个
+            return self.assignment.class_info.teachers[0].real_name
         return '未知'
     
     def __repr__(self):
