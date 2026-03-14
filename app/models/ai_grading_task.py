@@ -54,15 +54,15 @@ class AIGradingTask(db.Model):
     @property
     def class_name(self):
         """获取班级名称"""
-        if self.assignment and self.assignment.class_:
-            return self.assignment.class_.name
+        if self.assignment and self.assignment.class_info:
+            return self.assignment.class_info.name
         return '未知'
     
     @property
     def teacher_name(self):
         """获取所属教师名称"""
-        if self.assignment and self.assignment.class_ and self.assignment.class_.teacher:
-            return self.assignment.class_.teacher.real_name
+        if self.assignment and self.assignment.class_info and self.assignment.class_info.teacher:
+            return self.assignment.class_info.teacher.real_name
         return '未知'
     
     def __repr__(self):
