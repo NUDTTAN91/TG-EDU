@@ -1025,7 +1025,7 @@ docker-compose up -d
 
 Made with ❤️ by [NUDTTAN91](https://github.com/NUDTTAN91)
 
-© 2024 TG-EDU. All rights reserved.
+© 2025-Present TG-EDU. All rights reserved.
 
 </div>
 
