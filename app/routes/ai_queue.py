@@ -115,18 +115,21 @@ def task_detail(task_id):
 @login_required
 @super_admin_required
 def retry_task(task_id):
-    """重试失败的任务"""
+    """重试失败的任务或重新评分已完成的任务"""
     task = AIGradingTask.query.get_or_404(task_id)
     
-    if task.status != AIGradingTask.STATUS_FAILED:
+    if task.status not in [AIGradingTask.STATUS_FAILED, AIGradingTask.STATUS_COMPLETED]:
         return jsonify({
             'success': False,
-            'message': '只能重试失败的任务'
+            'message': '只能重试失败或已完成的任务'
         }), 400
     
     # 重置任务状态
     task.status = AIGradingTask.STATUS_PENDING
+    task.score = None
+    task.feedback = None
     task.error_message = None
+    task.conversation_log = None
     task.started_at = None
     task.completed_at = None
     db.session.commit()
