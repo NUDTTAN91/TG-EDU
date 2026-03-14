@@ -1,6 +1,7 @@
 """AI 批改队列管理路由"""
 from flask import Blueprint, render_template, jsonify, request
 from flask_login import login_required, current_user
+from datetime import timedelta
 from app.models import AIGradingTask, AIGradingConfig
 from app.extensions import db
 from app.utils.decorators import super_admin_required
@@ -52,7 +53,8 @@ def index():
                           completed_count=completed_count,
                           failed_count=failed_count,
                           config=config,
-                          status_filter=status_filter)
+                          status_filter=status_filter,
+                          timedelta=timedelta)
 
 
 @ai_queue_bp.route('/config', methods=['POST'])
@@ -104,9 +106,9 @@ def task_detail(task_id):
             'feedback': task.feedback,
             'error_message': task.error_message,
             'conversation_log': task.conversation_log,
-            'created_at': task.created_at.strftime('%Y-%m-%d %H:%M:%S') if task.created_at else None,
-            'started_at': task.started_at.strftime('%Y-%m-%d %H:%M:%S') if task.started_at else None,
-            'completed_at': task.completed_at.strftime('%Y-%m-%d %H:%M:%S') if task.completed_at else None
+            'created_at': (task.created_at + timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S') if task.created_at else None,
+            'started_at': (task.started_at + timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S') if task.started_at else None,
+            'completed_at': (task.completed_at + timedelta(hours=8)).strftime('%Y-%m-%d %H:%M:%S') if task.completed_at else None
         }
     })
 
