@@ -147,9 +147,15 @@ class AIQueueService:
                 task.feedback = ai_result.get('comment')
                 task.completed_at = datetime.utcnow()
                 
-                # 更新提交记录
+                # 更新提交记录（AI 评分字段）
                 submission.ai_score = ai_result.get('score')
                 submission.ai_feedback = ai_result.get('comment')
+                
+                # 同步到正式评分字段（如果还没有教师评分）
+                if submission.grade is None:
+                    submission.grade = ai_result.get('score')
+                    submission.feedback = ai_result.get('comment')
+                    submission.graded_at = datetime.utcnow()
                 
                 print(f"✅ AI队列：任务 {task.id} 完成，评分: {task.score}")
             else:
