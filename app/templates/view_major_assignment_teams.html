@@ -360,6 +360,7 @@
                 <div class="card-footer bg-light">
                     <div class="d-flex gap-1 flex-wrap">
                         <form action="{{ url_for('major_assignment.confirm_team', team_id=team.id) }}" method="POST" style="display: inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                             <button type="submit" class="btn btn-sm btn-success">
                                 <i class="fas fa-check me-1"></i>确认
                             </button>
@@ -416,6 +417,7 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form id="rejectForm" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="modal-body">
                     <div class="alert alert-warning">
                         <i class="fas fa-info-circle me-2"></i>
@@ -455,6 +457,7 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form id="dissolveForm" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="modal-body">
                     <div class="alert alert-danger">
                         <i class="fas fa-exclamation-circle me-2"></i>
@@ -640,6 +643,7 @@ function removeMember(teamId, memberId, memberName) {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
         }
     })
     .then(response => response.json())
@@ -668,6 +672,7 @@ function removeMember(teamId, memberId, memberName) {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
         },
         body: JSON.stringify({
             name: name,
@@ -710,6 +715,7 @@ document.getElementById('transferLeaderForm').addEventListener('submit', functio
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
         },
         body: JSON.stringify({
             new_leader_id: newLeaderId
