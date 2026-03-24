@@ -68,6 +68,7 @@
                 <div class="card-body">
                     <form action="{{ url_for('major_assignment.save_team_divisions', team_id=team.id, stage_id=stage.id) }}" 
                           method="POST" id="divisionForm">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         
                         <div class="alert alert-info">
                             <i class="fas fa-info-circle me-1"></i>

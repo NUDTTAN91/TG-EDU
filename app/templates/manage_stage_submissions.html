@@ -77,10 +77,12 @@
                             </td>
                             <td>
                                 <form action="{{ url_for('major_assignment.approve_stage_submission', submission_id=sub.id) }}" method="POST" class="d-inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                     <input type="text" name="review_comment" class="form-control form-control-sm mb-1" placeholder="审核意见（可选）">
                                     <button type="submit" class="btn btn-sm btn-success"><i class="fas fa-check me-1"></i>通过</button>
                                 </form>
                                 <form action="{{ url_for('major_assignment.reject_stage_submission', submission_id=sub.id) }}" method="POST" class="d-inline ms-2">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                     <input type="text" name="review_comment" class="form-control form-control-sm mb-1" placeholder="审核意见（可选）">
                                     <button type="submit" class="btn btn-sm btn-danger"><i class="fas fa-times me-1"></i>驳回</button>
                                 </form>

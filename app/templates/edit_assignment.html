@@ -21,6 +21,7 @@
     <div class="row justify-content-center">
         <div class="col-lg-8">
             <form method="POST" class="needs-validation" novalidate enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <!-- 基本信息 -->
                 <div class="card mb-4">
                     <div class="card-header bg-gradient">
