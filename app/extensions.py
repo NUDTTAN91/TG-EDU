@@ -1,16 +1,19 @@
 """Flask扩展初始化"""
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
+from flask_wtf.csrf import CSRFProtect
 
 # 初始化扩展（不绑定app）
 db = SQLAlchemy()
 login_manager = LoginManager()
+csrf = CSRFProtect()
 
 
 def init_extensions(app):
     """初始化所有扩展"""
     db.init_app(app)
     login_manager.init_app(app)
+    csrf.init_app(app)
     login_manager.login_view = 'auth.login'
     
     # 请求结束后自动关闭数据库会话
