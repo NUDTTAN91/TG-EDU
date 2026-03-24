@@ -300,6 +300,7 @@
                     取消
                 </button>
                 <form id="deleteAssignmentForm" method="POST" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <button type="submit" class="btn btn-danger">
                         <i class="fas fa-trash me-2"></i>
                         确认删除
