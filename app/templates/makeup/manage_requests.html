@@ -438,6 +438,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         fetch(`/makeup/modify_deadline/${currentRequestId}`, {
             method: 'POST',
+            headers: { 'X-CSRFToken': getCSRFToken() },
             body: formData
         })
         .then(response => response.json())
@@ -468,6 +469,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         fetch(`/makeup/approve/${currentRequestId}`, {
             method: 'POST',
+            headers: { 'X-CSRFToken': getCSRFToken() },
             body: formData
         })
         .then(response => response.json())
@@ -507,6 +509,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         fetch(`/makeup/reject/${currentRequestId}`, {
             method: 'POST',
+            headers: { 'X-CSRFToken': getCSRFToken() },
             body: formData
         })
         .then(response => response.json())
@@ -579,6 +582,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         fetch('/makeup/batch_approve', {
             method: 'POST',
+            headers: { 'X-CSRFToken': getCSRFToken() },
             body: formData
         })
         .then(response => response.json())
@@ -617,6 +621,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         fetch('/makeup/batch_reject', {
             method: 'POST',
+            headers: { 'X-CSRFToken': getCSRFToken() },
             body: formData
         })
         .then(response => response.json())

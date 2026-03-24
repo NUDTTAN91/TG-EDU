@@ -58,6 +58,7 @@
         </div>
         <div class="card-body">
             <form method="POST" action="{{ url_for('makeup.request_makeup', assignment_id=assignment.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="mb-3">
                     <label for="reason" class="form-label">
                         <i class="fas fa-comment-dots me-1"></i>
