@@ -277,7 +277,8 @@ function updateConfig() {
     fetch('{{ url_for("ai_queue.update_config") }}', {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
         },
         body: JSON.stringify({ max_concurrent: maxConcurrent })
     })
@@ -369,7 +370,8 @@ function retryTask(taskId) {
     if (!confirm('确定要重试此任务吗？')) return;
     
     fetch(`{{ url_for("ai_queue.index") }}task/${taskId}/retry`, {
-        method: 'POST'
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCSRFToken() }
     })
     .then(response => response.json())
     .then(data => {
@@ -383,7 +385,8 @@ function deleteTask(taskId) {
     if (!confirm('确定要删除此任务吗？此操作不可恢复！')) return;
     
     fetch(`{{ url_for("ai_queue.index") }}task/${taskId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: { 'X-CSRFToken': getCSRFToken() }
     })
     .then(response => response.json())
     .then(data => {
@@ -397,7 +400,8 @@ function clearCompleted() {
     if (!confirm('确定要清除所有已完成的任务吗？')) return;
     
     fetch('{{ url_for("ai_queue.clear_completed") }}', {
-        method: 'POST'
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCSRFToken() }
     })
     .then(response => response.json())
     .then(data => {
