@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{% block title %}作业收集系统{% endblock %}</title>
     
     <!-- 立即恢复滚动位置的脚本 -->
@@ -731,6 +732,11 @@
             saveScrollPosition();
         }
     });
+    
+    // CSRF 防护：全局获取 token 的辅助函数
+    function getCSRFToken() {
+        return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    }
     </script>
     
     {% block scripts %}{% endblock %}
