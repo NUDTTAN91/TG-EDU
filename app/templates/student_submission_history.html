@@ -182,6 +182,7 @@
                                 <th>提交时间</th>
                                 <th>文件名</th>
                                 <th>文件大小</th>
+                                <th>评分</th>
                                 <th>操作</th>
                             </tr>
                         </thead>
@@ -215,12 +216,36 @@
                                     </small>
                                 </td>
                                 <td>
+                                    {% if submission.grade is not none %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-star me-1"></i>
+                                            {{ submission.grade }}分
+                                        </span>
+                                        {% if submission.ai_score is not none and submission.graded_by is none %}
+                                            <br><small class="text-info"><i class="fas fa-robot me-1"></i>AI评分</small>
+                                        {% elif submission.grader %}
+                                            <br><small class="text-muted">{{ submission.grader.real_name }}老师</small>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="badge bg-secondary">未评分</span>
+                                    {% endif %}
+                                </td>
+                                <td>
                                     <div class="btn-group" role="group">
                                         <a href="{{ url_for('submission.download_file', submission_id=submission.id) }}" 
                                            class="btn btn-sm btn-outline-primary" 
                                            title="下载文件">
                                             <i class="fas fa-download"></i>
                                         </a>
+                                        {% if submission.feedback %}
+                                        <button type="button" 
+                                                class="btn btn-sm btn-outline-success"
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#feedbackModal{{ submission.id }}"
+                                                title="查看反馈">
+                                            <i class="fas fa-comment"></i>
+                                        </button>
+                                        {% endif %}
                                         {% if current_user.is_super_admin %}
                                             <button type="button" 
                                                     class="btn btn-sm btn-outline-danger" 
