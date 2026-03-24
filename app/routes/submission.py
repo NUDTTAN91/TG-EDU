@@ -37,49 +37,51 @@ def can_manage_assignment(user, assignment):
 
 
 @bp.route('/submit/<int:assignment_id>', methods=['GET', 'POST'])
+@login_required
 def submit_assignment(assignment_id):
-    """学生提交作业（支持登录和非登录用户）"""
+    """学生提交作业（需登录）"""
     from flask import current_app
     
     assignment = Assignment.query.get_or_404(assignment_id)
     
-    # 如果用户已登录，优先使用登录用户信息
-    logged_in_student = None
+    # 检查是否为学生角色，非学生不允许提交
+    if not current_user.is_student:
+        flash('只有学生才能提交作业')
+        return redirect(url_for('main.index'))
+    
+    # 用户已登录且为学生，使用当前用户信息
+    logged_in_student = current_user
     has_valid_makeup = False
     current_app.logger.warning(f"[SUBMIT] 当前用户认证状态: {current_user.is_authenticated}")
-    if current_user.is_authenticated:
-        current_app.logger.warning(f"[SUBMIT] 用户角色: {current_user.role if hasattr(current_user, 'role') else 'unknown'}")
+    current_app.logger.warning(f"[SUBMIT] 用户角色: {current_user.role if hasattr(current_user, 'role') else 'unknown'}")
+    current_app.logger.warning(f"[SUBMIT] 学生ID={logged_in_student.id} 开始检查补交申请")
     
-    if current_user.is_authenticated and current_user.is_student:
-        logged_in_student = current_user
-        current_app.logger.warning(f"[SUBMIT] 学生ID={logged_in_student.id} 开始检查补交申请")
-        
-        # 检查是否有已批准的补交申请，并且未过补交截止时间
-        from app.models import MakeupRequest
-        makeup_request = MakeupRequest.query.filter_by(
-            student_id=logged_in_student.id,
-            assignment_id=assignment_id,
-            status='approved'
-        ).order_by(MakeupRequest.id.desc()).first()  # 取最新的补交申请
-        current_app.logger.warning(f"[SUBMIT] 查询补交申请结果: {makeup_request}")
-        if makeup_request and makeup_request.deadline:
-            current_app.logger.warning(f"[SUBMIT] 补交deadline={makeup_request.deadline} 当前={datetime.utcnow()}")
-            # 检查补交截止时间是否过期
-            if datetime.utcnow() <= makeup_request.deadline:
-                has_valid_makeup = True
-                current_app.logger.info(f"[SUBMIT] 学生ID={logged_in_student.id} 作业ID={assignment_id} 有有效补交申请")
-            else:
-                current_app.logger.info(f"[SUBMIT] 学生ID={logged_in_student.id} 作业ID={assignment_id} 补交申请已过期")
+    # 检查是否有已批准的补交申请，并且未过补交截止时间
+    from app.models import MakeupRequest
+    makeup_request = MakeupRequest.query.filter_by(
+        student_id=logged_in_student.id,
+        assignment_id=assignment_id,
+        status='approved'
+    ).order_by(MakeupRequest.id.desc()).first()  # 取最新的补交申请
+    current_app.logger.warning(f"[SUBMIT] 查询补交申请结果: {makeup_request}")
+    if makeup_request and makeup_request.deadline:
+        current_app.logger.warning(f"[SUBMIT] 补交deadline={makeup_request.deadline} 当前={datetime.utcnow()}")
+        # 检查补交截止时间是否过期
+        if datetime.utcnow() <= makeup_request.deadline:
+            has_valid_makeup = True
+            current_app.logger.info(f"[SUBMIT] 学生ID={logged_in_student.id} 作业ID={assignment_id} 有有效补交申请")
         else:
-            current_app.logger.info(f"[SUBMIT] 没有找到有效的补交申请或deadline为空")
-        
-        # 检查学生是否有权限提交此作业
-        if assignment.class_id:  # 如果作业指定了班级
-            student_classes = [c.id for c in current_user.classes]
-            if assignment.class_id not in student_classes:
-                current_app.logger.warning(f"[SUBMIT] 学生ID={logged_in_student.id} 不在班级中")
-                flash('很抱歉，您不在此作业的指定班级中，无法提交')
-                return redirect(url_for('student.dashboard'))
+            current_app.logger.info(f"[SUBMIT] 学生ID={logged_in_student.id} 作业ID={assignment_id} 补交申请已过期")
+    else:
+        current_app.logger.info(f"[SUBMIT] 没有找到有效的补交申请或deadline为空")
+    
+    # 检查学生是否有权限提交此作业
+    if assignment.class_id:  # 如果作业指定了班级
+        student_classes = [c.id for c in current_user.classes]
+        if assignment.class_id not in student_classes:
+            current_app.logger.warning(f"[SUBMIT] 学生ID={logged_in_student.id} 不在班级中")
+            flash('很抱歉，您不在此作业的指定班级中，无法提交')
+            return redirect(url_for('student.dashboard'))
     
     # 检查作业是否已过截止时间
     current_app.logger.info(f"[SUBMIT] 作业ID={assignment_id} is_overdue={assignment.is_overdue()} has_valid_makeup={has_valid_makeup}")
@@ -92,7 +94,7 @@ def submit_assignment(assignment_id):
             # 没有有效的补交申请
             current_app.logger.warning(f"[SUBMIT] 作业已截止且无有效补交，重定向")
             flash('未按规定提交，请重新申请补交')
-            return redirect(url_for('student.dashboard') if logged_in_student else url_for('main.index'))
+            return redirect(url_for('student.dashboard'))
     
     if request.method == 'POST':
         # 再次检查作业是否已过截止时间（防止用户在提交过程中过期）
@@ -100,20 +102,15 @@ def submit_assignment(assignment_id):
             if request.headers.get('Content-Type', '').startswith('multipart/form-data'):
                 return jsonify({'success': False, 'message': '未按规定提交，请重新申请补交'}), 400
             flash('未按规定提交，请重新申请补交')
-            return redirect(url_for('student.dashboard') if logged_in_student else url_for('main.index'))
+            return redirect(url_for('student.dashboard'))
         
-        # 优先使用登录用户信息
-        if logged_in_student:
-            student_name = logged_in_student.real_name
-            student_number = logged_in_student.student_id or logged_in_student.username
-            student_user_id = logged_in_student.id
-        else:
-            student_name = request.form['student_name']
-            student_number = request.form['student_id']
-            student_user_id = None
+        # 使用登录用户信息（已通过@login_required和角色检查确保是学生）
+        student_name = logged_in_student.real_name
+        student_number = logged_in_student.student_id or logged_in_student.username
+        student_user_id = logged_in_student.id
         
         # 检查是否还能提交
-        if logged_in_student and not assignment.can_student_submit(student_user_id):
+        if not assignment.can_student_submit(student_user_id):
             flash(f'您已达到该作业的最大提交次数限制 ({assignment.max_submissions}次)')
             return redirect(url_for('student.dashboard'))
         
@@ -309,7 +306,7 @@ def submit_assignment(assignment_id):
                         ai_task = AIGradingTask(
                             submission_id=submission.id,
                             assignment_id=assignment.id,
-                            student_id=current_user.id,
+                            student_id=student_user_id,
                             status=AIGradingTask.STATUS_PENDING
                         )
                         db.session.add(ai_task)
@@ -335,17 +332,12 @@ def submit_assignment(assignment_id):
                     return jsonify({
                         'success': True, 
                         'message': '作业提交成功',
-                        'redirect_url': url_for('student.dashboard') if logged_in_student else url_for('main.index')
+                        'redirect_url': url_for('student.dashboard')
                     })
                 else:
                     # 普通表单提交
                     flash('作业提交成功')
-                    
-                    # 根据用户状态重定向
-                    if logged_in_student:
-                        return redirect(url_for('student.dashboard'))
-                    else:
-                        return redirect(url_for('main.index'))
+                    return redirect(url_for('student.dashboard'))
                         
             except Exception as e:
                 db.session.rollback()
