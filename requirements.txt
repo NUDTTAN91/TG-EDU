@@ -2,6 +2,7 @@ Flask==2.3.3
 Flask-Login==0.6.2
 Flask-SQLAlchemy==3.0.5
 Flask-APScheduler==1.13.1
+Flask-WTF>=1.2.0
 Werkzeug==2.3.7
 SQLAlchemy==2.0.20
 python-dotenv==1.0.0
