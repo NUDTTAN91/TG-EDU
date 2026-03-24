@@ -170,6 +170,7 @@
                                             <td>
                                                 <form method="POST" action="{{ url_for('class_mgmt.remove_student_from_class', class_id=class_obj.id) }}" 
                                                       class="d-inline remove-student-form">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                                     <input type="hidden" name="student_id" value="{{ student.id }}">
                                                     <button type="submit" class="btn btn-sm btn-outline-danger" 
                                                             title="移除学生" onclick="return confirm('确定要将 {{ student.real_name }} 从班级中移除吗？')">
@@ -206,6 +207,7 @@
                 </div>
                 <div class="card-body">
                     <form method="POST" action="{{ url_for('class_mgmt.add_student_to_class', class_id=class_obj.id) }}" class="needs-validation" novalidate>
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <div class="mb-3">
                             <label for="student_id" class="form-label">
                                 <i class="fas fa-search me-1"></i>
@@ -273,6 +275,7 @@
                     </div>
                     
                     <form method="POST" action="{{ url_for('class_mgmt.import_students_from_class', class_id=class_obj.id) }}" id="importForm">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <input type="hidden" name="source_class_id" id="source_class_id">
                         
                         <div id="studentListContainer" style="display: none;">
@@ -459,6 +462,7 @@ function clearAllStudents() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
             }
         }).then(response => {
             if (response.ok) {
