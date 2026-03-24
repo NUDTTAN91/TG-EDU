@@ -125,59 +125,24 @@
             </div>
             <div class="card-body p-4">
                 <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate id="submitForm">
-                    {% if not logged_in_student %}
-                        <div class="row">
-                            <div class="col-md-6 mb-4">
-                                <label for="student_name" class="form-label">
-                                    <i class="fas fa-user me-2"></i>
-                                    学生姓名 <span class="text-danger">*</span>
-                                </label>
-                                <input type="text" 
-                                       class="form-control" 
-                                       id="student_name" 
-                                       name="student_name" 
-                                       placeholder="请输入您的姓名"
-                                       required>
-                                <div class="invalid-feedback">
-                                    请输入学生姓名
-                                </div>
+                    <!-- 显示已登录学生信息（只读） -->
+                    <div class="alert alert-info border-0 mb-4">
+                        <div class="row align-items-center">
+                            <div class="col-auto">
+                                <i class="fas fa-user-check fa-2x"></i>
                             </div>
-                            
-                            <div class="col-md-6 mb-4">
-                                <label for="student_id" class="form-label">
-                                    <i class="fas fa-id-card me-2"></i>
-                                    学号 <span class="text-danger">*</span>
-                                </label>
-                                <input type="text" 
-                                       class="form-control" 
-                                       id="student_id" 
-                                       name="student_id" 
-                                       placeholder="请输入您的学号"
-                                       required>
-                                <div class="invalid-feedback">
-                                    请输入学号
-                                </div>
+                            <div class="col">
+                                <h6 class="alert-heading mb-1">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    已登录用户
+                                </h6>
+                                <p class="mb-0">
+                                    <strong>姓名:</strong> {{ logged_in_student.real_name }} &nbsp;
+                                    <strong>学号:</strong> {{ logged_in_student.student_id or logged_in_student.username }}
+                                </p>
                             </div>
                         </div>
-                    {% else %}
-                        <div class="alert alert-info border-0 mb-4">
-                            <div class="row align-items-center">
-                                <div class="col-auto">
-                                    <i class="fas fa-user-check fa-2x"></i>
-                                </div>
-                                <div class="col">
-                                    <h6 class="alert-heading mb-1">
-                                        <i class="fas fa-info-circle me-1"></i>
-                                        已登录用户
-                                    </h6>
-                                    <p class="mb-0">
-                                        <strong>姓名:</strong> {{ logged_in_student.real_name }} &nbsp;
-                                        <strong>学号:</strong> {{ logged_in_student.student_id or logged_in_student.username }}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    {% endif %}
+                    </div>
                     
                     <div class="mb-4">
                         <label for="file" class="form-label">
@@ -740,12 +705,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // 3秒后自动跳转
                 setTimeout(() => {
-                    // 检查是否是登录用户
-                    {% if logged_in_student %}
-                        window.location.href = '{{ url_for("student.dashboard") }}';
-                    {% else %}
-                        window.location.href = '{{ url_for("main.index") }}';
-                    {% endif %}
+                    window.location.href = '{{ url_for("student.dashboard") }}';
                 }, 3000);
             } else {
                 // 上传失败
@@ -841,11 +801,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // 如果是成功状态，跳转页面
         if (document.getElementById('uploadSuccess').style.display === 'block') {
-            {% if logged_in_student %}
-                window.location.href = '{{ url_for("student.dashboard") }}';
-            {% else %}
-                window.location.href = '{{ url_for("main.index") }}';
-            {% endif %}
+            window.location.href = '{{ url_for("student.dashboard") }}';
         }
     });
     
