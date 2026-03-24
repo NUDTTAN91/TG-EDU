@@ -19,6 +19,7 @@
         <div class="card login-card">
             <div class="card-body p-4">
                 <form method="POST" class="needs-validation" novalidate>
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <div class="mb-4">
                         <label for="username" class="form-label">
                             <i class="fas fa-user me-2"></i>
