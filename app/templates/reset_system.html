@@ -39,6 +39,7 @@
     <div class="row justify-content-center">
         <div class="col-lg-8">
             <form method="POST" class="needs-validation" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <!-- 重置类型选择 -->
                 <div class="card mb-4">
                     <div class="card-header bg-gradient">
