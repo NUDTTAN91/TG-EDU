@@ -56,6 +56,7 @@
                     {% endif %}
                     {% if not show_unread_only %}
                     <form action="{{ url_for('notification.mark_all_read') }}" method="POST" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <button type="submit" class="btn btn-secondary">
                             <i class="fas fa-check-double"></i> 全部标记为已读
                         </button>
@@ -125,6 +126,7 @@
                                 {% if invitation and invitation.status == 'pending' %}
                                 <form action="{{ url_for('major_assignment.accept_team_invitation', invitation_id=invitation.id) }}" 
                                       method="POST" style="display: inline;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                     <button type="submit" class="btn btn-sm btn-success">
                                         <i class="fas fa-check me-1"></i>接受邀请
                                     </button>
@@ -143,6 +145,7 @@
                                                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                                             </div>
                                             <form action="{{ url_for('major_assignment.reject_team_invitation', invitation_id=invitation.id) }}" method="POST">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                                 <div class="modal-body">
                                                     <p>确定要拒绝该团队邀请吗？</p>
                                                 </div>
@@ -171,6 +174,7 @@
                                 {% if dissolve_request and dissolve_request.status == 'pending' %}
                                 <form action="{{ url_for('major_assignment.approve_dissolve_request', request_id=dissolve_request.id) }}" 
                                       method="POST" style="display: inline;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                     <button type="submit" class="btn btn-sm btn-success">
                                         <i class="fas fa-check me-1"></i>批准解散
                                     </button>
@@ -189,6 +193,7 @@
                                                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                                             </div>
                                             <form action="{{ url_for('major_assignment.reject_dissolve_request', request_id=dissolve_request.id) }}" method="POST">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                                 <div class="modal-body">
                                                     <div class="mb-3">
                                                         <label for="review_comment{{ dissolve_request.id }}" class="form-label">拒绝理由：</label>
@@ -221,6 +226,7 @@
                                 <!-- 组长处理退组 -->
                                 <form action="{{ url_for('major_assignment.approve_leave_request_by_leader', request_id=leave_request.id) }}" 
                                       method="POST" style="display: inline;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                     <button type="submit" class="btn btn-sm btn-success">
                                         <i class="fas fa-check me-1"></i>批准退组
                                     </button>
@@ -239,6 +245,7 @@
                                                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                                             </div>
                                             <form action="{{ url_for('major_assignment.reject_leave_request_by_leader', request_id=leave_request.id) }}" method="POST">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                                 <div class="modal-body">
                                                     <p>确定要拒绝该退组申请吗？</p>
                                                 </div>
@@ -254,6 +261,7 @@
                                 <!-- 教师处理退组 -->
                                 <form action="{{ url_for('major_assignment.approve_leave_request_by_teacher', request_id=leave_request.id) }}" 
                                       method="POST" style="display: inline;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                     <button type="submit" class="btn btn-sm btn-success">
                                         <i class="fas fa-check me-1"></i>批准退组
                                     </button>
@@ -272,6 +280,7 @@
                                                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                                             </div>
                                             <form action="{{ url_for('major_assignment.reject_leave_request_by_teacher', request_id=leave_request.id) }}" method="POST">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                                 <div class="modal-body">
                                                     <p>确定要拒绝该退组申请吗？</p>
                                                 </div>
@@ -313,6 +322,7 @@
                             <form action="{{ url_for('notification.delete_notification', notification_id=notification.id) }}" 
                                   method="POST" style="display: inline;" 
                                   onsubmit="return confirm('确定要删除这条通知吗？');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                 <button type="submit" class="btn btn-sm btn-outline-danger">
                                     <i class="fas fa-trash"></i>
                                 </button>
@@ -387,7 +397,8 @@ document.querySelectorAll('.mark-read-btn').forEach(btn => {
         fetch(`/notifications/${notificationId}/read`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
             }
         })
         .then(response => response.json())
