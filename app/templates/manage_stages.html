@@ -221,6 +221,7 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form action="{{ url_for('major_assignment.create_stage', assignment_id=major_assignment.id) }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="stage_name" class="form-label">阶段名称 <span class="text-danger">*</span></label>
@@ -291,6 +292,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="editStageForm" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="edit_stage_name" class="form-label">阶段名称 <span class="text-danger">*</span></label>
@@ -378,6 +380,11 @@ function deleteStage(id, name) {
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = `/major_assignments/stages/${id}/delete`;
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrf_token';
+        csrfInput.value = getCSRFToken();
+        form.appendChild(csrfInput);
         document.body.appendChild(form);
         form.submit();
     }
@@ -388,7 +395,8 @@ function updateStageStatus() {
         fetch('/major_assignments/stages/update_status', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
             }
         })
         .then(response => response.json())
@@ -409,7 +417,8 @@ function updateStageStatus() {
 function activateStage(id, name) {
     if (confirm(`确定要立即激活阶段「${name}」吗？`)) {
         fetch(`/major_assignments/stages/${id}/activate`, {
-            method: 'POST'
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCSRFToken() }
         })
         .then(response => response.json())
         .then(data => {
@@ -429,7 +438,8 @@ function activateStage(id, name) {
 function completeStage(id, name) {
     if (confirm(`确定要立即结束阶段「${name}」吗？\n\n注意：结束后将执行自动处理逻辑（组队阶段将自动分组，分工阶段将自动分配角色）。`)) {
         fetch(`/major_assignments/stages/${id}/complete`, {
-            method: 'POST'
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCSRFToken() }
         })
         .then(response => response.json())
         .then(data => {
@@ -447,9 +457,10 @@ function completeStage(id, name) {
 }
 
 function restartStage(id, name) {
-    if (confirm(`确定要重新开始阶段「${name}」吗？\n\n注意：重新开始后，阶段将重置为“待开始”状态，但不会删除已分配的团队或分工。`)) {
+    if (confirm(`确定要重新开始阶段「${name}」吗？\n\n注意：重新开始后，阶段将重置为"待开始"状态，但不会删除已分配的团队或分工。`)) {
         fetch(`/major_assignments/stages/${id}/restart`, {
-            method: 'POST'
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCSRFToken() }
         })
         .then(response => response.json())
         .then(data => {
