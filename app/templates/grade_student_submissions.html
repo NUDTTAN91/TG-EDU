@@ -252,6 +252,7 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <input type="hidden" name="submission_id" value="{{ submission.id }}">
                 <div class="modal-header">
                     <h5 class="modal-title">
@@ -447,7 +448,8 @@ function startAIGrading(submissionId) {
     fetch(`/api/ai-grading/grade-submission/${submissionId}`, {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
         },
         body: JSON.stringify({})
     })
