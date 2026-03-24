@@ -162,6 +162,7 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form action="{{ url_for('major_assignment.create_division_role', stage_id=stage.id) }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="role_name" class="form-label">角色名称 <span class="text-danger">*</span></label>
@@ -207,6 +208,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="editRoleForm" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="edit_role_name" class="form-label">角色名称 <span class="text-danger">*</span></label>
@@ -254,6 +256,11 @@ function deleteRole(id, name) {
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = `/major_assignments/division_roles/${id}/delete`;
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrf_token';
+        csrfInput.value = getCSRFToken();
+        form.appendChild(csrfInput);
         document.body.appendChild(form);
         form.submit();
     }
