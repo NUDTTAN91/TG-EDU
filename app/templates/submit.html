@@ -125,6 +125,7 @@
             </div>
             <div class="card-body p-4">
                 <form method="POST" enctype="multipart/form-data" class="needs-validation" novalidate id="submitForm">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <!-- 显示已登录学生信息（只读） -->
                     <div class="alert alert-info border-0 mb-4">
                         <div class="row align-items-center">
@@ -623,6 +624,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // 发送请求
         uploadXHR.open('POST', submitForm.action);
+        uploadXHR.setRequestHeader('X-CSRFToken', getCSRFToken());
         uploadXHR.send(formData);
         
         // 开始计算上传速度
